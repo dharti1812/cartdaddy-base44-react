@@ -12,10 +12,22 @@ import { Progress } from "@/components/ui/progress";
 import { createPageUrl } from "@/utils";
 import { verifyBankAccount, verifyGSTIN } from "@/components/utils/cashfreeConfig";
 import { UploadFile } from "@/api/integrations";
+import { API_BASE_URL } from '../../src/config';
 
-const sendOTP = async () => {
-  await new Promise(r => setTimeout(r, 500));
-  return { success: true };
+const sendOTP = async (phone, name) => {
+  console.log(`Sending OTP to ${name} at ${phone}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, name }),
+    });
+    const data = await response.json();
+    console.log(data);
+    return data; 
+  } catch (error) {
+    return { success: false, message: error.message };
+  }
 };
 
 const verifyOTP = (otp) => otp === "123456";
@@ -104,29 +116,33 @@ export default function SellerOnboarding() {
   };
 
   const submitPhone = async () => {
-    if (!data.name || !data.phone) return setError("Enter name and phone");
-    
-    // Check for existing seller with this phone
-    const allSellers = await Retailer.list();
-    const cleanPhone = data.phone.replace(/\D/g, '');
-    
-    const existingSeller = allSellers.find(s => {
-      const sClean = s.phone?.replace(/\D/g, '') || '';
-      return sClean === cleanPhone || sClean.endsWith(cleanPhone) || cleanPhone.endsWith(sClean);
-    });
-    
-    const user = await User.me();
-    
-    if (existingSeller && existingSeller.user_id !== user.id) {
-      return setError("This phone number is already registered with another account.");
-    }
-    
-    setLoading(true);
-    await sendOTP();
-    setSuccess("✅ Use OTP: 123456");
+  if (!data.name || !data.phone) return setError("Enter name and phone");
+
+  // Check for existing seller with this phone
+  const allSellers = await Retailer.list();
+  const cleanPhone = data.phone.replace(/\D/g, '');
+
+  const existingSeller = allSellers.find(s => {
+    const sClean = s.phone?.replace(/\D/g, '') || '';
+    return sClean === cleanPhone || sClean.endsWith(cleanPhone) || cleanPhone.endsWith(sClean);
+  });
+
+  const user = await User.me();
+
+  if (existingSeller && existingSeller.user_id !== user.id) {
+    return setError("This phone number is already registered with another account.");
+  }
+
+  setLoading(true);
+  const otpResponse = await sendOTP(data.phone, data.name); // Pass both phone and name here
+  if (otpResponse.success) {
+    setSuccess("✅ OTP sent to your phone");
     setStep(1.5);
-    setLoading(false);
-  };
+  } else {
+    setError(otpResponse.message || "Failed to send OTP");
+  }
+  setLoading(false);
+};
 
   const verifyPhone = async () => {
     if (!verifyOTP(otp)) return setError("Wrong OTP");
@@ -369,7 +385,7 @@ export default function SellerOnboarding() {
                 <Input value={data.phone} onChange={e => setData({ ...data, phone: e.target.value })} placeholder="+91XXXXXXXXXX" />
               </div>
               <Button onClick={submitPhone} disabled={loading} className="w-full bg-[#F4B321] text-gray-900 font-bold py-6">
-                {loading ? "Sending..." : "Send OTP"}
+                {loading ? "Sending..." : "sendOTP"}
               </Button>
             </div>
           )}
