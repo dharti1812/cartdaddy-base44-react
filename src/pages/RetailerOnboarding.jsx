@@ -49,7 +49,16 @@ const verifyOTP = async (phone_otp, phone) => {
 
 
 export default function SellerOnboarding() {
-  const [step, setStep] = useState(1);
+  const [step, setStepState] = useState(() => {
+    const savedStep = localStorage.getItem("retailerOnboardingStep");
+    return savedStep ? Number(savedStep) : 1;
+  });
+
+  // Wrap setStep to also save to localStorage
+  const setStep = (s) => {
+    setStepState(s);
+    localStorage.setItem("retailerOnboardingStep", s);
+  };
   const [data, setData] = useState({ 
     name: "", 
     phone: "", 
@@ -75,60 +84,50 @@ export default function SellerOnboarding() {
     try {
       const user = await User.me();
       const allRetailers = await Retailer.list();
-     // console.log("All retailers:", allRetailers);
-      console.log(allRetailers);
-      // Check for duplicates with this user's user_id
       const myRetailers = allRetailers.filter(r => r.user_id === user.id);
-      
+
       let currentRetailer = null;
 
       if (myRetailers.length > 1) {
-        console.log("⚠️ Found", myRetailers.length, "duplicate accounts. Cleaning up...");
-        
-        // Keep the most recent approved account, or the most recent one
         const sorted = myRetailers.sort((a, b) => {
-          // Prioritize approved accounts
           if (a.onboarding_status === 'approved' && b.onboarding_status !== 'approved') return -1;
           if (b.onboarding_status === 'approved' && a.onboarding_status !== 'approved') return 1;
-          // Then sort by creation date
           return new Date(b.created_date) - new Date(a.created_date);
         });
-        
         const keepAccount = sorted[0];
         const deleteAccounts = sorted.slice(1);
-        
-        // Delete duplicates
         for (const dup of deleteAccounts) {
           await Retailer.delete(dup.id);
         }
-        
         currentRetailer = keepAccount;
         setRetailer(keepAccount);
       } else if (myRetailers.length === 1) {
         currentRetailer = myRetailers[0];
         setRetailer(myRetailers[0]);
       }
-      
+
       if (currentRetailer?.onboarding_status === "approved") {
         window.location.href = createPageUrl("RetailerPortal");
       } else if (currentRetailer) {
         setData({ ...data, ...currentRetailer });
-        // Determine current step based on existing retailer data
-        if (currentRetailer.onboarding_status === "email_pending") setStep(2);
-        else if (currentRetailer.onboarding_status === "gst_pending") setStep(3);
-        else if (currentRetailer.onboarding_status === "bank_pending") setStep(4);
-        else if (currentRetailer.onboarding_status === "docs_pending") setStep(5);
-        else if (currentRetailer.onboarding_status === "photos_pending") setStep(6);
-        else if (currentRetailer.onboarding_status === "admin_approval_pending") setStep(7);
+        let nextStep = 1;
+        if (currentRetailer.onboarding_status === "email_pending") nextStep = 2;
+        else if (currentRetailer.onboarding_status === "gst_pending") nextStep = 3;
+        else if (currentRetailer.onboarding_status === "bank_pending") nextStep = 4;
+        else if (currentRetailer.onboarding_status === "docs_pending") nextStep = 5;
+        else if (currentRetailer.onboarding_status === "photos_pending") nextStep = 6;
+        else if (currentRetailer.onboarding_status === "admin_approval_pending") nextStep = 7;
+        setStep(nextStep);
       }
     } catch (e) {
       console.error("Error checking user or retailer:", e);
-      // User not logged in or other error, stay on step 1
+      setStep(1);
     }
   };
 
   const handleLogout = async () => {
     await User.logout();
+    localStorage.removeItem("retailerOnboardingStep");
     window.location.reload();
   };
 
