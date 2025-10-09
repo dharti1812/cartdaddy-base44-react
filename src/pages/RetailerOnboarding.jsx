@@ -30,7 +30,23 @@ const sendOTP = async (phone, name) => {
   }
 };
 
-const verifyOTP = (otp) => otp === "123456";
+const verifyOTP = async (phone_otp, phone) => {
+  console.log(`verifing OTP to ${phone_otp} at ${phone}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_otp, phone }),
+    });
+    const data = await response.json();
+    console.log(data);
+    return data;
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    return { success: false, message: error.message };
+  }
+};
+
 
 export default function SellerOnboarding() {
   const [step, setStep] = useState(1);
@@ -59,7 +75,8 @@ export default function SellerOnboarding() {
     try {
       const user = await User.me();
       const allRetailers = await Retailer.list();
-      
+     // console.log("All retailers:", allRetailers);
+      console.log(allRetailers);
       // Check for duplicates with this user's user_id
       const myRetailers = allRetailers.filter(r => r.user_id === user.id);
       
@@ -115,100 +132,183 @@ export default function SellerOnboarding() {
     window.location.reload();
   };
 
-  const submitPhone = async () => {
-  if (!data.name || !data.phone) return setError("Enter name and phone");
+    const submitPhone = async () => {
+    if (!data.name || !data.phone) return setError("Enter name and phone");
 
-  // Check for existing seller with this phone
-  const allSellers = await Retailer.list();
-  const cleanPhone = data.phone.replace(/\D/g, '');
+    const allSellers = await Retailer.list();
+    const cleanPhone = data.phone.replace(/\D/g, '');
 
-  const existingSeller = allSellers.find(s => {
-    const sClean = s.phone?.replace(/\D/g, '') || '';
-    return sClean === cleanPhone || sClean.endsWith(cleanPhone) || cleanPhone.endsWith(sClean);
-  });
+    const existingSeller = allSellers.find(s => {
+      const sClean = s.phone?.replace(/\D/g, '') || '';
+      return sClean === cleanPhone || sClean.endsWith(cleanPhone) || cleanPhone.endsWith(sClean);
+    });
 
-  const user = await User.me();
+    const user = await User.me();
 
-  if (existingSeller && existingSeller.user_id !== user.id) {
-    return setError("This phone number is already registered with another account.");
-  }
+    if (existingSeller && existingSeller.user_id !== user.id) {
+      return setError("This phone number is already registered with another account.");
+    }
 
-  setLoading(true);
-  const otpResponse = await sendOTP(data.phone, data.name); // Pass both phone and name here
-  if (otpResponse.success) {
-    setSuccess("✅ OTP sent to your phone");
-    setStep(1.5);
-  } else {
-    setError(otpResponse.message || "Failed to send OTP");
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    const otpResponse = await sendOTP(data.phone, data.name); 
+    if (otpResponse.success) {
+      setSuccess("✅ OTP sent to your phone");
+      setStep(1.5);
+    } else {
+      setError(otpResponse.message || "Failed to send OTP");
+    }
+    setLoading(false);
+  };
 
   const verifyPhone = async () => {
-    if (!verifyOTP(otp)) return setError("Wrong OTP");
+    if (!otp || !data.phone) return setError("Enter OTP and phone number");
     setLoading(true);
+
+    const result = await verifyOTP(otp, data.phone);
+
+    if (!result.success) {
+      setError(result.message || "Wrong OTP");
+      setLoading(false);
+      return;
+    }
+
     const user = await User.me();
-    const r = await Retailer.create({ 
-      user_id: user.id, 
-      full_name: data.name, 
-      phone: data.phone, 
-      phone_verified: true, 
-      onboarding_status: "email_pending" 
-    });
+
+    let r;
+    if (retailer) {
+      r = await Retailer.update(retailer.id, { 
+        phone_verified: true,
+        onboarding_status: "email_pending",
+        full_name: data.name
+      });
+    } else {
+      r = await Retailer.create({ 
+        user_id: user.id, 
+        full_name: data.name, 
+        phone: data.phone, 
+        phone_verified: true, 
+        onboarding_status: "email_pending" 
+      });
+    }
+
     setRetailer(r);
     setSuccess("✅ Phone verified");
     setOtp("");
-    setStep(2);
+    setStep(2); 
     setLoading(false);
   };
 
   const submitEmail = async () => {
-    if (!data.email) return setError("Enter email");
-    setLoading(true);
-    await sendOTP();
-    setSuccess("✅ Use OTP: 123456");
-    setStep(2.5);
-    setLoading(false);
-  };
+  if (!data.email) return setError("Enter email");
+  if (!data.phone) return setError("Phone number not verified");
+
+  setLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: data.email, phone: data.phone }), // Pass phone here
+    });
+
+    const result = await response.json();
+    if (result.success) {
+      setSuccess("✅ OTP sent to your email");
+      setStep(2.5);
+    } else {
+      setError(result.message);
+    }
+  } catch (err) {
+    setError(err.message);
+  }
+
+  setLoading(false);
+};
+
 
   const verifyEmail = async () => {
-    if (!verifyOTP(otp)) return setError("Wrong OTP");
-    setLoading(true);
+  if (!otp || !data.phone) return setError("Enter OTP and phone number");
+  setLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/verify-email-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: data.phone, email_otp: otp }), 
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      setError(result.message || "Wrong OTP");
+      setLoading(false);
+      return;
+    }
+
+    
     await Retailer.update(retailer.id, { 
       email: data.email, 
       email_verified: true, 
       onboarding_status: "gst_pending" 
     });
+
     setSuccess("✅ Email verified");
     setOtp("");
     setStep(3);
-    setLoading(false);
-  };
+  } catch (err) {
+    setError(err.message);
+  }
+
+  setLoading(false);
+};
 
   const submitGST = async () => {
-    if (!data.gst || data.gst.length !== 15) return setError("Enter valid 15-digit GST number");
-    setLoading(true);
-    try {
-      const result = await verifyGSTIN(data.gst);
-      if (result.success) {
-        await Retailer.update(retailer.id, { 
-          gst_number: data.gst,
-          business_name: result.data.business_name,
-          gst_verified: true,
-          gst_verification_data: result.data,
-          onboarding_status: "bank_pending"
-        });
-        setData({ ...data, businessName: result.data.business_name });
-        setSuccess("✅ GST verified - Business: " + result.data.business_name);
-        setStep(4);
-      } else {
-        setError("Invalid GST number");
-      }
-    } catch (e) {
-      setError(e.message);
+  if (!data.gst || data.gst.length !== 15) return setError("Enter valid 15-digit GST number");
+  if (!data.phone) return setError("Phone not verified");
+
+  setLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/verifygstinweb`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ gstin: data.gst })
+    });
+
+    const result = await response.json();
+
+    if (result.verified) {
+      setData({
+        ...data,
+        businessName: result.trade_name_of_business,
+        gstInfo: result
+      });
+
+      setSuccess("✅ GST verified - Business: " + result.trade_name_of_business);
+
+      // Update retailer frontend state
+      setRetailer(prev => ({
+        ...prev,
+        gst_number: data.gst,
+        business_name: result.trade_name_of_business,
+        gst_verified: true,
+        gst_verification_data: result,
+        onboarding_status: "bank_pending"
+      }));
+
+      setStep(4); // move to bank step
+    } else {
+      setError(result.message || "GSTIN verification failed");
     }
-    setLoading(false);
-  };
+
+  } catch (e) {
+    setError(e.message);
+  }
+
+  setLoading(false);
+};
 
   const submitBank = async () => {
     setLoading(true);
@@ -394,7 +494,6 @@ export default function SellerOnboarding() {
             <div className="space-y-6">
               <div className="text-center">
                 <h3 className="text-2xl font-bold">Verify Phone</h3>
-                <p className="text-sm text-amber-600 mt-2">TEST MODE: Use 123456</p>
               </div>
               <Input value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} className="text-center text-lg" />
               <Button onClick={verifyPhone} disabled={loading || otp.length !== 6} className="w-full bg-[#F4B321] text-gray-900 font-bold">
@@ -415,7 +514,7 @@ export default function SellerOnboarding() {
 
           {step === 2.5 && (
             <div className="space-y-6">
-              <div className="text-center"><h3 className="text-2xl font-bold">Verify Email</h3><p className="text-sm text-amber-600">TEST MODE: Use 123456</p></div>
+              <div className="text-center"><h3 className="text-2xl font-bold">Verify Email</h3></div>
               <Input value={otp} onChange={e => setOtp(e.target.value)} placeholder="Enter OTP" maxLength={6} className="text-center text-lg" />
               <Button onClick={verifyEmail} disabled={loading || otp.length !== 6} className="w-full bg-[#F4B321] text-gray-900 font-bold">
                 {loading ? "Verifying..." : "Verify"}
