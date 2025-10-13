@@ -63,6 +63,38 @@ const verifyOTP = async (phone_otp, phone) => {
   }
 };
 
+const sendAlternateOTP = async (phone, role) => {
+  try {
+    const access_token = localStorage.getItem("access_token");
+    const res = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${access_token}` },
+      body: JSON.stringify({ phone, role }),
+    });
+    const result = await res.json();
+    return result;
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+};
+
+// Demo API for verifying OTP
+const verifyAlternateOTP = async (phone, otp) => {
+  try {
+    const access_token = localStorage.getItem("access_token");
+    const res = await fetch(`${API_BASE_URL}/api/verify-otp/additional-phone`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${access_token}` },
+      body: JSON.stringify({ phone, otp }),
+    });
+    const result = await res.json();
+    return result;
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+};
+
+
 export default function SellerOnboarding() {
   const [step, setStepState] = useState(() => {
     const savedStep = localStorage.getItem("retailerOnboardingStep");
@@ -463,7 +495,7 @@ export default function SellerOnboarding() {
     setSuccess("");
 
     const access_token = localStorage.getItem("access_token");
-    console.log(access_token);
+    
     try {
       const res = await fetch(`${API_BASE_URL}/api/verify-pan`, {
         method: "POST",
@@ -571,83 +603,87 @@ export default function SellerOnboarding() {
   };
 
   const handlePhotoUpload = async (e, type) => {
-  const file = e.target.files[0];
-  if (!file) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-  setUploading(true);
-  setError("");
-  setSuccess("");
+    setUploading(true);
+    setError("");
+    setSuccess("");
 
-  try {
-    const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Not logged in");
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("Not logged in");
 
-    // Convert file to base64
-    const toBase64 = (file) =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result.split(",")[1]); // remove prefix
-        reader.onerror = (error) => reject(error);
+      // Convert file to base64
+      const toBase64 = (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result.split(",")[1]); // remove prefix
+          reader.onerror = (error) => reject(error);
+        });
+
+      const base64File = await toBase64(file);
+
+      const formData = {
+        image: base64File,
+        filename: file.name,
+        type, // "inside" or "outside"
+        latitude: location?.lat || null,
+        longitude: location?.lng || null,
+        timestamp: location?.timestamp || null,
+      };
+
+
+      const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
       });
 
-    const base64File = await toBase64(file);
+      const result = await res.json();
 
-    // Send POST request to Laravel API
-    const formData = {
-      image: base64File,
-      filename: file.name,
-    };
+      if (result.result) {
+        // Optional: Get location from geolocation
+        const location = await new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) =>
+              resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                timestamp: new Date().toISOString(),
+              }),
+            () => resolve(null)
+          );
+        });
 
-    const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(formData),
-    });
+        setData((prev) => ({
+          ...prev,
+          shopPhotos: [
+            ...prev.shopPhotos,
+            {
+              url: result.path, // URL returned by your Laravel API
+              type: type,
+              location: location,
+              manually_verified: false,
+            },
+          ],
+        }));
 
-    const result = await res.json();
-
-    if (result.result) {
-      // Optional: Get location from geolocation
-      const location = await new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) =>
-            resolve({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              timestamp: new Date().toISOString(),
-            }),
-          () => resolve(null)
-        );
-      });
-
-      setData((prev) => ({
-        ...prev,
-        shopPhotos: [
-          ...prev.shopPhotos,
-          {
-            url: result.path, // URL returned by your Laravel API
-            type: type,
-            location: location,
-            manually_verified: false,
-          },
-        ],
-      }));
-
-      setSuccess("✅ Photo uploaded successfully!");
-    } else {
-      setError(result.message || "Failed to upload photo");
+        setSuccess("✅ Photo uploaded successfully!");
+      } else {
+        setError(result.message || "Failed to upload photo");
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Error uploading photo");
     }
-  } catch (err) {
-    console.error(err);
-    setError(err.message || "Error uploading photo");
-  }
 
-  setUploading(false);
-};
+    setUploading(false);
+  };
 
 
   const submitPhotos = async () => {
@@ -664,7 +700,7 @@ export default function SellerOnboarding() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${access_token}`, 
+          Authorization: `Bearer ${access_token}`,
         },
         body: JSON.stringify({
           alternate_phones: data.alternatePhones.filter((p) => p.number),
@@ -1057,50 +1093,141 @@ export default function SellerOnboarding() {
             <div className="space-y-6">
               <div className="text-center">
                 <Camera className="w-16 h-16 text-[#F4B321] mx-auto" />
-                <h3 className="text-2xl font-bold">
-                  Shop Photos & Mlobile Numbers
-                </h3>
+                <h3 className="text-2xl font-bold">Shop Photos & Mobile Numbers</h3>
               </div>
 
-              {/* Additional mobile Numbers */}
+              {/* Additional Mobile Numbers */}
               <div className="space-y-3">
                 <Label>Additional Mobile Numbers (Optional)</Label>
                 <p className="text-xs text-gray-500">
                   Add up to 2 more numbers for Manager/Staff
                 </p>
+
                 {data.alternatePhones.map((phone, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder="+91XXXXXXXXXX"
-                      value={phone.number}
-                      onChange={(e) => {
-                        const updated = [...data.alternatePhones];
-                        updated[index].number = e.target.value;
-                        setData({ ...data, alternatePhones: updated });
-                      }}
-                      className="flex-1"
-                    />
-                    <select
-                      value={phone.label}
-                      onChange={(e) => {
-                        const updated = [...data.alternatePhones];
-                        updated[index].label = e.target.value;
-                        setData({ ...data, alternatePhones: updated });
-                      }}
-                      className="border rounded px-3"
-                    >
-                      <option value="manager">Manager</option>
-                      <option value="staff">Staff</option>
-                    </select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemovePhone(index)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                  <div key={index} className="space-y-2 border p-3 rounded-lg bg-gray-50">
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="+91XXXXXXXXXX"
+                        value={phone.number}
+                        onChange={(e) => {
+                          const updated = [...data.alternatePhones];
+                          updated[index].number = e.target.value;
+                          setData({ ...data, alternatePhones: updated });
+                        }}
+                        className="flex-1"
+                        disabled={phone.verified}
+                      />
+                      <select
+                        value={phone.label}
+                        onChange={(e) => {
+                          const updated = [...data.alternatePhones];
+                          updated[index].label = e.target.value;
+                          setData({ ...data, alternatePhones: updated });
+                        }}
+                        className="border rounded px-3 py-1"
+                      >
+                        <option value="manager">Manager</option>
+                        <option value="staff">Staff</option>
+                      </select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePhone(index)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+
+                    {/* OTP Section */}
+                    {!phone.otpSent && !phone.verified && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!phone.number) return setError("Enter mobile number first");
+                          setLoading(true);
+                          const res = await sendAlternateOTP(phone.number, phone.label);
+                          setLoading(false);
+                          if (res.success) {
+                            const updated = [...data.alternatePhones];
+                            updated[index].otpSent = true;
+                            setData({ ...data, alternatePhones: updated });
+                            setSuccess(`✅ OTP sent to ${phone.number}`);
+                          } else {
+                            setError(res.message || "Failed to send OTP");
+                          }
+                        }}
+                        className="bg-[#F4B321] text-gray-900 w-full"
+                        disabled={loading}
+                      >
+                        {loading ? "Sending..." : "Send OTP"}
+                      </Button>
+                    )}
+
+                    {phone.otpSent && !phone.verified && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Enter OTP"
+                          maxLength={6}
+                          value={phone.otp || ""}
+                          onChange={(e) => {
+                            const updated = [...data.alternatePhones];
+                            updated[index].otp = e.target.value;
+                            setData({ ...data, alternatePhones: updated });
+                          }}
+                          className="text-center text-lg"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-[#F4B321] text-gray-900"
+                            onClick={async () => {
+                              if (!phone.otp)
+                                return setError("Enter OTP to verify number");
+                              setLoading(true);
+                              const res = await verifyAlternateOTP(
+                                phone.number,
+                                phone.otp
+                              );
+                              setLoading(false);
+                              if (res.success) {
+                                const updated = [...data.alternatePhones];
+                                updated[index].verified = true;
+                                setData({ ...data, alternatePhones: updated });
+                                setSuccess(`✅ ${phone.number} verified successfully`);
+                              } else {
+                                setError(res.message || "Invalid OTP");
+                              }
+                            }}
+                            disabled={loading}
+                          >
+                            {loading ? "Verifying..." : "Verify OTP"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              const res = await sendAlternateOTP(phone.number);
+                              if (res.success) {
+                                setSuccess(`OTP resent to ${phone.number}`);
+                              } else {
+                                setError(res.message || "Failed to resend OTP");
+                              }
+                            }}
+                          >
+                            Resend OTP
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {phone.verified && (
+                      <Badge className="bg-green-600 text-white text-xs">
+                        ✅ Verified
+                      </Badge>
+                    )}
                   </div>
                 ))}
+
                 {data.alternatePhones.length < 2 && (
                   <Button
                     variant="outline"
@@ -1136,9 +1263,7 @@ export default function SellerOnboarding() {
                     />
                   </div>
                 </div>
-                {uploading && (
-                  <p className="text-sm text-blue-600">Uploading...</p>
-                )}
+                {uploading && <p className="text-sm text-blue-600">Uploading...</p>}
                 {data.shopPhotos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-3">
                     {data.shopPhotos.map((photo, i) => (
@@ -1159,13 +1284,18 @@ export default function SellerOnboarding() {
 
               <Button
                 onClick={submitPhotos}
-                disabled={loading || data.shopPhotos.length < 2}
+                disabled={
+                  loading ||
+                  data.shopPhotos.length < 2 ||
+                  data.alternatePhones.some((p) => p.number && !p.verified)
+                }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
                 {loading ? "Submitting..." : "Submit for Approval"}
               </Button>
             </div>
           )}
+
 
           {step === 7 && (
             <div className="text-center py-8">
