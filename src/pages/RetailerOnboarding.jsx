@@ -571,16 +571,47 @@ export default function SellerOnboarding() {
   };
 
   const handlePhotoUpload = async (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    setUploading(true);
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) throw new Error("Not logged in");
-      const { file_url } = await UploadFile({ file });
+  setUploading(true);
+  setError("");
+  setSuccess("");
 
-      // Get current location
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) throw new Error("Not logged in");
+
+    // Convert file to base64
+    const toBase64 = (file) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(",")[1]); // remove prefix
+        reader.onerror = (error) => reject(error);
+      });
+
+    const base64File = await toBase64(file);
+
+    // Send POST request to Laravel API
+    const formData = {
+      image: base64File,
+      filename: file.name,
+    };
+
+    const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const result = await res.json();
+
+    if (result.result) {
+      // Optional: Get location from geolocation
       const location = await new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) =>
@@ -593,23 +624,31 @@ export default function SellerOnboarding() {
         );
       });
 
-      setData({
-        ...data,
+      setData((prev) => ({
+        ...prev,
         shopPhotos: [
-          ...data.shopPhotos,
+          ...prev.shopPhotos,
           {
-            url: file_url,
+            url: result.path, // URL returned by your Laravel API
             type: type,
             location: location,
             manually_verified: false,
           },
         ],
-      });
-    } catch (err) {
-      setError("Failed to upload photo");
+      }));
+
+      setSuccess("✅ Photo uploaded successfully!");
+    } else {
+      setError(result.message || "Failed to upload photo");
     }
-    setUploading(false);
-  };
+  } catch (err) {
+    console.error(err);
+    setError(err.message || "Error uploading photo");
+  }
+
+  setUploading(false);
+};
+
 
   const submitPhotos = async () => {
     if (data.shopPhotos.length < 2) {
@@ -621,7 +660,7 @@ export default function SellerOnboarding() {
     setLoading(true);
     try {
       // Call your Laravel API
-      const response = await fetch("/api/store-shop-details", {
+      const response = await fetch(`${API_BASE_URL}/api/store-shop-details`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
