@@ -182,7 +182,7 @@ export default function SellerOnboarding() {
   };
 
   const submitPhone = async () => {
-    if (!data.name || !data.phone) return setError("Enter name and phone");
+    if (!data.name || !data.phone) return setError("Enter name and mobile");
 
     const allSellers = await Retailer.list();
     const cleanPhone = data.phone.replace(/\D/g, "");
@@ -200,14 +200,14 @@ export default function SellerOnboarding() {
 
     if (existingSeller && existingSeller.user_id !== user.id) {
       return setError(
-        "This phone number is already registered with another account."
+        "This mobile number is already registered with another account."
       );
     }
 
     setLoading(true);
     const otpResponse = await sendOTP(data.phone, data.name);
     if (otpResponse.success) {
-      setSuccess("✅ OTP sent to your phone");
+      setSuccess("✅ OTP sent to your mobile");
       setStep(1.5);
     } else {
       setError(otpResponse.message || "Failed to send OTP");
@@ -216,7 +216,7 @@ export default function SellerOnboarding() {
   };
 
   const verifyPhone = async () => {
-    if (!otp || !data.phone) return setError("Enter OTP and phone number");
+    if (!otp || !data.phone) return setError("Enter OTP and mobile number");
     setLoading(true);
 
     const result = await verifyOTP(otp, data.phone);
@@ -247,7 +247,7 @@ export default function SellerOnboarding() {
     }
 
     setRetailer(r);
-    setSuccess("✅ Phone verified");
+    setSuccess("✅ Mobile verified");
     setOtp("");
     setStep(2);
 
@@ -256,7 +256,7 @@ export default function SellerOnboarding() {
 
   const submitEmail = async () => {
     if (!data.email) return setError("Enter email");
-    if (!data.phone) return setError("Phone number not verified");
+    if (!data.phone) return setError("Mobile number not verified");
 
     setLoading(true);
 
@@ -282,7 +282,7 @@ export default function SellerOnboarding() {
   };
 
   const verifyEmail = async () => {
-    if (!otp || !data.phone) return setError("Enter OTP and phone number");
+    if (!otp || !data.phone) return setError("Enter OTP and mobile number");
     setLoading(true);
 
     try {
@@ -324,7 +324,7 @@ export default function SellerOnboarding() {
     console.log(data);
     if (!data.gst || data.gst.length !== 15)
       return setError("Enter valid 15-digit GST number");
-    if (!data.phone) return setError("Phone not verified");
+    if (!data.phone) return setError("Mobile Number not verified");
 
     setLoading(true);
     const access_token = localStorage.getItem("access_token");
@@ -453,45 +453,118 @@ export default function SellerOnboarding() {
     }));
   };
 
-  const submitDocs = async () => {
-    if (
-      !data.documents.some((d) => d.type === "pan") ||
-      !data.documents.some((d) => d.type === "aadhaar")
-    ) {
-      return setError("Please upload both PAN and Aadhaar documents");
+  const submitPan = async () => {
+    if (!data.panNumber || !data.panName) {
+      return setError("Please enter both PAN number and name");
     }
 
     setLoading(true);
     setError("");
     setSuccess("");
 
-    const formData = new FormData();
-    data.documents.forEach((doc) => {
-      formData.append(`documents[${doc.type}]`, doc.file); 
-    });
+    const access_token = localStorage.getItem("access_token");
+    console.log(access_token);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/verify-pan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`, // <-- add this
+        },
+        body: JSON.stringify({
+          pan: data.panNumber,
+          name: data.panName,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        console.log(result);
+        setSuccess("✅ PAN verified successfully");
+        setStep(5.5); // proceed to Aadhaar verification
+      } else {
+        setError(result.message || "PAN verification failed");
+      }
+    } catch (err) {
+      setError(err.message || "Server error");
+    }
+
+    setLoading(false);
+  };
+
+  const submitAadhaar = async () => {
+    if (!data.aadhaarNumber)
+      return setError("Please enter your Aadhaar number");
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
 
     const access_token = localStorage.getItem("access_token");
 
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/api/verify-docs`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
-      );
+      const res = await fetch(`${API_BASE_URL}/api/aadhaar/send-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`,
+        },
+        body: JSON.stringify({ aadhaar: data.aadhaarNumber }),
+      });
 
-      if (res.data.success) {
-        setSuccess("✅ Documents uploaded and verified successfully");
-        setStep(6);
+      const result = await res.json();
+
+      if (result.success) {
+        setSuccess("✅ OTP sent successfully to your registered mobile number");
+        // Store ref_id for next step
+        setData({ ...data, refId: result.ref_id });
+        // Move to OTP verification step (step 6)
+        setStep(5.6);
       } else {
-        setError(res.data.message);
+        setError(result.message || "Failed to send OTP");
       }
     } catch (err) {
-      console.error("Upload error:", err.response || err.message);
-      setError(err.response?.data?.message || "Server error");
+      setError(err.message || "Server error");
+    }
+
+    setLoading(false);
+  };
+
+  const verifyAadhaarOTP = async () => {
+    console.log(data);
+    if (!data.aadhaarOTP || !data.refId)
+      return setError("Please enter the OTP received on your mobile");
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    const access_token = localStorage.getItem("access_token");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/aadhaar/verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`,
+        },
+        body: JSON.stringify({
+          otp: data.aadhaarOTP,
+          ref_id: data.refId,
+        }),
+      });
+
+      const result = await res.json();
+      console.log(result);
+      if (result.success) {
+        setSuccess("✅ Aadhaar verified successfully");
+        setStep(6); // Move to next process step
+      } else {
+        setError(result.message || "Aadhaar verification failed");
+      }
+    } catch (err) {
+      setError(err.message || "Server error");
     }
 
     setLoading(false);
@@ -544,22 +617,35 @@ export default function SellerOnboarding() {
         "Please upload at least 2 shop photos (outside + inside)"
       );
     }
-
+    const access_token = localStorage.getItem("access_token");
     setLoading(true);
     try {
-      // Save alternate phones and photos
-      await Retailer.update(retailer.id, {
-        alternate_phones: data.alternatePhones.filter((p) => p.number),
-        shop_photos: data.shopPhotos,
-        onboarding_status: "admin_approval_pending",
-        onboarding_completed_at: new Date().toISOString(),
+      // Call your Laravel API
+      const response = await fetch("/api/store-shop-details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`, 
+        },
+        body: JSON.stringify({
+          alternate_phones: data.alternatePhones.filter((p) => p.number),
+          shop_photos: data.shopPhotos,
+        }),
       });
 
-      setSuccess("✅ Application submitted for approval!");
-      setStep(7);
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccess("✅ Application submitted for approval!");
+        setStep(7);
+      } else {
+        setError(result.message || "Failed to submit application");
+      }
     } catch (e) {
-      setError(e.message);
+      console.error(e);
+      setError("Server error while submitting application");
     }
+
     setLoading(false);
   };
 
@@ -631,7 +717,7 @@ export default function SellerOnboarding() {
                 <h3 className="text-2xl font-bold">Your Details</h3>
               </div>
               <div>
-                <Label>Full Name *</Label>
+                <Label>Proprietor/Partner/Director Name *</Label>
                 <Input
                   value={data.name}
                   onChange={(e) => setData({ ...data, name: e.target.value })}
@@ -639,7 +725,7 @@ export default function SellerOnboarding() {
                 />
               </div>
               <div>
-                <Label>Phone *</Label>
+                <Label>Mobile *</Label>
                 <Input
                   value={data.phone}
                   onChange={(e) => setData({ ...data, phone: e.target.value })}
@@ -659,7 +745,7 @@ export default function SellerOnboarding() {
           {step === 1.5 && (
             <div className="space-y-6">
               <div className="text-center">
-                <h3 className="text-2xl font-bold">Verify Phone</h3>
+                <h3 className="text-2xl font-bold">Verify Mobile</h3>
               </div>
               <Input
                 value={otp}
@@ -801,64 +887,129 @@ export default function SellerOnboarding() {
             <div className="space-y-6">
               <div className="text-center">
                 <FileText className="w-16 h-16 text-[#F4B321] mx-auto" />
-                <h3 className="text-2xl font-bold">KYC Documents</h3>
+                <h3 className="text-2xl font-bold">PAN Verification</h3>
               </div>
-              <p className="text-sm text-center text-gray-600">
-                Please upload clear images of your PAN and Aadhaar cards.
-              </p>
 
-              <div className="space-y-4">
-                <div>
-                  <Label>PAN Card *</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleDocUpload(e, "pan")}
-                    disabled={
-                      uploading || data.documents.some((d) => d.type === "pan")
-                    }
-                  />
-                  {data.documents.some((d) => d.type === "pan") && (
-                    <p className="text-xs text-green-600 mt-1">
-                      PAN Card uploaded.
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label>Aadhaar Card *</Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleDocUpload(e, "aadhaar")}
-                    disabled={
-                      uploading ||
-                      data.documents.some((d) => d.type === "aadhaar")
-                    }
-                  />
-                  {data.documents.some((d) => d.type === "aadhaar") && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Aadhaar Card uploaded.
-                    </p>
-                  )}
-                </div>
-              </div>
-              {uploading && (
-                <p className="text-sm text-blue-600 text-center">
-                  Uploading...
+              <div>
+                <Label>PAN Number *</Label>
+                <Input
+                  type="text"
+                  value={data.panNumber || ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      panNumber: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="ABCDE1234F"
+                  maxLength={10}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your 10-character PAN (letters + digits)
                 </p>
-              )}
+              </div>
+
+              <div>
+                <Label>Name on PAN *</Label>
+                <Input
+                  type="text"
+                  value={data.panName || ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      panName: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="FULL NAME AS PER PAN"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your full name exactly as it appears on the PAN card
+                </p>
+              </div>
 
               <Button
-                onClick={submitDocs}
+                onClick={submitPan}
                 disabled={
                   loading ||
-                  uploading ||
-                  !data.documents.some((d) => d.type === "pan") ||
-                  !data.documents.some((d) => d.type === "aadhaar")
+                  !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(data.panNumber) ||
+                  !data.panName
                 }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
-                {loading ? "Saving..." : "Continue to Shop Photos"}
+                {loading ? "Verifying PAN..." : "Verify PAN"}
+              </Button>
+            </div>
+          )}
+
+          {step === 5.5 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <FileText className="w-16 h-16 text-[#F4B321] mx-auto" />
+                <h3 className="text-2xl font-bold">Aadhaar Verification</h3>
+              </div>
+
+              <div>
+                <Label>Aadhaar Number *</Label>
+                <Input
+                  type="text"
+                  value={data.aadhaarNumber || ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      aadhaarNumber: e.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                  placeholder="1234 5678 9012"
+                  maxLength={12}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your 12-digit Aadhaar number (digits only)
+                </p>
+              </div>
+
+              <Button
+                onClick={submitAadhaar}
+                disabled={loading || data.aadhaarNumber?.length !== 12}
+                className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
+              >
+                {loading ? "Verifying Aadhaar..." : "Verify Aadhaar"}
+              </Button>
+            </div>
+          )}
+
+          {step === 5.6 && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <FileText className="w-16 h-16 text-[#F4B321] mx-auto" />
+                <h3 className="text-2xl font-bold">Enter Aadhaar OTP</h3>
+              </div>
+
+              <div>
+                <Label>OTP *</Label>
+                <Input
+                  type="text"
+                  value={data.aadhaarOTP || ""}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      aadhaarOTP: e.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                  placeholder="Enter 6-digit OTP"
+                  maxLength={6}
+                  className="text-center text-lg"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the 6-digit OTP sent to your registered mobile number.
+                </p>
+              </div>
+
+              <Button
+                onClick={verifyAadhaarOTP}
+                disabled={loading || data.aadhaarOTP?.length !== 6}
+                className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
+              >
+                {loading ? "Verifying OTP..." : "Verify OTP"}
               </Button>
             </div>
           )}
@@ -868,13 +1019,13 @@ export default function SellerOnboarding() {
               <div className="text-center">
                 <Camera className="w-16 h-16 text-[#F4B321] mx-auto" />
                 <h3 className="text-2xl font-bold">
-                  Shop Photos & Contact Numbers
+                  Shop Photos & Mlobile Numbers
                 </h3>
               </div>
 
-              {/* Additional Contact Numbers */}
+              {/* Additional mobile Numbers */}
               <div className="space-y-3">
-                <Label>Additional Contact Numbers (Optional)</Label>
+                <Label>Additional Mobile Numbers (Optional)</Label>
                 <p className="text-xs text-gray-500">
                   Add up to 2 more numbers for Manager/Staff
                 </p>
@@ -989,7 +1140,7 @@ export default function SellerOnboarding() {
                 Pending Admin Approval
               </Badge>
               <div className="mt-6 space-y-2 text-sm text-gray-600">
-                <p>✅ Phone Verified</p>
+                <p>✅ Mobile Verified</p>
                 <p>✅ Email Verified</p>
                 <p>✅ GST Verified: {data.businessName}</p>
                 <p>✅ Bank Verified</p>
