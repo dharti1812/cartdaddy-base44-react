@@ -68,7 +68,10 @@ const sendAlternateOTP = async (phone, role) => {
     const access_token = localStorage.getItem("access_token");
     const res = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${access_token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${access_token}`,
+      },
       body: JSON.stringify({ phone, role }),
     });
     const result = await res.json();
@@ -84,7 +87,10 @@ const verifyAlternateOTP = async (phone, otp) => {
     const access_token = localStorage.getItem("access_token");
     const res = await fetch(`${API_BASE_URL}/api/verify-otp/additional-phone`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${access_token}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${access_token}`,
+      },
       body: JSON.stringify({ phone, otp }),
     });
     const result = await res.json();
@@ -93,7 +99,6 @@ const verifyAlternateOTP = async (phone, otp) => {
     return { success: false, message: err.message };
   }
 };
-
 
 export default function SellerOnboarding() {
   const [step, setStepState] = useState(() => {
@@ -495,7 +500,7 @@ export default function SellerOnboarding() {
     setSuccess("");
 
     const access_token = localStorage.getItem("access_token");
-    
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/verify-pan`, {
         method: "POST",
@@ -634,7 +639,6 @@ export default function SellerOnboarding() {
         timestamp: location?.timestamp || null,
       };
 
-
       const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
         method: "POST",
         headers: {
@@ -684,7 +688,6 @@ export default function SellerOnboarding() {
 
     setUploading(false);
   };
-
 
   const submitPhotos = async () => {
     if (data.shopPhotos.length < 2) {
@@ -1093,7 +1096,9 @@ export default function SellerOnboarding() {
             <div className="space-y-6">
               <div className="text-center">
                 <Camera className="w-16 h-16 text-[#F4B321] mx-auto" />
-                <h3 className="text-2xl font-bold">Shop Photos & Mobile Numbers</h3>
+                <h3 className="text-2xl font-bold">
+                  Shop Photos & Mobile Numbers
+                </h3>
               </div>
 
               {/* Additional Mobile Numbers */}
@@ -1104,7 +1109,10 @@ export default function SellerOnboarding() {
                 </p>
 
                 {data.alternatePhones.map((phone, index) => (
-                  <div key={index} className="space-y-2 border p-3 rounded-lg bg-gray-50">
+                  <div
+                    key={index}
+                    className="space-y-2 border p-3 rounded-lg bg-gray-50"
+                  >
                     <div className="flex gap-2 items-center">
                       <Input
                         placeholder="+91XXXXXXXXXX"
@@ -1143,9 +1151,13 @@ export default function SellerOnboarding() {
                       <Button
                         size="sm"
                         onClick={async () => {
-                          if (!phone.number) return setError("Enter mobile number first");
+                          if (!phone.number)
+                            return setError("Enter mobile number first");
                           setLoading(true);
-                          const res = await sendAlternateOTP(phone.number, phone.label);
+                          const res = await sendAlternateOTP(
+                            phone.number,
+                            phone.label
+                          );
                           setLoading(false);
                           if (res.success) {
                             const updated = [...data.alternatePhones];
@@ -1193,7 +1205,9 @@ export default function SellerOnboarding() {
                                 const updated = [...data.alternatePhones];
                                 updated[index].verified = true;
                                 setData({ ...data, alternatePhones: updated });
-                                setSuccess(`✅ ${phone.number} verified successfully`);
+                                setSuccess(
+                                  `✅ ${phone.number} verified successfully`
+                                );
                               } else {
                                 setError(res.message || "Invalid OTP");
                               }
@@ -1263,7 +1277,9 @@ export default function SellerOnboarding() {
                     />
                   </div>
                 </div>
-                {uploading && <p className="text-sm text-blue-600">Uploading...</p>}
+                {uploading && (
+                  <p className="text-sm text-blue-600">Uploading...</p>
+                )}
                 {data.shopPhotos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-3">
                     {data.shopPhotos.map((photo, i) => (
@@ -1295,7 +1311,6 @@ export default function SellerOnboarding() {
               </Button>
             </div>
           )}
-
 
           {step === 7 && (
             <div className="text-center py-8">

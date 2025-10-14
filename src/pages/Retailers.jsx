@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { Retailer } from "@/components/utils/mockApi";
+import { RetailerApi } from "@/components/utils/retailerApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,17 +38,17 @@ export default function RetailersPage() {
 
   const loadRetailers = async () => {
     setLoading(true);
-    const data = await Retailer.list("-created_date");
+    const data = await RetailerApi.list();
     setRetailers(data);
     setLoading(false);
   };
 
   // New handler for approving a retailer
   const handleApprove = async (retailer) => {
-    await Retailer.update(retailer.id, {
-      onboarding_status: 'approved',
-      status: 'active',
-      admin_approved_at: new Date().toISOString()
+    await RetailerApi.update(retailer.id, {
+      onboarding_status: "approved",
+      status: "active",
+      admin_approved_at: new Date().toISOString(),
     });
     setShowApprovalDialog(false);
     setRetailerToApprove(null);
@@ -58,33 +57,37 @@ export default function RetailersPage() {
 
   // New handler for rejecting a retailer
   const handleReject = async (retailer, reason) => {
-    await Retailer.update(retailer.id, {
-      onboarding_status: 'rejected',
-      status: 'suspended', // Or another appropriate status for rejected
-      rejection_reason: reason || 'Not approved by admin'
+    await RetailerApi.update(retailer.id, {
+      onboarding_status: "rejected",
+      status: "suspended", // Or another appropriate status for rejected
+      rejection_reason: reason || "Not approved by admin",
     });
     setShowApprovalDialog(false);
     setRetailerToApprove(null);
     loadRetailers(); // Reload retailers to reflect the change
   };
 
-  const filteredRetailers = retailers.filter(retailer => {
-    const matchesSearch = !searchTerm || 
+  const filteredRetailers = retailers.filter((retailer) => {
+    const matchesSearch =
+      !searchTerm ||
       retailer.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       retailer.phone?.includes(searchTerm) ||
       retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Modified matchesStatus to include "pending" filter
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "pending" ? retailer.onboarding_status === "admin_approval_pending" : 
-       statusFilter === "online" ? retailer.availability_status === "online" : 
-       retailer.status === statusFilter);
-    
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "pending"
+        ? retailer.is_pending_approval
+        : statusFilter === "online"
+        ? retailer.availability_status === "online"
+        : retailer.status === statusFilter);
+
     return matchesSearch && matchesStatus;
   });
 
   // Calculate pending approvals
-  const pendingApprovals = retailers.filter(r => r.onboarding_status === 'admin_approval_pending');
+  const pendingApprovals = retailers.filter((r) => r.is_pending_approval);
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
@@ -92,15 +95,19 @@ export default function RetailersPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Seller Management</h1>
-            <p className="text-white opacity-90 mt-1">Manage delivery sellers and their performance</p>
+            <p className="text-white opacity-90 mt-1">
+              Manage delivery sellers and their performance
+            </p>
           </div>
-          <div className="flex gap-2"> {/* Added div for grouping buttons/badges */}
+          <div className="flex gap-2">
+            {" "}
+            {/* Added div for grouping buttons/badges */}
             {pendingApprovals.length > 0 && (
               <Badge className="bg-amber-500 text-white text-lg px-4 py-2">
                 {pendingApprovals.length} Pending Approval
               </Badge>
             )}
-            <Button 
+            <Button
               onClick={() => setShowCreateDialog(true)}
               className="bg-[#F4B321] hover:bg-[#F4B321] hover:opacity-90 text-gray-900 font-bold"
             >
@@ -115,7 +122,11 @@ export default function RetailersPage() {
           <Alert className="mb-6 bg-amber-50 border-2 border-amber-500">
             <AlertCircle className="w-5 h-5 text-amber-600" />
             <AlertDescription className="text-amber-900">
-              <strong>{pendingApprovals.length} seller{pendingApprovals.length > 1 ? 's' : ''} waiting for approval.</strong> Review their details below.
+              <strong>
+                {pendingApprovals.length} seller
+                {pendingApprovals.length > 1 ? "s" : ""} waiting for approval.
+              </strong>{" "}
+              Review their details below.
             </AlertDescription>
           </Alert>
         )}
@@ -139,7 +150,9 @@ export default function RetailersPage() {
                   <TabsTrigger value="pending" className="relative">
                     Pending
                     {pendingApprovals.length > 0 && (
-                      <Badge className="ml-1 bg-amber-500 text-white text-xs">{pendingApprovals.length}</Badge>
+                      <Badge className="ml-1 bg-amber-500 text-white text-xs">
+                        {pendingApprovals.length}
+                      </Badge>
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="online">Online</TabsTrigger>
@@ -153,12 +166,12 @@ export default function RetailersPage() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className={selectedRetailer ? "lg:col-span-2" : "lg:col-span-3"}>
-            <RetailersList 
+            <RetailersList
               retailers={filteredRetailers}
               loading={loading}
               // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-                if (r.onboarding_status === 'admin_approval_pending') {
+                if (r.onboarding_status === "admin_approval_pending") {
                   setRetailerToApprove(r);
                   setShowApprovalDialog(true);
                   setSelectedRetailer(null); // Clear selected retailer when opening approval dialog
@@ -173,7 +186,7 @@ export default function RetailersPage() {
           </div>
           {selectedRetailer && (
             <div>
-              <RetailerDetails 
+              <RetailerDetails
                 retailer={selectedRetailer}
                 onClose={() => setSelectedRetailer(null)}
                 onUpdate={loadRetailers}
@@ -197,9 +210,11 @@ export default function RetailersPage() {
           <Dialog open onOpenChange={() => setShowApprovalDialog(false)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold">Approve Seller Application</DialogTitle>
+                <DialogTitle className="text-2xl font-bold">
+                  Approve Seller Application
+                </DialogTitle>
               </DialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -216,21 +231,29 @@ export default function RetailersPage() {
                   </div>
                   <div>
                     <Label className="text-sm font-semibold">Vehicle</Label>
-                    <p className="text-lg capitalize">{retailerToApprove.vehicle_type}</p>
+                    <p className="text-lg capitalize">
+                      {retailerToApprove.vehicle_type}
+                    </p>
                   </div>
                 </div>
 
                 {retailerToApprove.bank_account && (
                   <div className="p-4 bg-gray-50 rounded-lg">
-                    <Label className="text-sm font-semibold mb-2 block">Bank Details</Label>
+                    <Label className="text-sm font-semibold mb-2 block">
+                      Bank Details
+                    </Label>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-gray-500">Account:</span>
-                        <p className="font-mono">{retailerToApprove.bank_account.account_number}</p>
+                        <p className="font-mono">
+                          {retailerToApprove.bank_account.account_number}
+                        </p>
                       </div>
                       <div>
                         <span className="text-gray-500">IFSC:</span>
-                        <p className="font-mono">{retailerToApprove.bank_account.ifsc}</p>
+                        <p className="font-mono">
+                          {retailerToApprove.bank_account.ifsc}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -239,20 +262,21 @@ export default function RetailersPage() {
                 <Alert className="bg-blue-50 border-blue-200">
                   <AlertCircle className="w-4 h-4 text-blue-600" />
                   <AlertDescription className="text-blue-900 text-sm">
-                    Once approved, the seller will be notified and can start accepting orders.
+                    Once approved, the seller will be notified and can start
+                    accepting orders.
                   </AlertDescription>
                 </Alert>
               </div>
 
               <DialogFooter className="flex gap-2">
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => handleReject(retailerToApprove)}
                   className="flex-1"
                 >
                   Reject
                 </Button>
-                <Button 
+                <Button
                   onClick={() => handleApprove(retailerToApprove)}
                   className="bg-green-600 hover:bg-green-700 flex-1"
                 >

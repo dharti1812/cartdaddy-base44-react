@@ -56,12 +56,12 @@ export default function RetailersList({ retailers, loading, onSelectRetailer, se
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1 min-w-0">
                     <div className="w-12 h-12 bg-gradient-to-br from-blue-900 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {retailer.full_name?.[0]?.toUpperCase() || 'R'}
+                      {retailer.name?.[0]?.toUpperCase() || 'R'}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{retailer.full_name}</h3>
+                        <h3 className="font-semibold text-gray-900">{retailer.name}</h3>
                         {retailer.availability_status === 'online' && (
                           <Badge className="bg-green-100 text-green-800 border-green-200">
                             <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
