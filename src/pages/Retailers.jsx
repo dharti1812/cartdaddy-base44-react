@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus, UserPlus, AlertCircle } from "lucide-react"; // AlertCircle added
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge"; // New import
+import { API_BASE_URL } from "../../src/config";
 import { Alert, AlertDescription } from "@/components/ui/alert"; // New imports
 import {
   Dialog,
@@ -57,37 +58,63 @@ export default function RetailersPage() {
 
   // New handler for rejecting a retailer
   const handleReject = async (retailer, reason) => {
-    await RetailerApi.update(retailer.id, {
-      onboarding_status: "rejected",
-      status: "suspended", // Or another appropriate status for rejected
-      rejection_reason: reason || "Not approved by admin",
-    });
-    setShowApprovalDialog(false);
-    setRetailerToApprove(null);
-    loadRetailers(); // Reload retailers to reflect the change
+    if (!reason) {
+      alert("Please enter a reason before rejecting.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const res = await fetch(`${API_BASE_URL}/api/retailers/${retailer.id}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      const result = await res.json();
+ 
+      if (result.success) {
+        setShowApprovalDialog(false);
+        setRetailerToApprove(null);
+        loadRetailers();
+      } else {
+        alert(result.message || "Failed to reject seller");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error while rejecting seller");
+    }
   };
 
-  const filteredRetailers = retailers.filter((retailer) => {
-    const matchesSearch =
-      !searchTerm ||
-      retailer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      retailer.phone?.includes(searchTerm) ||
-      retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
+const filteredRetailers = retailers.filter((retailer) => {
+  const matchesSearch =
+    !searchTerm ||
+    retailer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    retailer.phone?.includes(searchTerm) ||
+    retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Modified matchesStatus to include "pending" filter
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "pending"
-        ? retailer.is_pending_approval
-        : statusFilter === "online"
-        ? retailer.availability_status === "online"
-        : retailer.status === statusFilter);
+  const shopStatus = retailer.shop_status?.status || null;
 
-    return matchesSearch && matchesStatus;
-  });
+  // ✅ New Pending Logic:
+  const matchesStatus =
+    statusFilter === "all" ||
+    (statusFilter === "pending"
+      ? !shopStatus || shopStatus === "pending"
+      : statusFilter === "online"
+      ? retailer.availability_status === "online"
+      : retailer.status === statusFilter);
+
+  return matchesSearch && matchesStatus;
+});
+
 
   // Calculate pending approvals
-  const pendingApprovals = retailers.filter((r) => r.is_pending_approval);
+const pendingApprovals = retailers.filter(
+  (r) => !r.shop_status || r.shop_status?.status === "pending"
+);
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
@@ -171,16 +198,20 @@ export default function RetailersPage() {
               loading={loading}
               // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-                if (r.admin_approval  === 0) {
+                const shopStatus = r.shop_status?.status || null;
+
+                // Open approval dialog if shop is pending or has no status yet
+                if (!shopStatus || shopStatus === "pending") {
                   setRetailerToApprove(r);
                   setShowApprovalDialog(true);
-                  setSelectedRetailer(null); // Clear selected retailer when opening approval dialog
+                  setSelectedRetailer(null);
                 } else {
                   setSelectedRetailer(r);
                   setRetailerToApprove(null);
                   setShowApprovalDialog(false);
                 }
               }}
+
               selectedRetailerId={selectedRetailer?.id}
             />
           </div>
@@ -268,13 +299,33 @@ export default function RetailersPage() {
                 </Alert>
               </div>
 
-              <DialogFooter className="flex gap-2">
+              {/* Rejection Reason Input */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Rejection Reason</Label>
+                <Input
+                  placeholder="Enter reason for rejection (optional)"
+                  value={retailerToApprove.rejection_reason || ""}
+                  onChange={(e) => {
+                    setRetailerToApprove({
+                      ...retailerToApprove,
+                      rejection_reason: e.target.value,
+                    });
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  This reason will be stored in the database and shown to the seller.
+                </p>
+              </div>
+
+              <DialogFooter className="flex gap-2 pt-4">
                 <Button
                   variant="destructive"
-                  onClick={() => handleReject(retailerToApprove)}
+                  onClick={() =>
+                    handleReject(retailerToApprove, retailerToApprove.rejection_reason)
+                  }
                   className="flex-1"
                 >
-                  Reject
+                  Reject Seller
                 </Button>
                 <Button
                   onClick={() => handleApprove(retailerToApprove)}
@@ -283,6 +334,7 @@ export default function RetailersPage() {
                   Approve Seller
                 </Button>
               </DialogFooter>
+
             </DialogContent>
           </Dialog>
         )}
