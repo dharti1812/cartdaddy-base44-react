@@ -38,9 +38,9 @@ export default function RetailerDetails({ retailer, onClose, onUpdate }) {
       <CardContent className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
         <div className="text-center pb-6 border-b">
           <div className="w-20 h-20 bg-gradient-to-br from-blue-900 to-blue-700 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
-            {retailer.full_name?.[0]?.toUpperCase() || 'R'}
+            {retailer.name?.[0]?.toUpperCase() || 'R'}
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-1">{retailer.full_name}</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">{retailer.name}</h3>
           <div className="flex items-center justify-center gap-2">
             {retailer.rating && (
               <div className="flex items-center gap-1">

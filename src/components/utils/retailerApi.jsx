@@ -19,22 +19,25 @@ export const RetailerApi = {
     return res.json();
   },
 
-  approve: async (id) => {
-    const res = await fetch(`${API_BASE_URL}/api/shops/${id}/approve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error("Failed to approve retailer");
-    return res.json();
-  },
+ approve: async (id) => {
+  const res = await fetch(`${API_BASE_URL}/api/shops/${id}/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
 
-  reject: async (id, reason) => {
-    const res = await fetch(`${API_BASE_URL}/api/shops/${id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    if (!res.ok) throw new Error("Failed to reject retailer");
-    return res.json();
-  },
+  if (!res.ok) throw new Error('Failed to approve retailer');
+  return res.json();
+},
+
+reject: async (id, reason) => {
+  const res = await fetch(`${API_BASE_URL}/api/shops/${id}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason }),
+  });
+
+  if (!res.ok) throw new Error('Failed to reject retailer');
+  return res.json();
+},
+
 };

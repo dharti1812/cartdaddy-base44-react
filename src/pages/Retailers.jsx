@@ -45,10 +45,10 @@ export default function RetailersPage() {
 
   // New handler for approving a retailer
   const handleApprove = async (retailer) => {
-    await RetailerApi.update(retailer.id, {
+    await RetailerApi.approve(retailer.id, {
       onboarding_status: "approved",
       status: "active",
-      admin_approved_at: new Date().toISOString(),
+
     });
     setShowApprovalDialog(false);
     setRetailerToApprove(null);
@@ -70,7 +70,7 @@ export default function RetailersPage() {
   const filteredRetailers = retailers.filter((retailer) => {
     const matchesSearch =
       !searchTerm ||
-      retailer.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      retailer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       retailer.phone?.includes(searchTerm) ||
       retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -171,7 +171,7 @@ export default function RetailersPage() {
               loading={loading}
               // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-                if (r.onboarding_status === "admin_approval_pending") {
+                if (r.admin_approval  === 0) {
                   setRetailerToApprove(r);
                   setShowApprovalDialog(true);
                   setSelectedRetailer(null); // Clear selected retailer when opening approval dialog
@@ -219,7 +219,7 @@ export default function RetailersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-semibold">Full Name</Label>
-                    <p className="text-lg">{retailerToApprove.full_name}</p>
+                    <p className="text-lg">{retailerToApprove.name}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-semibold">Phone</Label>
