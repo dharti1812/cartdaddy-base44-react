@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Retailer, User } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import axios from "axios";
 import {
   Phone,
   Mail,
@@ -23,11 +22,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { createPageUrl } from "@/utils";
-import {
-  verifyBankAccount,
-  verifyGSTIN,
-} from "@/components/utils/cashfreeConfig";
-import { UploadFile } from "@/api/integrations";
 import { API_BASE_URL } from "../../src/config";
 
 const sendOTP = async (phone, name) => {

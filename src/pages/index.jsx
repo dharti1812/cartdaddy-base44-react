@@ -68,7 +68,7 @@ import SuperAdminLogin from "./SuperAdminLogin";
 
 import ProductGenerator from "./ProductGenerator";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 
 const PAGES = {
     
@@ -163,18 +163,17 @@ function PagesContent() {
     return (
         <Layout currentPageName={currentPage}>
             <Routes>            
-                
-                    <Route path="/" element={<Dashboard />} />
-                
-                
+
+                <Route path="/" element={<Navigate to="/PortalSelector" replace />} />
+
                 <Route path="/Dashboard" element={<Dashboard />} />
-                
+
                 <Route path="/Orders" element={<Orders />} />
-                
+
                 <Route path="/Retailers" element={<Retailers />} />
-                
+
                 <Route path="/Dispatch" element={<Dispatch />} />
-                
+
                 <Route path="/Analytics" element={<Analytics />} />
                 
                 <Route path="/Settings" element={<Settings />} />

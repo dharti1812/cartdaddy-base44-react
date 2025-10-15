@@ -1,21 +1,21 @@
-
-import React, { useState } from "react";
-import { User } from "@/components/utils/mockApi";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { createPageUrl } from "@/utils";
+import { AuthApi } from "@/components/utils/authApi";
 
 export default function SuperAdminLogin() {
   const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
-    if (!identifier) {
-      setError("Please enter your email address");
+    if (!identifier || !password) {
+      setError("Please enter both email and password");
       return;
     }
 
@@ -23,27 +23,36 @@ export default function SuperAdminLogin() {
     setError("");
 
     try {
-      if (import.meta.env.DEV) {
-        console.log("🛠️ Local dev mode detected. Using local login for Super Admin.");
-        const isEmail = identifier.includes('@');
-        if (!isEmail) {
-            setError("Local login requires an email address. Please use the email of an existing super admin.");
-            setLoading(false);
-            return;
-        }
+      const loginResponse = await AuthApi.login(identifier, password);
 
-        await User.localLogin(identifier);
-        console.log("✅ Local login successful. Redirecting to dashboard...");
-        window.location.href = createPageUrl("Dashboard");
-      } else {
-        sessionStorage.setItem('superadmin_identifier', identifier);
-        await User.loginWithRedirect(window.location.origin + createPageUrl("Dashboard"));
+      const token = loginResponse.access_token;
+      const user = loginResponse.user;
+
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      // Step 1: Validate Token
+      const tokenValidation = await AuthApi.validateToken(token);
+      if (!tokenValidation.valid) {
+        throw new Error("Invalid or tampered token");
       }
+
+      // Step 2: Check Role
+      const roleCheck = await AuthApi.checkRole(token);
+      if (!roleCheck.authorized) {
+        throw new Error("Unauthorized access");
+      }
+
+      // Step 3: Redirect
+      window.location.href = createPageUrl("Dashboard");
+
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("Failed to login: " + err.message);
+      setError("Login failed: " + err.message);
+    } finally {
       setLoading(false);
     }
+
   };
 
   return (
@@ -55,8 +64,11 @@ export default function SuperAdminLogin() {
             alt="Cart Daddy Logo"
             className="h-16 w-auto mx-auto mb-4"
           />
-          <CardTitle className="text-2xl font-bold text-gray-800">Super Admin Login</CardTitle>
+          <CardTitle className="text-2xl font-bold text-gray-800">
+            Super Admin Login
+          </CardTitle>
         </CardHeader>
+
         <CardContent className="p-6 space-y-6">
           {error && (
             <Alert variant="destructive">
@@ -64,16 +76,27 @@ export default function SuperAdminLogin() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="space-y-2">
+
+          <div className="space-y-3">
             <Input
               type="email"
               placeholder="Enter your super admin email"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="py-6 text-base"
-              onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
+            />
+
+            <Input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="py-6 text-base"
+              onKeyPress={(e) => e.key === "Enter" && handleLogin()}
             />
           </div>
+
           <Button
             onClick={handleLogin}
             disabled={loading}
@@ -81,6 +104,7 @@ export default function SuperAdminLogin() {
           >
             {loading ? "Logging In..." : "Login"}
           </Button>
+
           <p className="text-center text-xs text-gray-500 mt-4">
             This login is for super administrators only.
           </p>
