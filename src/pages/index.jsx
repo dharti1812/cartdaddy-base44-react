@@ -68,78 +68,80 @@ import SuperAdminLogin from "./SuperAdminLogin";
 
 import ProductGenerator from "./ProductGenerator";
 
+import ProtectedRoute from "./ProtectedRoute";
+
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 
 const PAGES = {
-    
+
     Dashboard: Dashboard,
-    
+
     Orders: Orders,
-    
+
     Retailers: Retailers,
-    
+
     Dispatch: Dispatch,
-    
+
     Analytics: Analytics,
-    
+
     Settings: Settings,
-    
+
     RetailerPortal: RetailerPortal,
-    
+
     RetailerOnboarding: RetailerOnboarding,
-    
+
     APIDocumentation: APIDocumentation,
-    
+
     IntegrationGuide: IntegrationGuide,
-    
+
     CashfreeSetup: CashfreeSetup,
-    
+
     LiveTracking: LiveTracking,
-    
+
     RetailerDashboard: RetailerDashboard,
-    
+
     TrackOrder: TrackOrder,
-    
+
     DeliveryPartnerLogin: DeliveryPartnerLogin,
-    
+
     DeliveryPartnerPortal: DeliveryPartnerPortal,
-    
+
     RetailerLiveTracking: RetailerLiveTracking,
-    
+
     DeliveryPartnerOnboarding: DeliveryPartnerOnboarding,
-    
+
     ManageDeliveryPartners: ManageDeliveryPartners,
-    
+
     DeliveryBoyPortal: DeliveryBoyPortal,
-    
+
     TestSARV: TestSARV,
-    
+
     DebugSARV: DebugSARV,
-    
+
     CheckSmartPingConfig: CheckSmartPingConfig,
-    
+
     PortalSelector: PortalSelector,
-    
+
     Home: Home,
-    
+
     SARVBackendSetup: SARVBackendSetup,
-    
+
     RetailerLogin: RetailerLogin,
-    
+
     DeliveryBoyLogin: DeliveryBoyLogin,
-    
+
     Verifications: Verifications,
-    
+
     SuperAdminDashboard: SuperAdminDashboard,
-    
+
     CustomerCRM: CustomerCRM,
-    
+
     AdminLogin: AdminLogin,
-    
+
     SuperAdminLogin: SuperAdminLogin,
-    
+
     ProductGenerator: ProductGenerator,
-    
+
 }
 
 function _getCurrentPage(url) {
@@ -159,15 +161,22 @@ function _getCurrentPage(url) {
 function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
-    
+
     return (
         <Layout currentPageName={currentPage}>
-            <Routes>            
+            <Routes>
 
                 <Route path="/" element={<Navigate to="/PortalSelector" replace />} />
 
-                <Route path="/Dashboard" element={<Dashboard />} />
-
+                <Route
+                    path="/Dashboard"
+                    element={
+                        <ProtectedRoute requiredRole="admin">
+                            <Dashboard />
+                        </ProtectedRoute>
+                    }
+                />
+                
                 <Route path="/Orders" element={<Orders />} />
 
                 <Route path="/Retailers" element={<Retailers />} />
@@ -175,65 +184,65 @@ function PagesContent() {
                 <Route path="/Dispatch" element={<Dispatch />} />
 
                 <Route path="/Analytics" element={<Analytics />} />
-                
+
                 <Route path="/Settings" element={<Settings />} />
-                
+
                 <Route path="/RetailerPortal" element={<RetailerPortal />} />
-                
+
                 <Route path="/RetailerOnboarding" element={<RetailerOnboarding />} />
-                
+
                 <Route path="/APIDocumentation" element={<APIDocumentation />} />
-                
+
                 <Route path="/IntegrationGuide" element={<IntegrationGuide />} />
-                
+
                 <Route path="/CashfreeSetup" element={<CashfreeSetup />} />
-                
+
                 <Route path="/LiveTracking" element={<LiveTracking />} />
-                
+
                 <Route path="/RetailerDashboard" element={<RetailerDashboard />} />
-                
+
                 <Route path="/TrackOrder" element={<TrackOrder />} />
-                
+
                 <Route path="/DeliveryPartnerLogin" element={<DeliveryPartnerLogin />} />
-                
+
                 <Route path="/DeliveryPartnerPortal" element={<DeliveryPartnerPortal />} />
-                
+
                 <Route path="/RetailerLiveTracking" element={<RetailerLiveTracking />} />
-                
+
                 <Route path="/DeliveryPartnerOnboarding" element={<DeliveryPartnerOnboarding />} />
-                
+
                 <Route path="/ManageDeliveryPartners" element={<ManageDeliveryPartners />} />
-                
+
                 <Route path="/DeliveryBoyPortal" element={<DeliveryBoyPortal />} />
-                
+
                 <Route path="/TestSARV" element={<TestSARV />} />
-                
+
                 <Route path="/DebugSARV" element={<DebugSARV />} />
-                
+
                 <Route path="/CheckSmartPingConfig" element={<CheckSmartPingConfig />} />
-                
+
                 <Route path="/PortalSelector" element={<PortalSelector />} />
-                
+
                 <Route path="/Home" element={<Home />} />
-                
+
                 <Route path="/SARVBackendSetup" element={<SARVBackendSetup />} />
-                
+
                 <Route path="/RetailerLogin" element={<RetailerLogin />} />
-                
+
                 <Route path="/DeliveryBoyLogin" element={<DeliveryBoyLogin />} />
-                
+
                 <Route path="/Verifications" element={<Verifications />} />
-                
+
                 <Route path="/SuperAdminDashboard" element={<SuperAdminDashboard />} />
-                
+
                 <Route path="/CustomerCRM" element={<CustomerCRM />} />
-                
+
                 <Route path="/AdminLogin" element={<AdminLogin />} />
-                
+
                 <Route path="/SuperAdminLogin" element={<SuperAdminLogin />} />
-                
+
                 <Route path="/ProductGenerator" element={<ProductGenerator />} />
-                
+
             </Routes>
         </Layout>
     );
