@@ -40,6 +40,7 @@ export default function RetailersPage() {
   const loadRetailers = async () => {
     setLoading(true);
     const data = await RetailerApi.list();
+    console.log("Loaded retailers:", data);
     setRetailers(data);
     setLoading(false);
   };
@@ -192,7 +193,7 @@ const pendingApprovals = retailers.filter(
               loading={loading}
               // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-                const shopStatus = r.shop_status?.status || null;
+               const shopStatus = RetailerApi.shop_status?.status || null;
 
                 // Open approval dialog if shop is pending or has no status yet
                 if (!shopStatus || shopStatus === "pending") {

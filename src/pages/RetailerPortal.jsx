@@ -1,14 +1,22 @@
-
 import React, { useState, useEffect } from "react";
 import { Order, Retailer, User } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Bell, Package, AlertCircle, LogOut, RefreshCw, Users, Monitor, Smartphone } from "lucide-react";
+import {
+  Bell,
+  Package,
+  AlertCircle,
+  LogOut,
+  RefreshCw,
+  Users,
+  Monitor,
+  Smartphone,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
-
+import { API_BASE_URL } from "../../src/config";
 import AvailableOrders from "../components/retailer/AvailableOrders";
 import ActiveDeliveries from "../components/retailer/ActiveDeliveries";
 import CompletedOrders from "../components/retailer/CompletedOrders";
@@ -38,58 +46,43 @@ export default function SellerPortal() {
   const loadData = async () => {
     try {
       console.log("🔄 Loading seller data...");
-      
-      let user;
-      try {
-        user = await User.me();
-        console.log("✅ User found:", user.email);
-      } catch (err) {
-        console.log("❌ No user session");
+
+      const token = localStorage.getItem("sellerToken");
+      if (!token) {
+        console.log("❌ No seller token found");
         window.location.href = createPageUrl("RetailerLogin");
         return;
       }
 
-      const sellers = await Retailer.list();
-      const mySellers = sellers.filter(s => s.email === user.email);
-      console.log("Found sellers:", mySellers.length);
-      
-      if (mySellers.length === 0) {
-        console.log("❌ No seller profile found");
+      const res = await fetch(`${API_BASE_URL}/api/seller/get`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        console.log("❌ Failed to fetch seller profile");
+        window.location.href = createPageUrl("RetailerLogin");
+        return;
+      }
+
+      const sellerProfile = await res.json();
+      console.log("✅ Seller profile:", sellerProfile);
+
+      if (!sellerProfile.id) {
+        console.log("⚠️ Seller password not set, redirecting to onboarding");
         window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
 
-      let seller = mySellers[0];
-      if (mySellers.length > 1) {
-        console.log("⚠️ Found duplicates. Cleaning up...");
-        const sorted = mySellers.sort((a, b) => {
-          if (a.onboarding_status === 'approved' && b.onboarding_status !== 'approved') return -1;
-          if (b.onboarding_status === 'approved' && a.onboarding_status !== 'approved') return 1;
-          return new Date(b.created_date) - new Date(a.created_date);
-        });
-        seller = sorted[0];
-        for (const dup of sorted.slice(1)) {
-          await Retailer.delete(dup.id);
-        }
-      }
+      setSellerProfile(sellerProfile);
 
-      if (seller.onboarding_status !== 'approved') {
-        console.log("⚠️ Seller not approved");
-        window.location.href = createPageUrl("RetailerOnboarding");
-        return;
-      }
-
-      setSellerProfile(seller);
-      
       const allOrders = await Order.list("-created_date");
       setOrders(allOrders);
-      
+
       setLoading(false);
       console.log("✅ Portal loaded successfully");
-
     } catch (error) {
       console.error("❌ Error loading portal:", error);
-      setError(error.message);
+      setError(error.message || "Something went wrong");
       setLoading(false);
     }
   };
@@ -105,11 +98,26 @@ export default function SellerPortal() {
     loadData();
   }, []);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('seller_identifier');
-    console.log("🚪 Logging out...");
+  const handleLogout = async () => {
+  try {
+    const token = localStorage.getItem("sellerToken");
+    await fetch(`${API_BASE_URL}/api/seller/logout`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  } catch (err) {
+    console.error("Logout API failed", err);
+  } finally {
+    localStorage.removeItem("sellerToken");
+    localStorage.removeItem("sellerUser");
+    sessionStorage.removeItem("seller_identifier");
+    console.log("🚪 Logged out");
     window.location.href = createPageUrl("PortalSelector");
-  };
+  }
+};
 
   if (error) {
     return (
@@ -117,14 +125,23 @@ export default function SellerPortal() {
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Error Loading Portal</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Error Loading Portal
+            </h2>
             <p className="text-white text-opacity-80 mb-4">{error}</p>
             <div className="flex gap-2">
-              <Button onClick={() => window.location.reload()} className="flex-1 bg-[#F4B321]">
+              <Button
+                onClick={() => window.location.reload()}
+                className="flex-1 bg-[#F4B321]"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Retry
               </Button>
-              <Button onClick={handleLogout} variant="outline" className="flex-1 border-white text-white">
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="flex-1 border-white text-white"
+              >
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
@@ -154,11 +171,18 @@ export default function SellerPortal() {
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Access Denied
+            </h2>
             <p className="text-white text-opacity-80 mb-4">
               Your seller profile could not be loaded or is not approved.
             </p>
-            <Button onClick={() => window.location.href = createPageUrl("RetailerOnboarding")} className="bg-[#F4B321]">
+            <Button
+              onClick={() =>
+                (window.location.href = createPageUrl("RetailerOnboarding"))
+              }
+              className="bg-[#F4B321]"
+            >
               Go to Registration
             </Button>
           </CardContent>
@@ -167,30 +191,42 @@ export default function SellerPortal() {
     );
   }
 
-  const availableOrders = orders.filter(o => {
-    const alreadyAccepted = o.accepted_retailers?.some(ar => ar.retailer_id === sellerProfile?.id);
-    return o.status === 'pending_acceptance' && !alreadyAccepted;
+  const availableOrders = orders.filter((o) => {
+    const alreadyAccepted = o.accepted_retailers?.some(
+      (ar) => ar.retailer_id === sellerProfile?.id
+    );
+    return o.status === "pending_acceptance" && !alreadyAccepted;
   });
 
-  const myAcceptedOrders = orders.filter(o => 
-    o.accepted_retailers?.some(ar => ar.retailer_id === sellerProfile?.id && ['active', 'assigned', 'handed_off'].includes(ar.status))
+  const myAcceptedOrders = orders.filter((o) =>
+    o.accepted_retailers?.some(
+      (ar) =>
+        ar.retailer_id === sellerProfile?.id &&
+        ["active", "assigned", "handed_off"].includes(ar.status)
+    )
   );
 
-  const myActiveOrders = myAcceptedOrders.filter(o => 
-    o.active_retailer_id === sellerProfile?.id && 
-    ['payment_pending', 'en_route', 'arrived'].includes(o.status)
+  const myActiveOrders = myAcceptedOrders.filter(
+    (o) =>
+      o.active_retailer_id === sellerProfile?.id &&
+      ["payment_pending", "en_route", "arrived"].includes(o.status)
   );
 
-  const myCompletedOrders = orders.filter(o => 
-    o.accepted_retailers?.some(ar => 
-      ar.retailer_id === sellerProfile?.id && 
-      ['completed', 'cancelled'].includes(ar.status)
+  const myCompletedOrders = orders.filter((o) =>
+    o.accepted_retailers?.some(
+      (ar) =>
+        ar.retailer_id === sellerProfile?.id &&
+        ["completed", "cancelled"].includes(ar.status)
     )
   );
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? 'max-w-md mx-auto' : ''}`}>
-      {typeof window !== 'undefined' && window.innerWidth > 768 && (
+    <div
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
+        mobileView ? "max-w-md mx-auto" : ""
+      }`}
+    >
+      {typeof window !== "undefined" && window.innerWidth > 768 && (
         <div className="fixed top-4 right-4 z-50">
           <Button
             onClick={() => setMobileView(!mobileView)}
@@ -198,13 +234,19 @@ export default function SellerPortal() {
             size="sm"
             className="bg-white border-2 border-[#FFEB3B]"
           >
-            {mobileView ? <Monitor className="w-4 h-4 mr-2" /> : <Smartphone className="w-4 h-4 mr-2" />}
-            <span className="text-black">{mobileView ? 'Desktop' : 'Mobile'} View</span>
+            {mobileView ? (
+              <Monitor className="w-4 h-4 mr-2" />
+            ) : (
+              <Smartphone className="w-4 h-4 mr-2" />
+            )}
+            <span className="text-black">
+              {mobileView ? "Desktop" : "Mobile"} View
+            </span>
           </Button>
         </div>
       )}
 
-      <DeviceSessionManager 
+      <DeviceSessionManager
         retailerId={sellerProfile?.id}
         onSessionConflict={() => setSessionConflict(true)}
       />
@@ -213,39 +255,43 @@ export default function SellerPortal() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <div className="flex items-center gap-3">
-              <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e16ead60e37f9dc085ad75/659db8ff0_aaaaa.png" 
-                alt="Cart Daddy Logo" 
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e16ead60e37f9dc085ad75/659db8ff0_aaaaa.png"
+                alt="Cart Daddy Logo"
                 className="h-12 sm:h-15 w-auto"
               />
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white">{sellerProfile?.full_name}</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-white">
+                  {sellerProfile?.full_name}
+                </h1>
                 <p className="text-[#FFEB3B] text-base sm:text-lg font-bold">
-                  {sellerProfile?.business_name || 'Seller Portal'}
+                  {sellerProfile?.business_name || "Seller Portal"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <Badge className={`${
-                sellerProfile?.availability_status === 'online' 
-                  ? 'bg-[#FFEB3B] text-gray-900 font-bold' 
-                  : 'bg-gray-500 text-white font-bold'
-              } border-0 text-base sm:text-lg px-3 py-1.5`}>
+              <Badge
+                className={`${
+                  sellerProfile?.availability_status === "online"
+                    ? "bg-[#FFEB3B] text-gray-900 font-bold"
+                    : "bg-gray-500 text-white font-bold"
+                } border-0 text-base sm:text-lg px-3 py-1.5`}
+              >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status}
               </Badge>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="text-[#FFEB3B] h-8 w-8 sm:h-10 sm:w-10 hover:bg-white/20"
                 onClick={loadData}
                 title="Refresh orders"
               >
                 <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="text-red-400 h-8 w-8 sm:h-10 sm:w-10 hover:bg-white/20"
                 onClick={handleLogout}
                 title="Logout from seller profile"
@@ -255,19 +301,21 @@ export default function SellerPortal() {
             </div>
           </div>
 
-          <RetailerStats 
-            retailer={sellerProfile} 
+          <RetailerStats
+            retailer={sellerProfile}
             activeOrders={myActiveOrders.length}
-            completedToday={myCompletedOrders.filter(o => {
-              const today = new Date().toDateString();
-              return new Date(o.updated_date).toDateString() === today;
-            }).length}
+            completedToday={
+              myCompletedOrders.filter((o) => {
+                const today = new Date().toDateString();
+                return new Date(o.updated_date).toDateString() === today;
+              }).length
+            }
           />
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto p-4">
-        <OrderNotificationSound 
+        <OrderNotificationSound
           retailerId={sellerProfile?.id}
           onNewOrder={handleNewOrder}
         />
@@ -276,7 +324,8 @@ export default function SellerPortal() {
           <Alert className="mb-4 bg-amber-50 border-2 border-amber-500">
             <AlertCircle className="w-5 h-5 text-amber-600" />
             <AlertDescription className="text-amber-900 font-semibold">
-              ⚠️ Another device is trying to login. Only one device can be active at a time.
+              ⚠️ Another device is trying to login. Only one device can be
+              active at a time.
             </AlertDescription>
           </Alert>
         )}
@@ -290,15 +339,16 @@ export default function SellerPortal() {
           </Alert>
         )}
 
-        {availableOrders.length > 0 && activeTab !== 'available' && (
+        {availableOrders.length > 0 && activeTab !== "available" && (
           <Alert className="mb-3 sm:mb-4 bg-[#F4B321] bg-opacity-20 border-2 border-[#F4B321]">
             <AlertDescription className="flex items-center justify-between text-sm">
               <span className="text-white font-bold">
-                {availableOrders.length} new order{availableOrders.length > 1 ? 's' : ''} available!
+                {availableOrders.length} new order
+                {availableOrders.length > 1 ? "s" : ""} available!
               </span>
-              <Button 
-                size="sm" 
-                onClick={() => setActiveTab('available')}
+              <Button
+                size="sm"
+                onClick={() => setActiveTab("available")}
                 className="bg-[#F4B321] hover:bg-[#F4B321] hover:opacity-90 text-gray-900 text-xs sm:text-sm font-bold"
               >
                 View Orders
@@ -319,8 +369,8 @@ export default function SellerPortal() {
           <Card className="border-none shadow-lg">
             <CardHeader className="border-b">
               <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6 h-auto bg-white border-2 border-[#F4B321]">
-                <TabsTrigger 
-                  value="available" 
+                <TabsTrigger
+                  value="available"
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Available Orders</span>
@@ -331,8 +381,8 @@ export default function SellerPortal() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="active" 
+                <TabsTrigger
+                  value="active"
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">My Orders</span>
@@ -343,15 +393,15 @@ export default function SellerPortal() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="completed" 
+                <TabsTrigger
+                  value="completed"
                   className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Completed</span>
                   <span className="sm:hidden">Done</span>
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="delivery_boys" 
+                <TabsTrigger
+                  value="delivery_boys"
                   className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <Users className="w-4 h-4 mr-2" />
@@ -363,7 +413,7 @@ export default function SellerPortal() {
 
             <CardContent className="p-4">
               <TabsContent value="available">
-                <AvailableOrders 
+                <AvailableOrders
                   orders={availableOrders}
                   retailerId={sellerProfile?.id}
                   config={sellerProfile}
@@ -373,7 +423,7 @@ export default function SellerPortal() {
               </TabsContent>
 
               <TabsContent value="active">
-                <ActiveDeliveries 
+                <ActiveDeliveries
                   orders={myAcceptedOrders}
                   retailerId={sellerProfile?.id}
                   config={sellerProfile}

@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from "react";
-import { Retailer, User } from "@/components/utils/mockApi"; // Use mockApi for local dev
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Mail, Store, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
+import { API_BASE_URL } from "../../src/config";
 
 export default function SellerLogin() {
   const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [checkingSession, setCheckingSession] = useState(true);
@@ -19,36 +19,28 @@ export default function SellerLogin() {
     checkExistingSession();
   }, []);
 
+  // Check if seller is already logged in
   const checkExistingSession = async () => {
-    try {
-      // Check if user is already logged in to Base44
-      const user = await User.me();
-      console.log("✅ User already logged in:", user.email);
-      
-      // Check if they have a seller account
-      const allSellers = await Retailer.list();
-      const mySellers = allSellers.filter(s => s.email === user.email);
-      
-      if (mySellers.length > 0) {
-        console.log("✅ Seller account found, redirecting to portal...");
+    const token = localStorage.getItem("sellerToken");
+    if (token) {
+      // Optionally verify token validity via API
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/seller/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Invalid session");
         window.location.href = createPageUrl("RetailerPortal");
         return;
+      } catch {
+        localStorage.removeItem("sellerToken");
       }
-      
-      console.log("⚠️ User logged in but no seller account found");
-      setError("No seller account found for your account. Please sign up first.");
-      setCheckingSession(false);
-      
-    } catch (err) {
-      // User not logged in, show login form
-      console.log("❌ No active session");
-      setCheckingSession(false);
     }
+    setCheckingSession(false);
   };
 
   const handleLogin = async () => {
-    if (!identifier) {
-      setError("Please enter your email or phone number");
+    if (!identifier || !password) {
+      setError("Please enter both email/phone and password");
       return;
     }
 
@@ -56,60 +48,28 @@ export default function SellerLogin() {
     setError("");
 
     try {
-      // Local Development Login Flow
-      if (import.meta.env.DEV) {
-        console.log("🛠️ Local dev mode detected. Using local login.");
-        const isEmail = identifier.includes('@');
-        if (!isEmail) {
-            setError("Local login requires an email address. Please use the email of an existing seller.");
-            setLoading(false);
-            return;
-        }
+      const res = await fetch(`${API_BASE_URL}/api/seller/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
 
-        await User.localLogin(identifier);
-        console.log("✅ Local login successful. Redirecting to portal...");
-        window.location.href = createPageUrl("RetailerPortal");
+      const data = await res.json();
 
-      } else {
-        // Production Login Flow (existing code)
-        console.log("🔍 Checking for seller account...");
-      
-        // First, check if a seller account exists with this identifier
-        const allSellers = await Retailer.list();
-        const isEmail = identifier.includes('@');
-        
-        let seller = null;
-        if (isEmail) {
-          seller = allSellers.find(s => s.email?.toLowerCase() === identifier.toLowerCase());
-        } else {
-          const cleanIdentifier = identifier.replace(/\D/g, '');
-          seller = allSellers.find(s => {
-            const cleanPhone = s.phone?.replace(/\D/g, '') || '';
-            return cleanPhone === cleanIdentifier || 
-                   cleanPhone.endsWith(cleanIdentifier) ||
-                   cleanIdentifier.endsWith(cleanPhone);
-          });
-        }
-        
-        if (!seller) {
-          setError("No seller account found. Please sign up first.");
-          setLoading(false);
-          return;
-        }
-        
-        console.log("✅ Seller account found:", seller.full_name);
-        
-        // Store identifier for verification after login
-        sessionStorage.setItem('seller_identifier', identifier);
-        
-        // Now redirect to Base44 login
-        console.log("🔐 Redirecting to Base44 login...");
-        await User.loginWithRedirect(window.location.origin + createPageUrl("RetailerPortal"));
+      if (!res.ok) {
+        throw new Error(data.message || "Invalid credentials");
       }
-      
+
+      // Save token and user info
+      localStorage.setItem("sellerToken", data.token);
+      localStorage.setItem("sellerUser", JSON.stringify(data.user));
+
+      console.log("✅ Login successful:", data.user);
+      window.location.href = createPageUrl("RetailerPortal");
     } catch (err) {
       console.error("❌ Login error:", err);
-      setError("Failed to login: " + err.message);
+      setError(err.message || "Something went wrong during login");
+    } finally {
       setLoading(false);
     }
   };
@@ -130,7 +90,7 @@ export default function SellerLogin() {
       <Card className="max-w-md w-full border-4 border-[#FFEB3B]">
         <CardHeader className="text-center bg-[#075E66] text-white rounded-t-lg border-b-4 border-[#FFEB3B]">
           <div className="flex justify-center mb-4">
-            <img 
+            <img
               src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e16ead60e37f9dc085ad75/659db8ff0_aaaaa.png"
               alt="Cart Daddy"
               className="h-16"
@@ -140,7 +100,9 @@ export default function SellerLogin() {
             <Store className="w-6 h-6 text-[#FFEB3B]" />
             Seller Login
           </CardTitle>
-          <p className="text-sm text-white opacity-90 mt-2">Welcome back! Access your seller portal</p>
+          <p className="text-sm text-white opacity-90 mt-2">
+            Welcome back! Access your seller portal
+          </p>
         </CardHeader>
 
         <CardContent className="p-8 bg-white">
@@ -150,9 +112,17 @@ export default function SellerLogin() {
             </Alert>
           )}
 
-          <div className="space-y-6">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLogin();
+            }}
+            className="space-y-6"
+          >
             <div>
-              <Label htmlFor="identifier" className="text-black font-bold">Email or Phone Number</Label>
+              <Label htmlFor="identifier" className="text-black font-bold">
+                Email or Phone Number
+              </Label>
               <div className="relative mt-2">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#075E66] w-5 h-5" />
                 <Input
@@ -162,36 +132,45 @@ export default function SellerLogin() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="your@email.com or +91XXXXXXXXXX"
                   className="pl-10 border-2 border-[#075E66] focus:border-[#FFEB3B]"
-                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                 />
               </div>
             </div>
 
-            <Button 
-              onClick={handleLogin} 
-              disabled={loading || !identifier}
+            <div>
+              <Label htmlFor="password" className="text-black font-bold">
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="pl-3 border-2 border-[#075E66] focus:border-[#FFEB3B]"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading || !identifier || !password}
               className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
             >
-              {loading ? (
-                <span>Logging in...</span>
-              ) : (
-                <>
-                  Login to Portal
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </>
-              )}
+              {loading ? "Logging in..." : "Login to Portal"}
+              {!loading && <ArrowRight className="w-5 h-5 ml-2 inline" />}
             </Button>
+          </form>
 
-            <div className="text-center pt-4 border-t-2 border-[#075E66]">
-              <p className="text-sm text-black mb-3 font-bold">Don't have an account?</p>
-              <Button
-                variant="outline"
-                onClick={() => window.location.href = createPageUrl("RetailerOnboarding")}
-                className="w-full border-2 border-[#075E66] text-[#075E66] hover:bg-[#075E66] hover:text-white font-bold"
-              >
-                Sign Up as Seller
-              </Button>
-            </div>
+          <div className="text-center pt-4 border-t-2 border-[#075E66]">
+            <p className="text-sm text-black mb-3 font-bold">
+              Don't have an account?
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => (window.location.href = createPageUrl("RetailerOnboarding"))}
+              className="w-full border-2 border-[#075E66] text-[#075E66] hover:bg-[#075E66] hover:text-white font-bold"
+            >
+              Sign Up as Seller
+            </Button>
           </div>
         </CardContent>
       </Card>
