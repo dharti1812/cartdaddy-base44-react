@@ -48,7 +48,7 @@ export default function RetailersPage() {
   const handleApprove = async (retailer) => {
     await RetailerApi.approve(retailer.id, {
       onboarding_status: "approved",
-      status: "active",
+      status: "approved",
 
     });
     setShowApprovalDialog(false);
@@ -63,7 +63,7 @@ export default function RetailersPage() {
       return;
     }
     try {
-      const token = localStorage.getItem("access_token");
+      const token = localStorage.getItem("adminToken");
 
       const res = await fetch(`${API_BASE_URL}/api/retailers/${retailer.id}/reject`, {
         method: "POST",
@@ -96,24 +96,18 @@ const filteredRetailers = retailers.filter((retailer) => {
     retailer.phone?.includes(searchTerm) ||
     retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const shopStatus = retailer.shop_status?.status || null;
+  const status = retailer.status;
 
-  // ✅ New Pending Logic:
-  const matchesStatus =
-    statusFilter === "all" ||
-    (statusFilter === "pending"
-      ? !shopStatus || shopStatus === "pending"
-      : statusFilter === "online"
-      ? retailer.availability_status === "online"
-      : retailer.status === statusFilter);
+ const matchesStatus =
+    statusFilter === "all" || status === statusFilter ||
+    (statusFilter === "pending" && status === "pending");
 
   return matchesSearch && matchesStatus;
 });
 
 
-  // Calculate pending approvals
 const pendingApprovals = retailers.filter(
-  (r) => !r.shop_status || r.shop_status?.status === "pending"
+  (r) => r.status === "pending"
 );
 
   return (

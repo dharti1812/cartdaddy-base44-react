@@ -68,7 +68,7 @@ export default function RetailersList({ retailers, loading, onSelectRetailer, se
                             Online
                           </Badge>
                         )}
-                        {retailer.status === 'active' ? (
+                        {retailer.status === 'approved' ? (
                           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                             Active
                           </Badge>
