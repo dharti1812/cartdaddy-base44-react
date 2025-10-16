@@ -5,7 +5,7 @@ export default function ProtectedRoute({ children, requiredRole }) {
   // Get user from session storage
   const user = JSON.parse(sessionStorage.getItem("user"));
   const token = sessionStorage.getItem("token");
-
+  
   // Check if user is logged in
   if (!user || !token) {
     return <Navigate to="/SuperAdminLogin" replace />;

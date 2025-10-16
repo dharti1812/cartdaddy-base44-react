@@ -166,7 +166,26 @@ function PagesContent() {
         <Layout currentPageName={currentPage}>
             <Routes>
 
-                <Route path="/" element={<Navigate to="/PortalSelector" replace />} />
+                <Route
+                    path="/"
+                    element={
+                        (() => {
+                        const user = JSON.parse(sessionStorage.getItem("user"));
+                        const token = sessionStorage.getItem("token");
+
+                        if (user && token) {
+                            if (user.user_type === "admin") {
+                            return <Navigate to="/Dashboard" replace />;
+                            } else {
+                            return <Navigate to="/SuperAdminLogin" replace />;
+                            }
+                        }
+
+                        return <Navigate to="/SuperAdminLogin" replace />;
+                        })()
+                    }
+                    />
+
 
                 <Route
                     path="/Dashboard"
