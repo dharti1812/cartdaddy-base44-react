@@ -29,4 +29,24 @@ export const AuthApi = {
     if (!res.ok) return { authorized: false };
     return await res.json();
   },
+
+  sendOTPtoMobile: async (phone, name, userCode) => {
+    const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, name, userCode }),
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  },
+
+  verifyOTP: async (phone, phone_otp) => {
+    const res = await fetch(`${API_BASE_URL}/api/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, phone_otp }),
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  },
 };

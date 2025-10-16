@@ -11,7 +11,7 @@ import {
   User as UserIcon, Phone, Mail, FileText, CreditCard, Camera,
   CheckCircle, Clock, XCircle, AlertCircle, Shield, Plus, Trash2, LogOut, Package, Bike
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { AuthApi } from '@/components/utils/authApi';
 import { createPageUrl } from "@/utils";
 import { UploadFile } from "@/api/integrations";
 import { sendMultiChannelOTP } from "../components/utils/sarvAPI";
@@ -142,22 +142,13 @@ export default function DeliveryPartnerOnboarding() {
       return;
     }
 
-    // Check for existing delivery partner with this phone
-    const allPartners = await DeliveryPartner.list();
-    const cleanPhone = formData.phone.replace(/\D/g, '');
-
-    const existingPartner = allPartners.find(p => {
-      const pClean = p.phone?.replace(/\D/g, '') || '';
-      return pClean === cleanPhone || pClean.endsWith(cleanPhone) || cleanPhone.endsWith(pClean);
-    });
-
-    if (existingPartner && existingPartner.email !== currentUser?.email) {
-      setError("This phone number is already registered with another account.");
-      return;
-    }
+    const phone = formData.phone;
+    const name = formData.full_name || "Delivery Partner";
+    const userCode = "D";
 
     setSaving(true);
-    const result = await sendMultiChannelOTP(formData.phone, ['sms', 'whatsapp']);
+
+    const result = await AuthApi.sendOTPtoMobile(phone, name, userCode);
 
     if (result.success) {
       setOtpStored(result.otp);
@@ -170,38 +161,32 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   const handleVerifyPhoneOTP = async () => {
-    if (otp === otpStored) {
-      setSaving(true);
+  if (otp.length !== 6) {
+    setError("Please enter a valid 6-digit OTP");
+    return;
+  }
 
-      if (deliveryPartner) {
-        await DeliveryPartner.update(deliveryPartner.id, {
-          phone_verified: true,
-          phone: formData.phone,
-          full_name: formData.full_name,
-          onboarding_status: "email_pending"
-        });
-      } else {
-        const user = await User.me();
-        const created = await DeliveryPartner.create({
-          user_id: user.id,
-          email: user.email,
-          full_name: formData.full_name,
-          phone: formData.phone,
-          phone_verified: true,
-          onboarding_status: "email_pending"
-        });
-        setDeliveryPartner(created);
-      }
-
+  setSaving(true);
+  try {
+    const result = await AuthApi.verifyOTP(formData.phone, otp);
+    
+    if (result.success) {
       setSuccess("✅ Phone verified successfully!");
       setOtp("");
       setOtpSent(false);
       setStep(2);
-      setSaving(false);
     } else {
-      setError("❌ Invalid OTP. Please try again.");
+      setError("❌ " + (result.message || "Invalid OTP"));
     }
-  };
+  } catch (err) {
+    console.error("OTP verification error:", err);
+    setError("❌ Failed to verify OTP. Try again.");
+  } finally {
+    setSaving(false);
+  }
+};
+
+  
 
   // Email OTP
   const handleSendEmailOTP = async () => {
