@@ -47,7 +47,8 @@ export default function SellerPortal() {
     try {
       console.log("🔄 Loading seller data...");
 
-      const token = localStorage.getItem("sellerToken");
+      const token = sessionStorage.getItem("token");
+      console.log("🔑 Retrieved token:", token);
       if (!token) {
         console.log("❌ No seller token found");
         window.location.href = createPageUrl("RetailerLogin");
@@ -100,7 +101,7 @@ export default function SellerPortal() {
 
   const handleLogout = async () => {
   try {
-    const token = localStorage.getItem("sellerToken");
+    const token = localStorage.getItem("authToken");
     await fetch(`${API_BASE_URL}/api/seller/logout`, {
       method: "POST",
       headers: {
@@ -111,8 +112,8 @@ export default function SellerPortal() {
   } catch (err) {
     console.error("Logout API failed", err);
   } finally {
-    localStorage.removeItem("sellerToken");
-    localStorage.removeItem("sellerUser");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     sessionStorage.removeItem("seller_identifier");
     console.log("🚪 Logged out");
     window.location.href = createPageUrl("PortalSelector");

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
 import axios from "axios";
 import { API_BASE_URL } from "../../src/config";
+import { AuthApi } from "@/components/utils/authApi";
 
 export default function AdminLogin() {
   const [identifier, setIdentifier] = useState(""); // email or phone
@@ -16,39 +17,44 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [password, setPassword] = useState("");
   const handleLogin = async () => {
-    if (!identifier) {
-      setError("Please enter your email or phone number");
-      return;
-    }
-
-    if (!password) {
-      setError("Please enter your password");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/admin/login`, {
-        identifier,
-        password,
-      });
-
-      const { token, user } = response.data;
-
-      localStorage.setItem("adminToken", token);
-      localStorage.setItem("adminUser", JSON.stringify(user));
-
-      window.location.href = createPageUrl("Dashboard");
-    } catch (err) {
-      console.error("Login error:", err);
-      setError(
-        err.response?.data?.message || "Login failed. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
+    if (!identifier || !password) {
+          setError("Please enter both email and password");
+          return;
+        }
+    
+        setLoading(true);
+        setError("");
+    
+        try {
+          const loginResponse = await AuthApi.login(identifier, password);
+    
+          const token = loginResponse.access_token;
+          const user = loginResponse.user;
+    
+          sessionStorage.setItem("token", token);
+          sessionStorage.setItem("user", JSON.stringify(user));
+    
+          // Step 1: Validate Token
+          const tokenValidation = await AuthApi.validateToken(token);
+          if (!tokenValidation.valid) {
+            throw new Error("Invalid or tampered token");
+          }
+    
+          // Step 2: Check Role
+          const roleCheck = await AuthApi.checkRole(token);
+          if (!roleCheck.authorized) {
+            throw new Error("Unauthorized access");
+          }
+    
+          // Step 3: Redirect
+          window.location.href = createPageUrl("Dashboard");
+    
+        } catch (err) {
+          console.error("❌ Login error:", err);
+          setError("Login failed: " + err.message);
+        } finally {
+          setLoading(false);
+        }
   };
 
   return (

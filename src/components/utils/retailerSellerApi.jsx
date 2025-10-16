@@ -2,7 +2,7 @@ import { API_BASE_URL } from "../../config";
 
 export const RetailerSellerApi  = {
   list: async () => {
-    const token = localStorage.getItem("sellerToken");
+    const token = localStorage.getItem("token");
     console.log("Token:", token);
     const res = await fetch(`${API_BASE_URL}/api/sellers`, {
       headers: {
@@ -15,7 +15,7 @@ export const RetailerSellerApi  = {
   },
 
   update: async (id, data) => {
-     const token = localStorage.getItem("sellerToken");
+     const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/shops/${id}`, {
       method: "PUT", // or PATCH
       headers: {
@@ -29,7 +29,7 @@ export const RetailerSellerApi  = {
   },
 
   approve: async (id) => {
-    const token = localStorage.getItem("sellerToken");
+    const token = localStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/shops/${id}/approve`, {
       method: "POST",
       headers: {

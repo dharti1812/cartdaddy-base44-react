@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from "react";
-import { Order, Retailer, DeliveryPartner, User } from "@/components/utils/mockApi";
+import { Order, DeliveryPartner, User } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { RetailerApi } from "@/components/utils/retailerApi";
+import { UserApi } from "@/components/utils/userApi";
+import { OrderApi } from "@/components/utils/orderApi";
 import { 
   Users, Package, TrendingUp, AlertCircle, Shield, 
   Eye, Download, Phone, MapPin, Store, CheckCircle, Search, Mail, Image, FileText
@@ -52,19 +55,21 @@ export default function SuperAdminDashboard() {
       // Mock API list methods typically return all data.
       // We apply sorting and limiting logic here to mimic the original API calls.
       const [ordersData, retailersData, deliveryPartnersData, usersData] = await Promise.all([
-        Order.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 200)),
-        Retailer.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
+        
+        OrderApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 200)),
+        RetailerApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
         DeliveryPartner.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
-        User.list()
+        UserApi.list()
       ]);
-
+     
       setOrders(ordersData);
       setRetailers(retailersData);
       setDeliveryPartners(deliveryPartnersData);
-      setAdmins(usersData.filter(u => u.role === 'admin'));
+      setAdmins(usersData);
 
       // Extract unique customers from orders
       const customerMap = new Map();
+      console.log("Orders Data:", ordersData);
       ordersData.forEach(order => {
         const phone = order.customer_phone;
         if (!phone) return;
@@ -135,7 +140,7 @@ export default function SuperAdminDashboard() {
 
     try {
       const user = await User.me(); // User.me() should be mocked or available from mockApi
-      await Retailer.update(seller.id, {
+      await RetailerApi.update(seller.id, {
         status: 'suspended',
         ban_reason: reason,
         banned_by: user.id,
@@ -151,7 +156,7 @@ export default function SuperAdminDashboard() {
 
   const handleUnbanSeller = async (seller) => {
     try {
-      await Retailer.update(seller.id, {
+      await RetailerApi.update(seller.id, {
         status: 'active',
         ban_reason: null,
         banned_by: null,
@@ -178,7 +183,7 @@ export default function SuperAdminDashboard() {
     const notes = prompt("Add notes (optional):");
 
     try {
-      await Retailer.update(seller.id, {
+      await RetailerApi.update(seller.id, {
         rating: rating,
         rating_notes: notes || ""
       });
@@ -512,7 +517,7 @@ export default function SuperAdminDashboard() {
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-black">{seller.full_name}</p>
+                          <p className="font-semibold text-black">{seller.name}</p>
                           <p className="text-sm text-gray-600">{seller.business_name}</p>
                           <div className="flex gap-2 mt-1">
                             <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -733,7 +738,7 @@ export default function SuperAdminDashboard() {
                         </div>
                       )}
                       <div>
-                        <h3 className="text-xl font-bold text-black">{selectedDetail.data.full_name}</h3>
+                        <h3 className="text-xl font-bold text-black">{selectedDetail.data.name}</h3>
                         <p className="text-gray-600">{selectedDetail.data.business_name}</p>
                         <Badge className="mt-2 bg-[#075E66] text-white">
                           {selectedDetail.data.onboarding_status}

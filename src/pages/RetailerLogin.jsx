@@ -7,6 +7,7 @@ import { Mail, Store, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
 import { API_BASE_URL } from "../../src/config";
+import { AuthApi } from "@/components/utils/authApi";
 
 export default function SellerLogin() {
   const [identifier, setIdentifier] = useState("");
@@ -21,7 +22,7 @@ export default function SellerLogin() {
 
   // Check if seller is already logged in
   const checkExistingSession = async () => {
-    const token = localStorage.getItem("sellerToken");
+    const token = localStorage.getItem("authToken");
     if (token) {
       // Optionally verify token validity via API
       try {
@@ -32,7 +33,7 @@ export default function SellerLogin() {
         window.location.href = createPageUrl("RetailerPortal");
         return;
       } catch {
-        localStorage.removeItem("sellerToken");
+        localStorage.removeItem("authToken");
       }
     }
     setCheckingSession(false);
@@ -40,38 +41,43 @@ export default function SellerLogin() {
 
   const handleLogin = async () => {
     if (!identifier || !password) {
-      setError("Please enter both email/phone and password");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/seller/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid credentials");
-      }
-
-      // Save token and user info
-      localStorage.setItem("sellerToken", data.token);
-      localStorage.setItem("sellerUser", JSON.stringify(data.user));
-
-      console.log("✅ Login successful:", data.user);
-      window.location.href = createPageUrl("RetailerPortal");
-    } catch (err) {
-      console.error("❌ Login error:", err);
-      setError(err.message || "Something went wrong during login");
-    } finally {
-      setLoading(false);
-    }
+          setError("Please enter both email and password");
+          return;
+        }
+    
+        setLoading(true);
+        setError("");
+    
+        try {
+          const loginResponse = await AuthApi.login(identifier, password);
+         
+          const token = loginResponse.access_token;
+          const user = loginResponse.user;
+    
+          sessionStorage.setItem("token", token);
+          sessionStorage.setItem("user", JSON.stringify(user));
+    
+          // Step 1: Validate Token
+          const tokenValidation = await AuthApi.validateToken(token);
+          if (!tokenValidation.valid) {
+            throw new Error("Invalid or tampered token");
+          }
+    
+          // Step 2: Check Role
+          const roleCheck = await AuthApi.checkRole(token);
+          if (!roleCheck.authorized) {
+            throw new Error("Unauthorized access");
+          }
+          console.log("✅ Login successful, redirecting...");
+          // Step 3: Redirect
+          window.location.href = createPageUrl("RetailerPortal");
+    
+        } catch (err) {
+          console.error("❌ Login error:", err);
+          setError("Login failed: " + err.message);
+        } finally {
+          setLoading(false);
+        }
   };
 
   if (checkingSession) {

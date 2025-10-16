@@ -49,15 +49,38 @@ export default function CreateRetailerDialog({ onClose, onSuccess }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    await Retailer.create(formData);
-    
+  e.preventDefault();
+  setLoading(true);
+
+  try {
+    const token = localStorage.getItem("adminToken"); // if you use authentication
+
+    const response = await fetch("http://localhost:8000/api/retailers", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // optional
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to add retailer");
+    }
+
+    const result = await response.json();
+    console.log("Retailer created:", result);
+
+    onSuccess(); // refresh the list in parent
+    onClose();   // close the modal
+  } catch (error) {
+    console.error(error);
+    alert("Error creating retailer: " + error.message);
+  } finally {
     setLoading(false);
-    onSuccess();
-    onClose();
-  };
+  }
+};
+
 
   return (
     <Dialog open onOpenChange={onClose}>
