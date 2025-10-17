@@ -52,7 +52,7 @@ export const AuthApi = {
     return await res.json();
   },
 
-  
+
   sendOTPtoEmail: async (email, phone, userCode) => {
     console.log("🔍 Sending email OTP to:", email, "for phone:", phone);
     try {
@@ -84,15 +84,17 @@ export const AuthApi = {
     }
   },
 
-  verifyDrivingLicense: async (dlNumber, dob) => {
+  verifyDrivingLicense: async (dlNumber, dob, vehicle_type) => {
     try {
-       const token = sessionStorage.getItem("access_token");
+      const token = sessionStorage.getItem("access_token");
+      
       const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
         method: "POST",
-        headers: { "Content-Type": "application/json",   Authorization: `Bearer ${token}`, },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, },
         body: JSON.stringify({
           dl_number: dlNumber,
-          dob,          
+          dob,
+          vehicle_type
         }),
       });
 

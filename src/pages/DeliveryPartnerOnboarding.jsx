@@ -260,7 +260,7 @@ export default function DeliveryPartnerOnboarding() {
       setSuccess("✅ Email verified successfully!");
       setStep(3);
       if (result.access_token) {
-        localStorage.setItem("access_token", result.access_token);
+        sessionStorage.setItem("access_token", result.access_token);
       }
     } else {
       setError("❌ Invalid OTP. Please try again.");
@@ -271,10 +271,7 @@ export default function DeliveryPartnerOnboarding() {
   // DL Verification
   const handleVerifyDL = async () => {
     setError("");
-    if (!deliveryPartner) {
-      setError("Delivery partner data not loaded. Please wait and try again.");
-      return;
-    }
+    
     if (!formData.driving_license || formData.driving_license.length < 10) {
       setError("Please enter a valid driving license number");
       return;
@@ -291,9 +288,10 @@ export default function DeliveryPartnerOnboarding() {
 
     setSaving(true);
 
-    const result = await verifyDrivingLicense(
+    const result = await AuthApi.verifyDrivingLicense(
       formData.driving_license,
-      formData.dob
+      formData.dob,
+      formData.vehicle_type
     );
 
     if (result.success) {
