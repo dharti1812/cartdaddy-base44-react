@@ -295,17 +295,6 @@ export default function DeliveryPartnerOnboarding() {
     );
 
     if (result.success) {
-      // use deliveryPartner.id (NOT partners.id)
-      await DeliveryPartnerApi.update(deliveryPartner.id, {
-        driving_license_verified: true,
-        driving_license: formData.driving_license,
-        dob: formData.dob,
-        dl_verification_data: result.data,
-        vehicle_type: formData.vehicle_type,
-        vehicle_number: formData.vehicle_number,
-        onboarding_status: "bank_pending",
-      });
-
       setSuccess("✅ Driving License verified successfully!");
       setStep(4);
     } else {
