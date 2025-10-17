@@ -129,6 +129,7 @@ export default function SellerOnboarding() {
   const checkUser = async () => {
     try {
       const user = await User.me();
+      console.log("Current User:", user);
       const allRetailers = await Retailer.list();
       console.log(allRetailers);
       const myRetailers = allRetailers.filter((r) => r.user_id === user.id);

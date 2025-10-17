@@ -83,4 +83,24 @@ export const AuthApi = {
       return { success: false };
     }
   },
+
+  verifyDrivingLicense: async (dlNumber, dob) => {
+    try {
+       const token = sessionStorage.getItem("access_token");
+      const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json",   Authorization: `Bearer ${token}`, },
+        body: JSON.stringify({
+          dl_number: dlNumber,
+          dob,          
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to verify Driving License");
+      return await res.json();
+    } catch (err) {
+      console.error("❌ verifyDrivingLicense error:", err);
+      return { success: false, message: err.message };
+    }
+  },
 };

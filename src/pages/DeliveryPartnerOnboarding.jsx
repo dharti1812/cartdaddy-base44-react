@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { API_BASE_URL } from "@/config";
 import {
   User as UserIcon,
   Phone,
@@ -32,23 +33,23 @@ import {
   verifyDrivingLicense,
   verifyBankAccount,
 } from "../components/utils/cashfreeConfig";
+import { DeliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 
 export default function DeliveryPartnerOnboarding() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [deliveryPartner, setDeliveryPartner] = useState(null);
+  const [deliveryPartner, setDeliveryPartner] = useState();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-const [step, setStepState] = useState(() => {
-  const savedStep = localStorage.getItem("DeliveryPartnerOnboardingStep"); // removed space
-  return savedStep ? Number(savedStep) : 1;
-});
+  const [step, setStepState] = useState(() => {
+    const savedStep = localStorage.getItem("DeliveryPartnerOnboardingStep");
+    return savedStep ? Number(savedStep) : 1;
+  });
 
-const setStep = (s) => {
-  setStepState(s);
-  localStorage.setItem("DeliveryPartnerOnboardingStep", s); // same key
-};
-
+  const setStep = (s) => {
+    setStepState(s);
+    localStorage.setItem("DeliveryPartnerOnboardingStep", s);
+  };
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -65,6 +66,7 @@ const setStep = (s) => {
     email: "",
     alternatePhones: [{ number: "", label: "secondary" }],
     driving_license: "",
+    dob: "",
     vehicle_type: "2_wheeler",
     vehicle_number: "",
     account_number: "",
@@ -82,99 +84,85 @@ const setStep = (s) => {
 
   const loadData = async () => {
     try {
+      // 1️⃣ Get current logged-in user
       const user = await User.me();
+      console.log("Current User:", user);
       setCurrentUser(user);
 
-      const partners = await DeliveryPartner.list();
+      // 2️⃣ Get all delivery partners
+      const partners = await DeliveryPartnerApi.list();
+      console.log("All Delivery Partners:", partners);
 
-      // Check for duplicates with this user's email
-      const myPartners = partners.filter((p) => p.email === user.email);
+      const userEmail = (user?.email || user?.email || "")
+        .toString()
+        .trim()
+        .toLowerCase();
+      const userPhone = (user?.phone || "").toString().replace(/\D/g, "");
 
-      if (myPartners.length > 1) {
-        console.log(
-          "⚠️ Found",
-          myPartners.length,
-          "duplicate accounts. Cleaning up..."
+      const myPartner = partners.find((p) => {
+        const pEmail = (p?.email || p?.email || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        const pPhone = (p?.phone || "").toString().replace(/\D/g, "");
+        return (
+          (userEmail && pEmail === userEmail) ||
+          (userPhone && pPhone === userPhone)
         );
+      });
 
-        // Keep the most recent approved account, or the most recent one
-        const sorted = myPartners.sort((a, b) => {
-          // Prioritize approved accounts
-          if (
-            a.onboarding_status === "approved" &&
-            b.onboarding_status !== "approved"
-          )
-            return -1;
-          if (
-            b.onboarding_status === "approved" &&
-            a.onboarding_status !== "approved"
-          )
-            return 1;
-          // Then sort by creation date
-          return new Date(b.created_date) - new Date(a.created_date);
+      if (!myPartner) {
+        console.warn("No delivery partner found for current user", {
+          userEmail,
+          userPhone,
         });
-
-        const keepAccount = sorted[0];
-        const deleteAccounts = sorted.slice(1);
-
-        // Delete duplicates
-        for (const dup of deleteAccounts) {
-          await DeliveryPartner.delete(dup.id);
-        }
-
-        setDeliveryPartner(keepAccount);
-      } else if (myPartners.length === 1) {
-        setDeliveryPartner(myPartners[0]);
+        setLoading(false);
+        return;
       }
 
-      if (myPartners.length > 0) {
-        const partner = myPartners[0];
+      setDeliveryPartner(myPartner);
+      console.log("Current Delivery Partner:", myPartner);
 
-        if (partner.onboarding_status === "approved") {
-          window.location.href = createPageUrl("DeliveryBoyPortal");
-          return;
-        }
+      setFormData({
+        full_name: myPartner.full_name || "",
+        phone: myPartner.phone || "",
+        email: myPartner.email || user.email || "",
+        alternatePhones: myPartner.alternate_phones || [
+          { number: "", label: "secondary" },
+        ],
+        driving_license: myPartner.driving_license || "",
+        dob: myPartner.dob || "",
+        vehicle_type: myPartner.vehicle_type || "2_wheeler",
+        vehicle_number: myPartner.vehicle_number || "",
+        account_number: myPartner.bank_account?.account_number || "",
+        ifsc: myPartner.bank_account?.ifsc || "",
+        account_holder_name: myPartner.bank_account?.account_holder_name || "",
+        bank_name: myPartner.bank_account?.bank_name || "",
+        selfie_url: myPartner.selfie_url || "",
+        selfie_location: myPartner.selfie_location || null,
+        documents: myPartner.documents || [],
+      });
 
-        setFormData({
-          full_name: partner.full_name || "",
-          phone: partner.phone || "",
-          email: partner.email || user.email,
-          alternatePhones: partner.alternate_phones || [
-            { number: "", label: "secondary" },
-          ],
-          driving_license: partner.driving_license || "",
-          vehicle_type: partner.vehicle_type || "2_wheeler",
-          vehicle_number: partner.vehicle_number || "",
-          account_number: partner.bank_account?.account_number || "",
-          ifsc: partner.bank_account?.ifsc || "",
-          account_holder_name: partner.bank_account?.account_holder_name || "",
-          bank_name: partner.bank_account?.bank_name || "",
-          selfie_url: partner.selfie_url || "",
-          selfie_location: partner.selfie_location || null,
-          documents: partner.documents || [],
-        });
-
-        // Determine current step based on onboarding status
-        if (!partner.phone_verified) setStep(1);
-        else if (!partner.email_verified) setStep(2);
-        else if (!partner.driving_license_verified) setStep(3);
-        else if (!partner.bank_verified) setStep(4);
-        else if ((partner.documents?.length || 0) < 4)
-          setStep(5); // New step for documents
-        else if (!partner.selfie_url) setStep(6); // Changed from 5 to 6
-        else setStep(7); // Changed from 6 to 7
-      }
+      // 7️⃣ Determine current onboarding step
+      if (!myPartner.phone_verified) setStep(1);
+      else if (!myPartner.email_verified) setStep(2);
+      else if (!myPartner.driving_license_verified) setStep(3);
+      else if (!myPartner.bank_verified) setStep(4);
+      else if ((myPartner.documents?.length || 0) < 4) setStep(5);
+      else if (!myPartner.selfie_url) setStep(6);
+      else setStep(7);
 
       setLoading(false);
     } catch (error) {
       console.error("Error loading data:", error);
-      setError(error.message);
+      setError(error.message || "Failed to load delivery partner data");
       setLoading(false);
     }
   };
 
   const handleLogout = async () => {
     await User.logout();
+
     window.location.reload();
   };
 
@@ -231,42 +219,49 @@ const setStep = (s) => {
 
   // Email OTP
   const handleSendEmailOTP = async () => {
-  if (!formData.email || !formData.email.includes("@")) {
-    setError("Please enter a valid email address");
-    return;
-  }
-
-  setSaving(true);
-  try {
-    const result = await AuthApi.sendOTPtoEmail(
-      formData.email,
-      formData.phone,    
-      "D"
-    );
-
-    // Always show the OTP field even if result.success is false
-    setEmailOtpSent(true);
-
-    if (result.success) {
-      setOtpStored(result.otp);
-      setSuccess("✅ OTP sent to your email!");
-    } else {
-      setError("⚠️ Failed to send OTP. Please check API or email setup.");
+    if (!formData.email || !formData.email.includes("@")) {
+      setError("Please enter a valid email address");
+      return;
     }
-  } catch (err) {
-    setError("❌ Something went wrong while sending OTP.");
-  }
-  setSaving(false);
-};
 
+    setSaving(true);
+    try {
+      const result = await AuthApi.sendOTPtoEmail(
+        formData.email,
+        formData.phone,
+        "D"
+      );
+
+      // Always show the OTP field even if result.success is false
+      setEmailOtpSent(true);
+
+      if (result.success) {
+        setOtpStored(result.otp);
+        setSuccess("✅ OTP sent to your email!");
+      } else {
+        setError("⚠️ Failed to send OTP. Please check API or email setup.");
+      }
+    } catch (err) {
+      setError("❌ Something went wrong while sending OTP.");
+    }
+    setSaving(false);
+  };
 
   const handleVerifyEmailOTP = async () => {
     setSaving(true);
-    const result = await AuthApi.verifyOTPtoEmail(formData.email, formData.phone, emailOtp, "D");
+    const result = await AuthApi.verifyOTPtoEmail(
+      formData.email,
+      formData.phone,
+      emailOtp,
+      "D"
+    );
 
     if (result.success) {
       setSuccess("✅ Email verified successfully!");
       setStep(3);
+      if (result.access_token) {
+        localStorage.setItem("access_token", result.access_token);
+      }
     } else {
       setError("❌ Invalid OTP. Please try again.");
     }
@@ -275,8 +270,17 @@ const setStep = (s) => {
 
   // DL Verification
   const handleVerifyDL = async () => {
+    setError("");
+    if (!deliveryPartner) {
+      setError("Delivery partner data not loaded. Please wait and try again.");
+      return;
+    }
     if (!formData.driving_license || formData.driving_license.length < 10) {
       setError("Please enter a valid driving license number");
+      return;
+    }
+    if (!formData.dob) {
+      setError("Please enter your Date of Birth");
       return;
     }
 
@@ -287,12 +291,17 @@ const setStep = (s) => {
 
     setSaving(true);
 
-    const result = await verifyDrivingLicense(formData.driving_license);
+    const result = await verifyDrivingLicense(
+      formData.driving_license,
+      formData.dob
+    );
 
     if (result.success) {
-      await DeliveryPartner.update(deliveryPartner.id, {
+      // use deliveryPartner.id (NOT partners.id)
+      await DeliveryPartnerApi.update(deliveryPartner.id, {
         driving_license_verified: true,
         driving_license: formData.driving_license,
+        dob: formData.dob,
         dl_verification_data: result.data,
         vehicle_type: formData.vehicle_type,
         vehicle_number: formData.vehicle_number,
@@ -321,37 +330,65 @@ const setStep = (s) => {
     }
 
     setSaving(true);
+    setError("");
+    setSuccess("");
 
-    const result = await verifyBankAccount(
-      formData.account_number,
-      formData.ifsc
-    );
+    try {
+      const accessToken = localStorage.getItem("access_token");
+      if (!accessToken) throw new Error("User not authenticated");
 
-    if (result.success) {
-      await DeliveryPartner.update(deliveryPartner.id, {
-        bank_verified: true,
-        bank_account: {
-          account_number: formData.account_number,
-          ifsc: formData.ifsc,
-          account_holder_name: result.data.account_holder_name,
-          bank_name: result.data.bank_name,
+      const response = await fetch(`${API_BASE_URL}/api/verifyacno`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
-        onboarding_status: "documents_pending",
+        body: JSON.stringify({
+          acno: formData.account_number,
+          ifsc: formData.ifsc,
+        }),
       });
 
-      setFormData({
-        ...formData,
-        account_holder_name: result.data.account_holder_name,
-        bank_name: result.data.bank_name,
-      });
+      if (!response.ok)
+        throw new Error(`API returned status ${response.status}`);
 
-      setSuccess("✅ Bank account verified successfully!");
-      setStep(5);
-    } else {
-      setError(`❌ ${result.message}`);
+      const text = await response.text();
+      if (!text) throw new Error("Empty response from server");
+
+      const result = JSON.parse(text);
+
+      if (result.verified) {
+        const accountHolderName = result.data?.account_holder_name || "";
+        const bankName = result.data?.bank_name || "";
+
+        await DeliveryPartnerApi.update(deliveryPartner.id, {
+          bank_verified: true,
+          bank_account: {
+            account_number: formData.account_number,
+            ifsc: formData.ifsc,
+            account_holder_name: accountHolderName,
+            bank_name: bankName,
+          },
+          onboarding_status: "documents_pending",
+        });
+
+        setFormData({
+          ...formData,
+          account_holder_name: accountHolderName,
+          bank_name: bankName,
+        });
+
+        setSuccess("✅ Bank account verified successfully!");
+        setStep(5);
+      } else {
+        setError(result.message || "❌ Invalid bank details");
+      }
+    } catch (err) {
+      console.error("Bank verification error:", err);
+      setError(err.message || "❌ Something went wrong during verification");
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   // Document Upload
@@ -385,7 +422,7 @@ const setStep = (s) => {
     }
     setSaving(true);
     try {
-      await DeliveryPartner.update(deliveryPartner.id, {
+      await DeliveryPartnerApi.update(deliveryPartner.id, {
         documents: formData.documents,
         onboarding_status: "selfie_pending",
       });
@@ -438,7 +475,7 @@ const setStep = (s) => {
 
     setSaving(true);
     try {
-      await DeliveryPartner.update(deliveryPartner.id, {
+      await DeliveryPartnerApi.update(deliveryPartner.id, {
         selfie_url: formData.selfie_url,
         selfie_location: formData.selfie_location,
         alternate_phones: formData.alternatePhones.filter((p) => p.number),
@@ -589,55 +626,56 @@ const setStep = (s) => {
 
           {/* Step 2: Email Verification */}
           {step === 2 && (
-  <div className="space-y-6">
-    <div className="text-center mb-6">
-      <Mail className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
-      <h3 className="text-2xl font-bold text-black">Email Verification</h3>
-    </div>
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <Mail className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-black">
+                  Email Verification
+                </h3>
+              </div>
 
-    <div>
-      <Label className="text-black">Email Address *</Label>
-      <Input
-        type="email"
-        value={formData.email}
-        onChange={(e) =>
-          setFormData({ ...formData, email: e.target.value })
-        }
-        placeholder="your@email.com"
-        disabled={emailOtpSent}
-        className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
-      />
-    </div>
+              <div>
+                <Label className="text-black">Email Address *</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  placeholder="your@email.com"
+                  disabled={emailOtpSent}
+                  className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
+                />
+              </div>
 
-    {!emailOtpSent ? (
-      <Button
-        onClick={handleSendEmailOTP}
-        disabled={saving}
-        className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
-      >
-        {saving ? "Sending..." : "Send OTP"}
-      </Button>
-    ) : (
-      <div className="space-y-3">
-        <Input
-          placeholder="Enter 6-digit OTP"
-          value={emailOtp}
-          onChange={(e) => setEmailOtp(e.target.value)}
-          maxLength={6}
-          className="text-center text-lg border-2 border-[#075E66] focus:border-[#FFEB3B]"
-        />
-        <Button
-          onClick={handleVerifyEmailOTP}
-          disabled={saving || emailOtp.length !== 6}
-          className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
-        >
-          {saving ? "Verifying..." : "Verify OTP"}
-        </Button>
-      </div>
-    )}
-  </div>
-)}
-
+              {!emailOtpSent ? (
+                <Button
+                  onClick={handleSendEmailOTP}
+                  disabled={saving}
+                  className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
+                >
+                  {saving ? "Sending..." : "Send OTP"}
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Enter 6-digit OTP"
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value)}
+                    maxLength={6}
+                    className="text-center text-lg border-2 border-[#075E66] focus:border-[#FFEB3B]"
+                  />
+                  <Button
+                    onClick={handleVerifyEmailOTP}
+                    disabled={saving || emailOtp.length !== 6}
+                    className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
+                  >
+                    {saving ? "Verifying..." : "Verify OTP"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Step 3: Driving License */}
           {step === 3 && (
@@ -659,6 +697,17 @@ const setStep = (s) => {
                     })
                   }
                   placeholder="DL Number"
+                  className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
+                />
+              </div>
+              <div>
+                <Label className="text-black">Date of Birth *</Label>
+                <Input
+                  type="date"
+                  value={formData.dob}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dob: e.target.value })
+                  }
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
