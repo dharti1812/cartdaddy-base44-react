@@ -90,7 +90,7 @@ export default function DeliveryPartnerOnboarding() {
       setCurrentUser(user);
 
       // 2️⃣ Get all delivery partners
-      const partners = await DeliveryPartnerApi.list();
+      const partners = await DeliveryPartner.list();
       console.log("All Delivery Partners:", partners);
 
       const userEmail = (user?.email || user?.email || "")
