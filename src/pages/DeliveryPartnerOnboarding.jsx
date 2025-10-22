@@ -455,8 +455,9 @@ export default function DeliveryPartnerOnboarding() {
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Image = reader.result.split(",")[1]; // convert to base64
-        const res = await fetch("YOUR_API_URL/upload-selfie", {
+        const accessToken = sessionStorage.getItem("access_token");
+        const base64Image = reader.result.split(",")[1];
+        const res = await fetch(`${API_BASE_URL}/api/selfie-upload`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -466,7 +467,8 @@ export default function DeliveryPartnerOnboarding() {
         });
         const data = await res.json();
         if (data.success) {
-          setFormData({ ...formData, selfie_url: data.path }); // API should return the saved URL
+          console.log(data);
+          setFormData((prev) => ({ ...prev, selfie_url: data.path }));
           alert("✅ Selfie uploaded successfully");
         } else {
           alert(data.message || "Selfie upload failed");
@@ -482,31 +484,10 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   const submitSelfie = async () => {
+    console.log(formData);
     if (!formData.selfie_url) return alert("Upload selfie first");
 
-    setUploading(true);
-    try {
-      const res = await fetch("YOUR_API_URL/submit-step6", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert("Step 6 submitted successfully!");
-        // move to next step
-      } else {
-        alert(data.message || "Submission failed");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error submitting step 6");
-    } finally {
-      setUploading(false);
-    }
+    setStep(step + 1);
   };
 
   const handleAddPhone = () => {
@@ -530,45 +511,50 @@ export default function DeliveryPartnerOnboarding() {
     });
   };
 
- const sendAlternateOTP = async (phone) => {
-  try {
-    const accessToken = sessionStorage.getItem("access_token");
-    console.log(accessToken);
-    const response = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        phone,
-        role: "staff",
-        userType : "delivery_boy" // ✅ default role since your UI doesn’t include it
-      }),
-    });
+  const sendAlternateOTP = async (phone) => {
+    try {
+      const accessToken = sessionStorage.getItem("access_token");
+      console.log(accessToken);
+      const response = await fetch(
+        `${API_BASE_URL}/api/send-otp/additional-phone`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            phone,
+            role: "staff",
+            userType: "delivery_boy",
+          }),
+        }
+      );
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error sending OTP:", error);
-    return { success: false, message: "Network error while sending OTP" };
-  }
-};
-
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      return { success: false, message: "Network error while sending OTP" };
+    }
+  };
 
   const verifyAlternateOTP = async (phone, otp) => {
     try {
       const access_token = sessionStorage.getItem("access_token");
       console.log(access_token);
-      const res = await fetch(`${API_BASE_URL}/api/verify-otp/additional-phone`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${access_token}`,
-        },
-        body: JSON.stringify({ phone, otp , userType: 'delivery_boy' }),
-      });
-      return await res.json(); // should return { success: true/false, message }
+      const res = await fetch(
+        `${API_BASE_URL}/api/verify-otp/additional-phone`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${access_token}`,
+          },
+          body: JSON.stringify({ phone, otp, userType: "delivery_boy" }),
+        }
+      );
+      return await res.json();
     } catch (err) {
       console.error(err);
       return { success: false, message: "Failed to verify OTP" };
@@ -1154,7 +1140,9 @@ export default function DeliveryPartnerOnboarding() {
                 disabled={
                   uploading ||
                   !formData.selfie_url ||
-                  formData.alternatePhones.some((p) => p.number && !p.verified)
+                  formData.alternatePhones.some(
+                    (p) => p.number.trim() && !p.verified
+                  )
                 }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
