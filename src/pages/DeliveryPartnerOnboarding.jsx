@@ -403,7 +403,6 @@ export default function DeliveryPartnerOnboarding() {
           }
         );
 
-        
         const contentType = response.headers.get("content-type");
         let data;
         if (contentType && contentType.includes("application/json")) {
@@ -454,53 +453,60 @@ export default function DeliveryPartnerOnboarding() {
 
     setUploading(true);
     try {
-      const { file_url } = await UploadFile({ file });
-
-      // Get current location
-      const location = await new Promise((resolve) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) =>
-            resolve({
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude,
-              timestamp: new Date().toISOString(),
-            }),
-          () => resolve(null)
-        );
-      });
-
-      setFormData({
-        ...formData,
-        selfie_url: file_url,
-        selfie_location: location,
-      });
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Image = reader.result.split(",")[1]; // convert to base64
+        const res = await fetch("YOUR_API_URL/upload-selfie", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ image: base64Image, filename: file.name }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setFormData({ ...formData, selfie_url: data.path }); // API should return the saved URL
+          alert("✅ Selfie uploaded successfully");
+        } else {
+          alert(data.message || "Selfie upload failed");
+        }
+      };
+      reader.readAsDataURL(file);
     } catch (err) {
-      setError("Failed to upload selfie");
+      console.error(err);
+      alert("Error uploading selfie");
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const submitSelfie = async () => {
-    if (!formData.selfie_url) {
-      setError("Please upload your selfie");
-      return;
-    }
+    if (!formData.selfie_url) return alert("Upload selfie first");
 
-    setSaving(true);
+    setUploading(true);
     try {
-      await DeliveryPartnerApi.update(deliveryPartner.id, {
-        selfie_url: formData.selfie_url,
-        selfie_location: formData.selfie_location,
-        alternate_phones: formData.alternatePhones.filter((p) => p.number),
-        onboarding_status: "retailers_pending",
+      const res = await fetch("YOUR_API_URL/submit-step6", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(formData),
       });
-
-      setSuccess("✅ Selfie uploaded! Now select sellers.");
-      setStep(7);
-    } catch (e) {
-      setError(e.message);
+      const data = await res.json();
+      if (data.success) {
+        alert("Step 6 submitted successfully!");
+        // move to next step
+      } else {
+        alert(data.message || "Submission failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error submitting step 6");
+    } finally {
+      setUploading(false);
     }
-    setSaving(false);
   };
 
   const handleAddPhone = () => {
@@ -509,16 +515,64 @@ export default function DeliveryPartnerOnboarding() {
       ...formData,
       alternatePhones: [
         ...formData.alternatePhones,
-        { number: "", label: "secondary" },
+        { number: "", label: "secondary", otpSent: false, verified: false },
       ],
     });
   };
 
   const handleRemovePhone = (index) => {
+    const updatedPhones = formData.alternatePhones.filter(
+      (_, i) => i !== index
+    );
     setFormData({
       ...formData,
-      alternatePhones: formData.alternatePhones.filter((_, i) => i !== index),
+      alternatePhones: updatedPhones,
     });
+  };
+
+ const sendAlternateOTP = async (phone) => {
+  try {
+    const accessToken = sessionStorage.getItem("access_token");
+    console.log(accessToken);
+    const response = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        phone,
+        role: "staff",
+        userType : "delivery_boy" // ✅ default role since your UI doesn’t include it
+      }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return { success: false, message: "Network error while sending OTP" };
+  }
+};
+
+
+  const verifyAlternateOTP = async (phone, otp) => {
+    try {
+      const access_token = sessionStorage.getItem("access_token");
+      console.log(access_token);
+      const res = await fetch(`${API_BASE_URL}/api/verify-otp/additional-phone`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access_token}`,
+        },
+        body: JSON.stringify({ phone, otp , userType: 'delivery_boy' }),
+      });
+      return await res.json(); // should return { success: true/false, message }
+    } catch (err) {
+      console.error(err);
+      return { success: false, message: "Failed to verify OTP" };
+    }
   };
 
   if (loading) {
@@ -904,46 +958,159 @@ export default function DeliveryPartnerOnboarding() {
           {/* Step 6: Selfie + Contact Numbers */}
           {step === 6 && (
             <div className="space-y-6">
-              <div className="text-center mb-6">
-                <Camera className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
-                <h3 className="text-2xl font-bold text-black">
-                  Selfie & Contact Numbers
+              <div className="text-center">
+                <Camera className="w-16 h-16 text-[#F4B321] mx-auto" />
+                <h3 className="text-2xl font-bold">
+                  Selfie & Additional Mobile Number
                 </h3>
               </div>
 
-              {/* Additional Contact Number */}
+              {/* Additional Mobile Number */}
               <div className="space-y-3">
-                <Label className="text-black">
-                  Additional Contact Number (Optional)
-                </Label>
+                <Label>Additional Mobile Number (Optional)</Label>
                 <p className="text-xs text-gray-500">Add 1 more number</p>
+
                 {formData.alternatePhones.map((phone, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder="+91XXXXXXXXXX"
-                      value={phone.number}
-                      onChange={(e) => {
-                        const updated = [...formData.alternatePhones];
-                        updated[index].number = e.target.value;
-                        setFormData({ ...formData, alternatePhones: updated });
-                      }}
-                      className="flex-1 border-2 border-[#075E66] focus:border-[#FFEB3B]"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemovePhone(index)}
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                  <div
+                    key={index}
+                    className="space-y-2 border p-3 rounded-lg bg-gray-50"
+                  >
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        placeholder="+91XXXXXXXXXX"
+                        value={phone.number}
+                        onChange={(e) => {
+                          const updated = [...formData.alternatePhones];
+                          updated[index].number = e.target.value;
+                          setFormData({
+                            ...formData,
+                            alternatePhones: updated,
+                          });
+                        }}
+                        className="flex-1"
+                        disabled={phone.verified}
+                      />
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePhone(index)}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </div>
+
+                    {/* OTP Section */}
+                    {!phone.otpSent && !phone.verified && (
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          if (!phone.number)
+                            return alert("Enter mobile number first");
+                          setUploading(true);
+                          const res = await sendAlternateOTP(
+                            phone.number,
+                            phone.label
+                          );
+                          setUploading(false);
+                          if (res.success) {
+                            const updated = [...formData.alternatePhones];
+                            updated[index].otpSent = true;
+                            setFormData({
+                              ...formData,
+                              alternatePhones: updated,
+                            });
+                            alert(`✅ OTP sent to ${phone.number}`);
+                          } else {
+                            alert(res.message || "Failed to send OTP");
+                          }
+                        }}
+                        className="bg-[#F4B321] text-gray-900 w-full"
+                        disabled={uploading}
+                      >
+                        {uploading ? "Sending..." : "Send OTP"}
+                      </Button>
+                    )}
+
+                    {phone.otpSent && !phone.verified && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Enter OTP"
+                          maxLength={6}
+                          value={phone.otp || ""}
+                          onChange={(e) => {
+                            const updated = [...formData.alternatePhones];
+                            updated[index].otp = e.target.value;
+                            setFormData({
+                              ...formData,
+                              alternatePhones: updated,
+                            });
+                          }}
+                          className="text-center text-lg"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-[#F4B321] text-gray-900"
+                            onClick={async () => {
+                              if (!phone.otp)
+                                return alert("Enter OTP to verify number");
+                              setUploading(true);
+                              const res = await verifyAlternateOTP(
+                                phone.number,
+                                phone.otp
+                              );
+                              setUploading(false);
+                              if (res.success) {
+                                const updated = [...formData.alternatePhones];
+                                updated[index].verified = true;
+                                setFormData({
+                                  ...formData,
+                                  alternatePhones: updated,
+                                });
+                                alert(
+                                  `✅ ${phone.number} verified successfully`
+                                );
+                              } else {
+                                alert(res.message || "Invalid OTP");
+                              }
+                            }}
+                            disabled={uploading}
+                          >
+                            {uploading ? "Verifying..." : "Verify OTP"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              const res = await sendAlternateOTP(phone.number);
+                              if (res.success) {
+                                alert(`OTP resent to ${phone.number}`);
+                              } else {
+                                alert(res.message || "Failed to resend OTP");
+                              }
+                            }}
+                          >
+                            Resend OTP
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {phone.verified && (
+                      <Badge className="bg-green-600 text-white text-xs">
+                        ✅ Verified
+                      </Badge>
+                    )}
                   </div>
                 ))}
+
                 {formData.alternatePhones.length === 0 && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleAddPhone}
-                    className="w-full border-2 border-[#075E66] text-black"
+                    className="w-full"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Add Number
                   </Button>
@@ -952,7 +1119,7 @@ export default function DeliveryPartnerOnboarding() {
 
               {/* Selfie Upload */}
               <div>
-                <Label className="text-black">Upload Your Selfie *</Label>
+                <Label>Upload Your Selfie *</Label>
                 <p className="text-xs text-gray-500 mb-2">
                   Take a clear selfie with your face visible
                 </p>
@@ -984,10 +1151,14 @@ export default function DeliveryPartnerOnboarding() {
 
               <Button
                 onClick={submitSelfie}
-                disabled={saving || !formData.selfie_url}
-                className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
+                disabled={
+                  uploading ||
+                  !formData.selfie_url ||
+                  formData.alternatePhones.some((p) => p.number && !p.verified)
+                }
+                className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
-                {saving ? "Submitting..." : "Continue to Seller Selection"}
+                {uploading ? "Submitting..." : "Continue to Seller Selection"}
               </Button>
             </div>
           )}
