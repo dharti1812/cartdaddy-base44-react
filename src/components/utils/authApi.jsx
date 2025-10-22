@@ -87,7 +87,7 @@ export const AuthApi = {
   verifyDrivingLicense: async (dlNumber, dob, vehicle_type) => {
     try {
       const token = sessionStorage.getItem("access_token");
-      
+      console.log("🔍 Verifying DL:", dlNumber, dob, vehicle_type)  ;
       const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, },

@@ -271,7 +271,7 @@ export default function DeliveryPartnerOnboarding() {
   // DL Verification
   const handleVerifyDL = async () => {
     setError("");
-    
+
     if (!formData.driving_license || formData.driving_license.length < 10) {
       setError("Please enter a valid driving license number");
       return;
@@ -312,7 +312,7 @@ export default function DeliveryPartnerOnboarding() {
     }
 
     if (formData.ifsc.length !== 11) {
-      setError("IFSC code must be 11 characters");
+      setError("IFSC code must be exactly 11 characters");
       return;
     }
 
@@ -321,7 +321,7 @@ export default function DeliveryPartnerOnboarding() {
     setSuccess("");
 
     try {
-      const accessToken = localStorage.getItem("access_token");
+      const accessToken = sessionStorage.getItem("access_token");
       if (!accessToken) throw new Error("User not authenticated");
 
       const response = await fetch(`${API_BASE_URL}/api/verifyacno`, {
@@ -335,29 +335,26 @@ export default function DeliveryPartnerOnboarding() {
           ifsc: formData.ifsc,
         }),
       });
-
-      if (!response.ok)
+      console.log(response);
+      // check HTTP status first
+      if (!response.ok) {
+        const errorText = await response.text(); // read body once
+        console.error("API returned error:", errorText);
         throw new Error(`API returned status ${response.status}`);
+      }
 
-      const text = await response.text();
-      if (!text) throw new Error("Empty response from server");
+      // safely parse JSON only once
+      let result;
+      try {
+        result = await response.json();
+      } catch (err) {
+        console.error("Failed to parse JSON:", err);
+        throw new Error("Invalid response from server");
+      }
 
-      const result = JSON.parse(text);
-
-      if (result.verified) {
-        const accountHolderName = result.data?.account_holder_name || "";
-        const bankName = result.data?.bank_name || "";
-
-        await DeliveryPartnerApi.update(deliveryPartner.id, {
-          bank_verified: true,
-          bank_account: {
-            account_number: formData.account_number,
-            ifsc: formData.ifsc,
-            account_holder_name: accountHolderName,
-            bank_name: bankName,
-          },
-          onboarding_status: "documents_pending",
-        });
+      if (result?.verified) {
+        const accountHolderName = result.bank_info?.account_holder_name || "";
+        const bankName = result.bank_info?.bank_name || "";
 
         setFormData({
           ...formData,
@@ -368,7 +365,7 @@ export default function DeliveryPartnerOnboarding() {
         setSuccess("✅ Bank account verified successfully!");
         setStep(5);
       } else {
-        setError(result.message || "❌ Invalid bank details");
+        setError(result?.message || "❌ Invalid bank details");
       }
     } catch (err) {
       console.error("Bank verification error:", err);
@@ -379,46 +376,75 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   // Document Upload
-  const handleDocUpload = async (e, type) => {
+  const handleDocUpload = (e, documentType) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setUploading(true);
-    try {
-      const { file_url } = await UploadFile({ file });
-      setFormData((prev) => ({
-        ...prev,
-        documents: [
-          ...prev.documents.filter((d) => d.type !== type),
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64Image = reader.result.split(",")[1];
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/kyc-documents-upload`,
           {
-            url: file_url,
-            type: type,
-            uploaded_at: new Date().toISOString(),
-          },
-        ],
-      }));
-    } catch (err) {
-      setError("Failed to upload document");
-    }
-    setUploading(false);
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionStorage.getItem("access_token")}`,
+            },
+            body: JSON.stringify({
+              image: base64Image,
+              filename: file.name,
+              document_type: documentType,
+            }),
+          }
+        );
+
+        
+        const contentType = response.headers.get("content-type");
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          console.error("Unexpected response:", text);
+          alert("Server error. Check console for details.");
+          return;
+        }
+
+        if (data.result) {
+          setFormData((prev) => ({
+            ...prev,
+            [documentType]: data.upload_id,
+          }));
+        } else {
+          alert("Upload failed: " + data.message);
+        }
+      } catch (error) {
+        console.error("Error uploading:", error);
+        alert("Error uploading document. See console.");
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    reader.readAsDataURL(file);
   };
 
-  const submitDocs = async () => {
-    if ((formData.documents?.length || 0) < 4) {
-      return setError("Please upload all 4 required documents.");
+  const submitDocs = () => {
+    if (
+      formData.dl_front &&
+      formData.pan &&
+      formData.aadhar_front &&
+      formData.vehicle_rc
+    ) {
+      setStep(step + 1);
+    } else {
+      alert("Please upload all KYC documents before continuing.");
     }
-    setSaving(true);
-    try {
-      await DeliveryPartnerApi.update(deliveryPartner.id, {
-        documents: formData.documents,
-        onboarding_status: "selfie_pending",
-      });
-      setSuccess("✅ Documents uploaded successfully!");
-      setStep(6);
-    } catch (e) {
-      setError(e.message);
-    }
-    setSaving(false);
   };
 
   // Selfie Upload
@@ -828,43 +854,45 @@ export default function DeliveryPartnerOnboarding() {
                 <FileText className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-black">KYC Documents</h3>
               </div>
+
               <div className="space-y-4">
-                {["dl_front", "pan", "aadhaar_front", "vehicle_rc"].map(
-                  (docType) => {
-                    const doc = formData.documents.find(
-                      (d) => d.type === docType
-                    );
-                    return (
-                      <div key={docType}>
-                        <Label className="text-black capitalize">
-                          {docType.replace("_", " ")} *
-                        </Label>
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleDocUpload(e, docType)}
-                          disabled={uploading || !!doc}
-                          className="border-2 border-[#075E66]"
-                        />
-                        {doc && (
-                          <p className="text-xs text-green-600 mt-1">
-                            ✅ Uploaded
-                          </p>
-                        )}
-                      </div>
-                    );
-                  }
-                )}
+                {[
+                  { key: "dl_front", label: "Driving License (Front)" },
+                  { key: "pan", label: "PAN Card" },
+                  { key: "aadhar_front", label: "Aadhaar (Front)" },
+                  { key: "vehicle_rc", label: "Vehicle RC" },
+                ].map((doc) => (
+                  <div key={doc.key}>
+                    <Label className="text-black">{doc.label} *</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleDocUpload(e, doc.key)}
+                      disabled={uploading || formData[doc.key]}
+                      className="border-2 border-[#075E66]"
+                    />
+                    {formData[doc.key] && (
+                      <p className="text-xs text-green-600 mt-1">✅ Uploaded</p>
+                    )}
+                  </div>
+                ))}
               </div>
+
               {uploading && (
                 <p className="text-sm text-blue-600 text-center">
                   Uploading...
                 </p>
               )}
+
               <Button
                 onClick={submitDocs}
                 disabled={
-                  saving || uploading || (formData.documents?.length || 0) < 4
+                  saving ||
+                  uploading ||
+                  !formData.dl_front ||
+                  !formData.pan ||
+                  !formData.aadhar_front ||
+                  !formData.vehicle_rc
                 }
                 className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
               >
