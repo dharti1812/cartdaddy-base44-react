@@ -2,7 +2,7 @@ import { API_BASE_URL } from "../../config";
 
 export const deliveryPartnerApi = {
   list: async () => {
-    const token = sessionStorage.getItem("access_token");
+    const token = sessionStorage.getItem("token");
     console.log("Token:", token);
     const res = await fetch(`${API_BASE_URL}/api/delivery_boy`, {
       headers: {
@@ -10,12 +10,13 @@ export const deliveryPartnerApi = {
         Authorization: `Bearer ${token}`,
       },
     });
+    console.log("Response Status:", res.status);
     if (!res.ok) throw new Error("Failed to fetch delivery partners");
     return res.json();
   },
 
   getByUserId: async (userId) => {
-    const token = sessionStorage.getItem("access_token");
+    const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/delivery_boy/${userId}`, {
       headers: {
         "Content-Type": "application/json",
@@ -29,7 +30,7 @@ export const deliveryPartnerApi = {
   },
 
   update: async (id, data) => {
-    const token = sessionStorage.getItem("access_token");
+    const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/delivery_boy/${id}`, {
       method: "PUT", // or PATCH
       headers: {
