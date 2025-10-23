@@ -33,7 +33,7 @@ import {
   verifyDrivingLicense,
   verifyBankAccount,
 } from "../components/utils/cashfreeConfig";
-import { DeliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
+import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 
 export default function DeliveryPartnerOnboarding() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -178,7 +178,12 @@ export default function DeliveryPartnerOnboarding() {
 
     setSaving(true);
 
-    const result = await AuthApi.sendOTPtoMobile(phone, name,  userCode, address);
+    const result = await AuthApi.sendOTPtoMobile(
+      phone,
+      name,
+      userCode,
+      address
+    );
 
     if (result.success) {
       setOtpStored(result.otp);
@@ -229,7 +234,7 @@ export default function DeliveryPartnerOnboarding() {
         formData.email,
         formData.phone,
         "D",
-        formData.address,
+        formData.address
       );
 
       // Always show the OTP field even if result.success is false
@@ -254,7 +259,7 @@ export default function DeliveryPartnerOnboarding() {
       formData.phone,
       emailOtp,
       "D",
-      formData.address,
+      formData.address
     );
 
     if (result.success) {
@@ -465,15 +470,12 @@ export default function DeliveryPartnerOnboarding() {
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ image: base64Image, filename: file.name }),
-         
         });
         const data = await res.json();
-        alert(JSON.stringify(data, null, 2));
+
         if (data.result) {
-          console.log(data);
           setFormData((prev) => ({ ...prev, selfie_url: data.path }));
-          console.log('daj');
-          //alert("✅ Selfie uploaded successfully");
+          sessionStorage.setItem("user", JSON.stringify(data.user));
         } else {
           alert(data.message || "Selfie upload failed");
         }
