@@ -31,11 +31,11 @@ export const AuthApi = {
   },
 
 
-  sendOTPtoMobile: async (phone, name, userCode) => {
+  sendOTPtoMobile: async (phone, name, userCode, address) => {
     const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name, userCode }),
+      body: JSON.stringify({ phone, name, userCode, address  }),
     });
     if (!res.ok) return { success: false };
     return await res.json();
@@ -53,13 +53,13 @@ export const AuthApi = {
   },
 
 
-  sendOTPtoEmail: async (email, phone, userCode) => {
+  sendOTPtoEmail: async (email, phone, userCode, address) => {
     console.log("🔍 Sending email OTP to:", email, "for phone:", phone);
     try {
       const res = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, phone, userCode }),
+        body: JSON.stringify({ email, phone, userCode, address }),
       });
       if (!res.ok) throw new Error("Failed to send OTP");
       return await res.json();
@@ -69,12 +69,12 @@ export const AuthApi = {
     }
   },
 
-  verifyOTPtoEmail: async (email, phone, email_otp, userType) => {
+  verifyOTPtoEmail: async (email, phone, email_otp, userType, address) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/verify-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, phone, email_otp, userType }),
+        body: JSON.stringify({ email, phone, email_otp, userType, address }),
       });
       if (!res.ok) throw new Error("Failed to verify OTP");
       return await res.json();

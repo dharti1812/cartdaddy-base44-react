@@ -62,6 +62,7 @@ export default function DeliveryPartnerOnboarding() {
 
   const [formData, setFormData] = useState({
     full_name: "",
+    address: "",
     phone: "",
     email: "",
     alternatePhones: [{ number: "", label: "secondary" }],
@@ -86,12 +87,10 @@ export default function DeliveryPartnerOnboarding() {
     try {
       // 1️⃣ Get current logged-in user
       const user = await User.me();
-      console.log("Current User:", user);
       setCurrentUser(user);
 
       // 2️⃣ Get all delivery partners
       const partners = await DeliveryPartner.list();
-      console.log("All Delivery Partners:", partners);
 
       const userEmail = (user?.email || user?.email || "")
         .toString()
@@ -121,10 +120,10 @@ export default function DeliveryPartnerOnboarding() {
       }
 
       setDeliveryPartner(myPartner);
-      console.log("Current Delivery Partner:", myPartner);
 
       setFormData({
         full_name: myPartner.full_name || "",
+        address: myPartner.address || "",
         phone: myPartner.phone || "",
         email: myPartner.email || user.email || "",
         alternatePhones: myPartner.alternate_phones || [
@@ -154,7 +153,6 @@ export default function DeliveryPartnerOnboarding() {
 
       setLoading(false);
     } catch (error) {
-      console.error("Error loading data:", error);
       setError(error.message || "Failed to load delivery partner data");
       setLoading(false);
     }
@@ -175,11 +173,12 @@ export default function DeliveryPartnerOnboarding() {
 
     const phone = formData.phone;
     const name = formData.full_name || "Delivery Partner";
+    const address = formData.address;
     const userCode = "D";
 
     setSaving(true);
 
-    const result = await AuthApi.sendOTPtoMobile(phone, name, userCode);
+    const result = await AuthApi.sendOTPtoMobile(phone, name,  userCode, address);
 
     if (result.success) {
       setOtpStored(result.otp);
@@ -229,7 +228,8 @@ export default function DeliveryPartnerOnboarding() {
       const result = await AuthApi.sendOTPtoEmail(
         formData.email,
         formData.phone,
-        "D"
+        "D",
+        formData.address,
       );
 
       // Always show the OTP field even if result.success is false
@@ -253,7 +253,8 @@ export default function DeliveryPartnerOnboarding() {
       formData.email,
       formData.phone,
       emailOtp,
-      "D"
+      "D",
+      formData.address,
     );
 
     if (result.success) {
@@ -464,12 +465,15 @@ export default function DeliveryPartnerOnboarding() {
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ image: base64Image, filename: file.name }),
+         
         });
         const data = await res.json();
-        if (data.success) {
+        alert(JSON.stringify(data, null, 2));
+        if (data.result) {
           console.log(data);
           setFormData((prev) => ({ ...prev, selfie_url: data.path }));
-          alert("✅ Selfie uploaded successfully");
+          console.log('daj');
+          //alert("✅ Selfie uploaded successfully");
         } else {
           alert(data.message || "Selfie upload failed");
         }
@@ -634,6 +638,21 @@ export default function DeliveryPartnerOnboarding() {
                   }
                   placeholder="As per Driving License"
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
+                />
+              </div>
+              <div>
+                <Label className="text-black">Current Address *</Label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      address: e.target.value,
+                    })
+                  }
+                  placeholder="Your current address"
+                  className="border-2 border-[#075E66] focus:border-[#FFEB3B] w-full rounded-md p-2"
+                  rows={2}
                 />
               </div>
               <div>
