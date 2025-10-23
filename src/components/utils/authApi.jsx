@@ -1,13 +1,13 @@
 import { API_BASE_URL } from "../../config";
 
 export const AuthApi = {
-  login: async (identifier, password) => {
+  login: async (identifier, password, userType) => {
     const res = await fetch(`${API_BASE_URL}/api/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, userType }),
     });
 
     if (!res.ok) throw new Error("Failed to login");
@@ -27,6 +27,7 @@ export const AuthApi = {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return { authorized: false };
+    console.log(res);
     return await res.json();
   },
 

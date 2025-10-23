@@ -83,7 +83,10 @@ export default function DeliveryBoyPortal() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("delivery_partner_identifier");
+    sessionStorage.removeItem("access_token");
+    localStorage.removeItem("DeliveryPartnerOnboardingStep");
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem('delivery_partner_identifier');
     window.location.href = createPageUrl("PortalSelector");
   };
 

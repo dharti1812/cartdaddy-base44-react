@@ -490,7 +490,6 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   const submitSelfie = async () => {
-    console.log(formData);
     if (!formData.selfie_url) return alert("Upload selfie first");
 
     setStep(step + 1);
@@ -1182,10 +1181,37 @@ export default function DeliveryPartnerOnboarding() {
               <p className="text-gray-600 mb-6">
                 Now select sellers you want to work with
               </p>
+
               <Button
-                onClick={() =>
-                  (window.location.href = createPageUrl("DeliveryBoyPortal"))
-                }
+                onClick={async () => {
+                  try {
+                    const user = JSON.parse(sessionStorage.getItem("user")); 
+                    if (!user?.email) throw new Error("User email not found");
+
+                    const res = await fetch(
+                      `${API_BASE_URL}/api/send-login-credentials`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${sessionStorage.getItem(
+                            "access_token"
+                          )}`,
+                        },
+                        body: JSON.stringify({
+                          email: user.email,
+                        }),
+                      }
+                    );
+
+                    if (!res.ok) throw new Error("Failed to send email");
+                    console.log("✅ Email sent successfully to", user.email);
+                    window.location.href = createPageUrl("DeliveryBoyPortal");
+                  } catch (err) {
+                    console.error("❌ Error sending email:", err);
+                    alert("Failed to send login email. Please try again.");
+                  }
+                }}
                 className="bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
               >
                 Continue to Seller Selection
