@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AuthApi } from "@/components/utils/authApi";
+
 import {
   Bell,
   Package,
@@ -99,26 +101,23 @@ export default function SellerPortal() {
     loadData();
   }, []);
 
-  const handleLogout = async () => {
-  try {
-    const token = localStorage.getItem("authToken");
-    await fetch(`${API_BASE_URL}/api/seller/logout`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  } catch (err) {
-    console.error("Logout API failed", err);
-  } finally {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("seller_identifier");
-    console.log("🚪 Logged out");
-    window.location.href = createPageUrl("PortalSelector");
-  }
-};
+
+
+const handleLogout = async () => {
+      try {
+        const response = await AuthApi.logout();
+  
+        if (!response.ok) throw new Error("Logout failed");
+  
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+  
+        window.location.href = createPageUrl("PortalSelector");
+      } catch (error) {
+        console.error("Error logging out:", error);
+        alert("Failed to log out. Please try again.");
+      }
+    };
 
   if (error) {
     return (
@@ -227,25 +226,7 @@ export default function SellerPortal() {
         mobileView ? "max-w-md mx-auto" : ""
       }`}
     >
-      {typeof window !== "undefined" && window.innerWidth > 768 && (
-        <div className="fixed top-4 right-4 z-50">
-          <Button
-            onClick={() => setMobileView(!mobileView)}
-            variant="outline"
-            size="sm"
-            className="bg-white border-2 border-[#FFEB3B]"
-          >
-            {mobileView ? (
-              <Monitor className="w-4 h-4 mr-2" />
-            ) : (
-              <Smartphone className="w-4 h-4 mr-2" />
-            )}
-            <span className="text-black">
-              {mobileView ? "Desktop" : "Mobile"} View
-            </span>
-          </Button>
-        </div>
-      )}
+      
 
       <DeviceSessionManager
         retailerId={sellerProfile?.id}

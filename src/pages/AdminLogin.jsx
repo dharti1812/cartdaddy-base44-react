@@ -26,7 +26,7 @@ export default function AdminLogin() {
         setError("");
     
         try {
-          const loginResponse = await AuthApi.login(identifier, password);
+          const loginResponse = await AuthApi.login(identifier, password, 'staff');
     
           const token = loginResponse.access_token;
           const user = loginResponse.user;

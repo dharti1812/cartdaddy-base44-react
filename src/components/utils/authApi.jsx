@@ -106,4 +106,16 @@ export const AuthApi = {
       return { success: false, message: err.message };
     }
   },
+
+  logout: async () => {
+    return await fetch("http://localhost:8000/api/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+      },
+    });
+  },
+ 
+
 };

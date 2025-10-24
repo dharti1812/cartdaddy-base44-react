@@ -23,6 +23,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
+import { AuthApi } from "@/components/utils/authApi";
 
 import SelectRetailers from "../components/delivery/SelectRetailers";
 
@@ -82,13 +83,22 @@ export default function DeliveryBoyPortal() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("access_token");
-    localStorage.removeItem("DeliveryPartnerOnboardingStep");
-    sessionStorage.removeItem("user");
-    sessionStorage.removeItem("delivery_partner_identifier");
-    window.location.href = createPageUrl("PortalSelector");
-  };
+
+  const handleLogout = async () => {
+      try {
+        const response = await AuthApi.logout();
+  
+        if (!response.ok) throw new Error("Logout failed");
+  
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+  
+        window.location.href = createPageUrl("PortalSelector");
+      } catch (error) {
+        console.error("Error logging out:", error);
+        alert("Failed to log out. Please try again.");
+      }
+    };
 
   // ERROR STATE
   if (error) {

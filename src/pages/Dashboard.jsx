@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect } from "react";
 import { Order, Retailer } from "@/components/utils/mockApi";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Users, TrendingUp, Clock, AlertCircle, CheckCircle } from "lucide-react";
-import { createPageUrl } from "@/utils";
 
+import { Button } from "@/components/ui/button";
+import { createPageUrl } from "@/utils";
+import { LogOut } from "lucide-react";
 import StatsOverview from "../components/dashboard/StatsOverview";
 import RecentOrders from "../components/dashboard/RecentOrders";
 import RetailerStatus from "../components/dashboard/RetailerStatus";
 import PerformanceMetrics from "../components/dashboard/PerformanceMetrics";
 import QueuedOrdersMonitor from "../components/orders/QueuedOrdersMonitor";
 import SLAMonitor from "../components/sla/SLAMonitor";
+import { AuthApi } from "@/components/utils/authApi";
 
 export default function Dashboard() {
   const [orders, setOrders] = useState([]);
@@ -32,6 +33,24 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      const response = await AuthApi.logout();
+
+      if (!response.ok) throw new Error("Logout failed");
+
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      window.location.href = createPageUrl("PortalSelector");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      alert("Failed to log out. Please try again.");
+    }
+  };
+
+
+
   const stats = {
     totalOrders: orders.length,
     activeOrders: orders.filter(o => ['assigned', 'en_route', 'arrived'].includes(o.status)).length,
@@ -50,7 +69,7 @@ export default function Dashboard() {
 
   const handleStatClick = (type) => {
     try {
-      switch(type) {
+      switch (type) {
         case 'totalOrders':
           window.location.href = createPageUrl('Orders');
           break;
@@ -86,12 +105,16 @@ export default function Dashboard() {
             <p className="text-white opacity-90 mt-1">Real-time delivery management overview</p>
           </div>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border-2 border-green-500 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-bold text-green-700">System Live</span>
-            </div>
-            <a 
-              href={createPageUrl("RetailerPortal")} 
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="flex-1 "
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+            <a
+              href={createPageUrl("RetailerPortal")}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-center text-yellow-400 hover:text-white font-bold transition-colors"
@@ -102,7 +125,7 @@ export default function Dashboard() {
         </div>
 
         <SLAMonitor />
-        
+
         <QueuedOrdersMonitor />
 
         <StatsOverview stats={stats} loading={loading} onStatClick={handleStatClick} />

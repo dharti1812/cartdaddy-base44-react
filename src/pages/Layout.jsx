@@ -80,12 +80,6 @@ const adminNavigationItems = [
     title: "Settings",
     url: createPageUrl("Settings"),
     icon: Settings,
-  },
-  //add logout button at the end
-  {
-    title: "Logout",
-    url: createPageUrl("Logout"),
-    icon: LogOut,
   }
 ];
 
