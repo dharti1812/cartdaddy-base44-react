@@ -49,7 +49,8 @@ export default function SellerLogin() {
         setError("");
     
         try {
-          const loginResponse = await AuthApi.login(identifier, password);
+          const userType = 'seller';
+          const loginResponse = await AuthApi.login(identifier, password, userType);
          
           const token = loginResponse.access_token;
           const user = loginResponse.user;

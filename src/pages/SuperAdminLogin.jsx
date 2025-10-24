@@ -23,7 +23,8 @@ export default function SuperAdminLogin() {
     setError("");
 
     try {
-      const loginResponse = await AuthApi.login(identifier, password);
+      const userType = 'admin';
+      const loginResponse = await AuthApi.login(identifier, password, userType);
 
       const token = loginResponse.access_token;
       const user = loginResponse.user;
