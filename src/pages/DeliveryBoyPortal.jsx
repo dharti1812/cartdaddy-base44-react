@@ -86,7 +86,7 @@ export default function DeliveryBoyPortal() {
     sessionStorage.removeItem("access_token");
     localStorage.removeItem("DeliveryPartnerOnboardingStep");
     sessionStorage.removeItem("user");
-    sessionStorage.removeItem('delivery_partner_identifier');
+    sessionStorage.removeItem("delivery_partner_identifier");
     window.location.href = createPageUrl("PortalSelector");
   };
 
@@ -223,11 +223,11 @@ export default function DeliveryBoyPortal() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#FFEB3B] rounded-full flex items-center justify-center text-black font-bold text-xl">
-                    {partner.full_name?.[0]?.toUpperCase() || "D"}
+                    {partner.name?.[0]?.toUpperCase() || "D"}
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-white">
-                      {partner.full_name}
+                      {partner.name}
                     </h2>
                     <p className="text-[#FFEB3B] text-base">{partner.phone}</p>
                   </div>

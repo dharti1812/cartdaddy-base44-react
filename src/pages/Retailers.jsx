@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { RetailerApi } from "@/components/utils/retailerApi";
+import { retailerApi } from "@/components/utils/retailerApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,7 @@ export default function RetailersPage() {
 
   const loadRetailers = async () => {
     setLoading(true);
-    const data = await RetailerApi.list();
+    const data = await retailerApi.list();
     console.log("Loaded retailers:", data);
     setRetailers(data);
     setLoading(false);
@@ -47,10 +47,9 @@ export default function RetailersPage() {
 
   // New handler for approving a retailer
   const handleApprove = async (retailer) => {
-    await RetailerApi.approve(retailer.id, {
+    await retailerApi.approve(retailer.id, {
       onboarding_status: "approved",
       status: "approved",
-
     });
     setShowApprovalDialog(false);
     setRetailerToApprove(null);
@@ -66,17 +65,20 @@ export default function RetailersPage() {
     try {
       const token = localStorage.getItem("adminToken");
 
-      const res = await fetch(`${API_BASE_URL}/api/retailers/${retailer.id}/reject`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ reason }),
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/retailers/${retailer.id}/reject`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason }),
+        }
+      );
 
       const result = await res.json();
- 
+
       if (result.success) {
         setShowApprovalDialog(false);
         setRetailerToApprove(null);
@@ -90,26 +92,24 @@ export default function RetailersPage() {
     }
   };
 
-const filteredRetailers = retailers.filter((retailer) => {
-  const matchesSearch =
-    !searchTerm ||
-    retailer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    retailer.phone?.includes(searchTerm) ||
-    retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredRetailers = retailers.filter((retailer) => {
+    const matchesSearch =
+      !searchTerm ||
+      retailer.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      retailer.phone?.includes(searchTerm) ||
+      retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const status = retailer.status;
+    const status = retailer.status;
 
- const matchesStatus =
-    statusFilter === "all" || status === statusFilter ||
-    (statusFilter === "pending" && status === "pending");
+    const matchesStatus =
+      statusFilter === "all" ||
+      status === statusFilter ||
+      (statusFilter === "pending" && status === "pending");
 
-  return matchesSearch && matchesStatus;
-});
+    return matchesSearch && matchesStatus;
+  });
 
-
-const pendingApprovals = retailers.filter(
-  (r) => r.status === "pending"
-);
+  const pendingApprovals = retailers.filter((r) => r.status === "pending");
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
@@ -193,7 +193,7 @@ const pendingApprovals = retailers.filter(
               loading={loading}
               // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-               const shopStatus = RetailerApi.shop_status?.status || null;
+                const shopStatus = retailerApi.shop_status?.status || null;
 
                 // Open approval dialog if shop is pending or has no status yet
                 if (!shopStatus || shopStatus === "pending") {
@@ -206,7 +206,6 @@ const pendingApprovals = retailers.filter(
                   setShowApprovalDialog(false);
                 }
               }}
-
               selectedRetailerId={selectedRetailer?.id}
             />
           </div>
@@ -296,7 +295,9 @@ const pendingApprovals = retailers.filter(
 
               {/* Rejection Reason Input */}
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">Rejection Reason</Label>
+                <Label className="text-sm font-semibold">
+                  Rejection Reason
+                </Label>
                 <Input
                   placeholder="Enter reason for rejection (optional)"
                   value={retailerToApprove.rejection_reason || ""}
@@ -308,7 +309,8 @@ const pendingApprovals = retailers.filter(
                   }}
                 />
                 <p className="text-xs text-gray-500">
-                  This reason will be stored in the database and shown to the seller.
+                  This reason will be stored in the database and shown to the
+                  seller.
                 </p>
               </div>
 
@@ -316,7 +318,10 @@ const pendingApprovals = retailers.filter(
                 <Button
                   variant="destructive"
                   onClick={() =>
-                    handleReject(retailerToApprove, retailerToApprove.rejection_reason)
+                    handleReject(
+                      retailerToApprove,
+                      retailerToApprove.rejection_reason
+                    )
                   }
                   className="flex-1"
                 >
@@ -329,7 +334,6 @@ const pendingApprovals = retailers.filter(
                   Approve Seller
                 </Button>
               </DialogFooter>
-
             </DialogContent>
           </Dialog>
         )}

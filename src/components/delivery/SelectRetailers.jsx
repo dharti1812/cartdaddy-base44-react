@@ -7,7 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Store, CheckCircle, AlertCircle, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
+import { retailerApi } from "@/components/utils/retailerApi";
+import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
+import { API_BASE_URL } from "../../config";
 /**
  * SelectRetailers Component
  * Allows delivery boy to select which retailers they want to work with
@@ -21,6 +23,7 @@ export default function SelectRetailers({ deliveryPartnerId }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [partner, setPartner] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -29,19 +32,22 @@ export default function SelectRetailers({ deliveryPartnerId }) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [dpData, retailers] = await Promise.all([
-        DeliveryPartner.filter({ id: deliveryPartnerId }).then(dp => dp[0]),
-        Retailer.filter({ 
-          status: 'active',
-          onboarding_status: 'approved'
-        })
+      const [dpData, retailersResponse] = await Promise.all([
+        await deliveryPartnerApi.getByUserId(deliveryPartnerId),
+        retailerApi.list(),
       ]);
+      const retailers = Array.isArray(retailersResponse)
+        ? retailersResponse
+        : retailersResponse.data || [];
 
+      console.log("Fetched retailers:", retailers);
       setDeliveryPartner(dpData);
+
       setAllRetailers(retailers);
-      
+      console.log("Fetched retailers:", retailers);
       // Load already selected retailers
-      const selected = dpData?.selected_retailers || [];
+      const selected = dpData?.selected_sellers || [];
+      console.log(selected);
       setSelectedIds(selected);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -50,34 +56,45 @@ export default function SelectRetailers({ deliveryPartnerId }) {
   };
 
   const handleToggle = (retailerId) => {
-    setSelectedIds(prev => 
+    setSelectedIds((prev) =>
       prev.includes(retailerId)
-        ? prev.filter(id => id !== retailerId)
+        ? prev.filter((id) => id !== retailerId)
         : [...prev, retailerId]
     );
   };
 
   const handleSelectAll = () => {
     const filtered = getFilteredRetailers();
-    const allFilteredIds = filtered.map(r => r.id);
-    
+    const allFilteredIds = filtered.map((r) => r.id);
+
     // If all filtered are already selected, deselect them
-    const allSelected = allFilteredIds.every(id => selectedIds.includes(id));
-    
+    const allSelected = allFilteredIds.every((id) => selectedIds.includes(id));
+
     if (allSelected) {
-      setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+      setSelectedIds((prev) =>
+        prev.filter((id) => !allFilteredIds.includes(id))
+      );
     } else {
-      setSelectedIds(prev => [...new Set([...prev, ...allFilteredIds])]);
+      setSelectedIds((prev) => [...new Set([...prev, ...allFilteredIds])]);
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await DeliveryPartner.update(deliveryPartnerId, {
-        selected_retailers: selectedIds
-      });
-      
+      const token = sessionStorage.getItem("token");
+      await fetch(
+        `${API_BASE_URL}/api/delivery_boy/${deliveryPartnerId}/sellers`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ selected_sellers: selectedIds }),
+        }
+      );
+
       alert("✅ Retailer preferences saved successfully!");
       loadData();
     } catch (error) {
@@ -88,12 +105,13 @@ export default function SelectRetailers({ deliveryPartnerId }) {
   };
 
   const getFilteredRetailers = () => {
-    return allRetailers.filter(r => {
-      const matchesSearch = !searchTerm || 
+    return allRetailers.filter((r) => {
+      const matchesSearch =
+        !searchTerm ||
         r.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.phone?.includes(searchTerm);
-      
+
       return matchesSearch;
     });
   };
@@ -122,21 +140,30 @@ export default function SelectRetailers({ deliveryPartnerId }) {
           <Alert className="bg-green-50 border-green-200 mb-4">
             <AlertCircle className="w-4 h-4 text-green-600" />
             <AlertDescription className="text-green-900 text-sm">
-              <strong>Select retailers you want to work with.</strong><br/>
-              • Only receive orders from selected retailers<br/>
-              • Retailers must also select you for mutual linking<br/>
-              • You have selected <strong>{selectedIds.length}</strong> out of {allRetailers.length} active retailers
+              <strong>Select retailers you want to work with.</strong>
+              <br />
+              • Only receive orders from selected retailers
+              <br />
+              • Retailers must also select you for mutual linking
+              <br />• You have selected <strong>
+                {selectedIds.length}
+              </strong>{" "}
+              out of {allRetailers.length} active retailers
             </AlertDescription>
           </Alert>
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">{allRetailers.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {allRetailers.length}
+              </p>
               <p className="text-xs text-gray-600">Total Active Retailers</p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-900">{selectedIds.length}</p>
+              <p className="text-2xl font-bold text-green-900">
+                {selectedIds.length}
+              </p>
               <p className="text-xs text-green-600">Your Selected</p>
             </div>
           </div>
@@ -157,12 +184,10 @@ export default function SelectRetailers({ deliveryPartnerId }) {
             <span className="text-sm font-semibold text-gray-700">
               {filteredRetailers.length} retailers shown
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSelectAll}
-            >
-              {filteredRetailers.every(r => selectedIds.includes(r.id)) ? 'Deselect All' : 'Select All'}
+            <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              {filteredRetailers.every((r) => selectedIds.includes(r.id))
+                ? "Deselect All"
+                : "Select All"}
             </Button>
           </div>
 
@@ -170,7 +195,10 @@ export default function SelectRetailers({ deliveryPartnerId }) {
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredRetailers.map((retailer) => {
               const isSelected = selectedIds.includes(retailer.id);
-              const hasSelectedDP = retailer.selected_delivery_partners?.includes(deliveryPartnerId);
+              const hasSelectedDP =
+                retailer.selected_delivery_partners?.includes(
+                  deliveryPartnerId
+                );
               const isMutuallyLinked = isSelected && hasSelectedDP;
 
               return (
@@ -178,9 +206,9 @@ export default function SelectRetailers({ deliveryPartnerId }) {
                   key={retailer.id}
                   onClick={() => handleToggle(retailer.id)}
                   className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    isSelected 
-                      ? 'border-green-500 bg-green-50' 
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                    isSelected
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
                   }`}
                 >
                   <Checkbox
@@ -190,15 +218,19 @@ export default function SelectRetailers({ deliveryPartnerId }) {
                   />
 
                   <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                    {retailer.full_name?.[0]?.toUpperCase() || 'R'}
+                    {retailer.name?.[0]?.toUpperCase() || "R"}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <div>
-                        <p className="font-semibold text-gray-900">{retailer.full_name}</p>
+                        <p className="font-semibold text-gray-900">
+                          {retailer.name}
+                        </p>
                         {retailer.business_name && (
-                          <p className="text-sm text-gray-600">{retailer.business_name}</p>
+                          <p className="text-sm text-gray-600">
+                            {retailer.business_name}
+                          </p>
                         )}
                       </div>
                       {isMutuallyLinked && (
@@ -237,12 +269,12 @@ export default function SelectRetailers({ deliveryPartnerId }) {
             <Button variant="outline" onClick={loadData}>
               Reset
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={saving}
               className="bg-green-600 hover:bg-green-700"
             >
-              {saving ? 'Saving...' : `Save Selection (${selectedIds.length})`}
+              {saving ? "Saving..." : `Save Selection (${selectedIds.length})`}
             </Button>
           </div>
         </CardContent>

@@ -1,6 +1,6 @@
 import { API_BASE_URL } from "../../config";
 
-export const RetailerApi = {
+export const retailerApi = {
   list: async () => {
     const token = sessionStorage.getItem("token");
     console.log("Token:", token);
@@ -15,7 +15,7 @@ export const RetailerApi = {
   },
 
   update: async (id, data) => {
-     const token = sessionStorage.getItem("token");
+    const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/shops/${id}`, {
       method: "PUT", // or PATCH
       headers: {
@@ -41,5 +41,4 @@ export const RetailerApi = {
     if (!res.ok) throw new Error("Failed to approve retailer");
     return res.json();
   },
-
 };

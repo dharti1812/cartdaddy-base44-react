@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { RetailerApi } from "@/components/utils/retailerApi";
+import { retailerApi } from "@/components/utils/retailerApi";
 import { UserApi } from "@/components/utils/userApi";
 import { OrderApi } from "@/components/utils/orderApi";
 import { 
@@ -57,7 +57,7 @@ export default function SuperAdminDashboard() {
       const [ordersData, retailersData, deliveryPartnersData, usersData] = await Promise.all([
         
         OrderApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 200)),
-        RetailerApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
+        retailerApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
         DeliveryPartner.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
         UserApi.list()
       ]);
@@ -140,7 +140,7 @@ export default function SuperAdminDashboard() {
 
     try {
       const user = await User.me(); // User.me() should be mocked or available from mockApi
-      await RetailerApi.update(seller.id, {
+      await retailerApi.update(seller.id, {
         status: 'suspended',
         ban_reason: reason,
         banned_by: user.id,
@@ -156,7 +156,7 @@ export default function SuperAdminDashboard() {
 
   const handleUnbanSeller = async (seller) => {
     try {
-      await RetailerApi.update(seller.id, {
+      await retailerApi.update(seller.id, {
         status: 'active',
         ban_reason: null,
         banned_by: null,
@@ -183,7 +183,7 @@ export default function SuperAdminDashboard() {
     const notes = prompt("Add notes (optional):");
 
     try {
-      await RetailerApi.update(seller.id, {
+      await retailerApi.update(seller.id, {
         rating: rating,
         rating_notes: notes || ""
       });
