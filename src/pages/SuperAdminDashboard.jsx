@@ -20,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 
 export default function SuperAdminDashboard() {
   const [orders, setOrders] = useState([]);
@@ -58,7 +59,7 @@ export default function SuperAdminDashboard() {
         
         OrderApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 200)),
         retailerApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
-        DeliveryPartner.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
+        deliveryPartnerApi.list().then(data => data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))),
         UserApi.list()
       ]);
      
@@ -66,7 +67,7 @@ export default function SuperAdminDashboard() {
       setRetailers(retailersData);
       setDeliveryPartners(deliveryPartnersData);
       setAdmins(usersData);
-
+      console.log(deliveryPartnersData);
       // Extract unique customers from orders
       const customerMap = new Map();
       console.log("Orders Data:", ordersData);
@@ -171,7 +172,7 @@ export default function SuperAdminDashboard() {
   };
 
   const handleRateSeller = async (seller) => {
-    const ratingInput = prompt(`Rate ${seller.full_name} (0-5 stars):`);
+    const ratingInput = prompt(`Rate ${seller.name} (0-5 stars):`);
     if (!ratingInput) return;
 
     const rating = parseFloat(ratingInput);
@@ -232,7 +233,8 @@ export default function SuperAdminDashboard() {
   };
 
   const handleRateDeliveryPartner = async (dp) => {
-    const ratingInput = prompt(`Rate ${dp.full_name} (0-5 stars):`);
+  
+    const ratingInput = prompt(`Rate ${dp.name} (0-5 stars):`);
     if (!ratingInput) return;
 
     const rating = parseFloat(ratingInput);
@@ -258,7 +260,7 @@ export default function SuperAdminDashboard() {
 
   const filteredSellers = retailers.filter(r => 
     !searchTerm || 
-    r.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.phone?.includes(searchTerm) ||
     r.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -266,9 +268,11 @@ export default function SuperAdminDashboard() {
 
   const filteredDeliveryPartners = deliveryPartners.filter(dp =>
     !searchTerm ||
-    dp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    
+    dp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     dp.phone?.includes(searchTerm) ||
     dp.email?.toLowerCase().includes(searchTerm.toLowerCase())
+   
   );
 
   const filteredCustomers = customers.filter(c =>
@@ -276,7 +280,7 @@ export default function SuperAdminDashboard() {
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.phone?.includes(searchTerm)
   );
-
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center">
@@ -586,15 +590,16 @@ export default function SuperAdminDashboard() {
               <CardContent className="p-0">
                 <div className="max-h-[600px] overflow-y-auto">
                   {filteredDeliveryPartners.map((dp) => (
+                    
                     <div 
                       key={dp.id} 
                       className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-4">
-                        {dp.selfie_url ? (
+                        {dp.selfie ? (
                           <img 
-                            src={dp.selfie_url} 
-                            alt={dp.full_name}
+                            src={dp.selfie} 
+                            alt={dp.name}
                             className="w-12 h-12 rounded-full object-cover border-2 border-[#FFEB3B]"
                           />
                         ) : (
@@ -603,7 +608,7 @@ export default function SuperAdminDashboard() {
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-black">{dp.full_name}</p>
+                          <p className="font-semibold text-black">{dp.name}</p>
                           <p className="text-sm text-gray-600 capitalize">{dp.vehicle_type?.replace('_', ' ')}</p>
                           <div className="flex gap-2 mt-1">
                             <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -806,7 +811,7 @@ export default function SuperAdminDashboard() {
                       {selectedDetail.data.selfie_url ? (
                         <img 
                           src={selectedDetail.data.selfie_url} 
-                          alt={selectedDetail.data.full_name}
+                          alt={selectedDetail.data.name}
                           className="w-24 h-24 rounded-lg object-cover border-4 border-[#FFEB3B]"
                         />
                       ) : (
@@ -815,7 +820,7 @@ export default function SuperAdminDashboard() {
                         </div>
                       )}
                       <div>
-                        <h3 className="text-xl font-bold text-black">{selectedDetail.data.full_name}</h3>
+                        <h3 className="text-xl font-bold text-black">{selectedDetail.data.name}</h3>
                         <p className="text-gray-600 capitalize">{selectedDetail.data.vehicle_type?.replace('_', ' ')}</p>
                         <Badge className="mt-2 bg-[#075E66] text-white">
                           {selectedDetail.data.onboarding_status}
