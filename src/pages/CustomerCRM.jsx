@@ -16,6 +16,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CallButton from "../components/communication/CallButton";
 import CustomerDataMask from "../components/privacy/CustomerDataMask";
+import { API_BASE_URL } from "@/config";
 
 /**
  * Customer CRM - Customer 360 View
@@ -47,32 +48,39 @@ export default function CustomerCRM() {
   }, []);
 
   const loadAdmin = async () => {
-    try {
-      // Assuming User.me() still works or returns a default admin for dev
-      const admin = await User.me();
-      setCurrentAdmin(admin);
-    } catch (error) {
-      console.error("Error loading admin:", error);
-      // Fallback for development if User.me fails without mock
-      setCurrentAdmin({
-        id: "admin-123",
-        full_name: "Mock Admin",
-        email: "admin@example.com",
-        role: "super_admin" // For testing super_admin features
-      });
-    }
+    // try {
+    //   // Assuming User.me() still works or returns a default admin for dev
+    //   const admin = await User.me();
+    //   setCurrentAdmin(admin);
+    // } catch (error) {
+    //   console.error("Error loading admin:", error);
+    //   // Fallback for development if User.me fails without mock
+    //   setCurrentAdmin({
+    //     id: "admin-123",
+    //     full_name: "Mock Admin",
+    //     email: "admin@example.com",
+    //     role: "super_admin" // For testing super_admin features
+    //   });
+    // }
   };
 
   const loadCustomers = async () => {
     setLoading(true);
     try {
-      // Get all orders using the mock API
-      const orders = await Order.list("-created_date");
-
+       const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch orders");
+    const ordersData = await res.json(); 
+    console.log(ordersData);
       // Group orders by customer phone
       const customerMap = new Map();
 
-      orders.forEach(order => {
+      ordersData.forEach(order => {
         const phone = order.customer_phone;
         if (!phone) return;
 
@@ -92,9 +100,9 @@ export default function CustomerCRM() {
         const customer = customerMap.get(phone);
         customer.orders.push(order);
         customer.totalOrders++;
-        customer.totalSpent += order.total_amount || 0;
-
-        if (!['delivered', 'cancelled'].includes(order.status)) {
+        customer.totalSpent += order.amount || 0;
+        if (order.payment_status === "paid") customer.paidOrders++;
+        if (!['delivered', 'cancelled'].includes(order.delivery_status)) {
           customer.activeOrders++;
         }
 
@@ -370,10 +378,10 @@ export default function CustomerCRM() {
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {notes.map(note => (
                           <div key={note.id} className="p-3 bg-gray-50 rounded-lg border">
-                            <p className="text-sm text-gray-900">{note.text}</p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <div className="text-sm text-gray-900">{note.text}</div>
+                            <div className="text-xs text-gray-500 mt-1">
                               By {note.created_by} • {new Date(note.created_at).toLocaleDateString()}
-                            </p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -412,14 +420,14 @@ export default function CustomerCRM() {
                                 <div key={order.id} className="p-4 bg-gray-50 rounded-lg border">
                                   <div className="flex items-start justify-between mb-2">
                                     <div>
-                                      <p className="font-semibold">{order.website_ref || `#${order.id.slice(0, 8)}`}</p>
-                                      <p className="text-sm text-gray-600">{new Date(order.created_date).toLocaleDateString()}</p>
+                                      <p className="font-semibold">{order.website_ref || `#${order.id.toString().slice(0, 8)}`}</p>
+                                      <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="font-bold text-lg">₹{order.total_amount}</p>
+                                      <p className="font-bold text-lg">₹{order.amount}</p>
                                       <Badge className={
-                                        order.status === 'delivered' ? 'bg-green-500' :
-                                        order.status === 'en_route' ? 'bg-blue-500' :
+                                        order.delivery_status === 'delivered' ? 'bg-green-500' :
+                                        order.delivery_status === 'en_route' ? 'bg-blue-500' :
                                         'bg-amber-500'
                                       }>
                                         {order.status}
@@ -451,7 +459,7 @@ export default function CustomerCRM() {
                               <Alert key={order.id} className="bg-red-50 border-red-200">
                                 <AlertCircle className="w-4 h-4 text-red-600" />
                                 <AlertDescription>
-                                  <strong>{order.website_ref || `#${order.id.slice(0, 8)}`}</strong><br/>
+                                  <strong>{order.website_ref || `#${order.id.toString().slice(0, 8)}`}</strong><br/>
                                   Status: {order.status}<br/>
                                   Expected: {order.estimated_delivery_time && new Date(order.estimated_delivery_time).toLocaleString()}<br/>
                                   Notified: {order.sla_breach_notified_at && new Date(order.sla_breach_notified_at).toLocaleString()}
