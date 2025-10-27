@@ -1,12 +1,27 @@
-import React from 'react';
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Store, Phone, Mail, MapPin, CheckCircle, XCircle, Clock, Building2 } from "lucide-react";
+import {
+  Store,
+  Phone,
+  Mail,
+  MapPin,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Building2,
+} from "lucide-react";
 
 export default function RetailerVerificationCard({ retailer, onClick }) {
+  const user = retailer.user || {}; // fallback if user is null
+  const bank = retailer.bank_information || {};
+  const gst = retailer.gst_information || {};
   return (
-    <Card className="border-2 border-amber-200 hover:border-amber-400 transition-all cursor-pointer" onClick={onClick}>
+    <Card
+      className="border-2 border-amber-200 hover:border-amber-400 transition-all cursor-pointer"
+      onClick={onClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
@@ -15,11 +30,11 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
                 <Store className="w-6 h-6 text-amber-600" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">{retailer.full_name}</h3>
-                {retailer.business_name && (
+                <h3 className="text-lg font-bold text-gray-900">{user.name}</h3>
+                {retailer.name && (
                   <p className="text-sm text-gray-600 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
-                    {retailer.business_name}
+                    {retailer.name}
                   </p>
                 )}
               </div>
@@ -28,31 +43,71 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">
                 <Phone className="w-4 h-4" />
-                <span>{retailer.phone}</span>
+                <span>{user?.phone}</span>
               </div>
-              {retailer.email && (
+              {user?.email && (
                 <div className="flex items-center gap-2 text-gray-600">
                   <Mail className="w-4 h-4" />
-                  <span>{retailer.email}</span>
+                  <span>{user?.email}</span>
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-2 mt-4">
-              <Badge className={retailer.phone_verified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                {retailer.phone_verified ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+              <Badge
+                className={
+                  user?.phone
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }
+              >
+                {user?.phone ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : (
+                  <XCircle className="w-3 h-3 mr-1" />
+                )}
                 Phone
               </Badge>
-              <Badge className={retailer.email_verified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                {retailer.email_verified ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+              <Badge
+                className={
+                  user?.email
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }
+              >
+                {user?.email ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : (
+                  <XCircle className="w-3 h-3 mr-1" />
+                )}
                 Email
               </Badge>
-              <Badge className={retailer.gst_verified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                {retailer.gst_verified ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+              <Badge
+                className={
+                  retailer.gst_verified
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }
+              >
+                {retailer.gst_verified ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : (
+                  <XCircle className="w-3 h-3 mr-1" />
+                )}
                 GST
               </Badge>
-              <Badge className={retailer.bank_verified ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                {retailer.bank_verified ? <CheckCircle className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+              <Badge
+                className={
+                  retailer.bank_verified
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }
+              >
+                {retailer.bank_verified ? (
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                ) : (
+                  <XCircle className="w-3 h-3 mr-1" />
+                )}
                 Bank
               </Badge>
               <Badge className="bg-amber-100 text-amber-800">

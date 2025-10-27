@@ -1,36 +1,71 @@
-
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  CheckCircle, XCircle, Building2, Phone, Mail, CreditCard, MapPin, 
-  FileText, Camera, AlertCircle, Shield, Bike, Car, Download
+import {
+  CheckCircle,
+  XCircle,
+  Building2,
+  Phone,
+  Mail,
+  CreditCard,
+  MapPin,
+  FileText,
+  Camera,
+  AlertCircle,
+  Shield,
+  Bike,
+  Car,
+  Download,
 } from "lucide-react";
 import { Retailer, DeliveryPartner } from "@/api/entities";
+import { API_BASE_URL } from "@/config";
 // import { generateVerificationReport } from "@/api/functions";
 
-export default function VerificationDetailsDialog({ item, currentAdmin, onClose, onSuccess }) {
+export default function VerificationDetailsDialog({
+  item,
+  currentAdmin,
+  onClose,
+  onSuccess,
+}) {
   const [notes, setNotes] = useState("");
   const [physicalVerified, setPhysicalVerified] = useState(false);
   const [policeVerified, setPoliceVerified] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const isRetailer = item.type === 'retailer';
+  const isRetailer = item.type === "retailer";
   const data = item.data;
+  console.log(`${API_BASE_URL}/${data?.selfie_file?.file_name}`);
+  let shopPhotos = [];
 
+  try {
+    shopPhotos =
+      typeof data.shop_photos === "string"
+        ? JSON.parse(data.shop_photos)
+        : data.shop_photos || [];
+  } catch (error) {
+    console.error("Error parsing shop_photos:", error);
+    shopPhotos = [];
+  }
+
+  console.log("Parsed shop photos:", shopPhotos);
   const handleDownloadReport = async () => {
     // try {
     //   const response = await generateVerificationReport({
     //     entityType: isRetailer ? 'retailer' : 'delivery_partner',
     //     entityId: data.id
     //   });
-
     //   if (response.data.success) {
     //     const report = response.data.report;
     //     let reportString = `${report.reportType}\n`;
@@ -45,7 +80,6 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
     //     Object.keys(report.verificationStatus).forEach(key => {
     //         reportString += `${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}: ${report.verificationStatus[key]}\n`;
     //     });
-        
     //     const blob = new Blob([reportString], { type: 'text/plain' });
     //     const url = URL.createObjectURL(blob);
     //     const a = document.createElement('a');
@@ -67,31 +101,35 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
     try {
       if (isRetailer) {
         await Retailer.update(data.id, {
-          onboarding_status: 'approved',
-          status: 'active',
+          onboarding_status: "approved",
+          status: "active",
           admin_approved_by: currentAdmin.id,
           admin_approved_at: new Date().toISOString(),
           admin_notes: notes,
-          physical_verification: physicalVerified ? {
-            status: 'completed',
-            verified_by: currentAdmin.id,
-            verified_at: new Date().toISOString(),
-            notes: notes
-          } : data.physical_verification
+          physical_verification: physicalVerified
+            ? {
+                status: "completed",
+                verified_by: currentAdmin.id,
+                verified_at: new Date().toISOString(),
+                notes: notes,
+              }
+            : data.physical_verification,
         });
       } else {
         await DeliveryPartner.update(data.id, {
-          onboarding_status: 'approved',
-          status: 'active',
+          onboarding_status: "approved",
+          status: "active",
           admin_approved_by: currentAdmin.id,
           admin_approved_at: new Date().toISOString(),
           admin_notes: notes,
-          police_verification: policeVerified ? {
-            status: 'completed',
-            verified_by: currentAdmin.id,
-            verified_at: new Date().toISOString(),
-            notes: notes
-          } : data.police_verification
+          police_verification: policeVerified
+            ? {
+                status: "completed",
+                verified_by: currentAdmin.id,
+                verified_at: new Date().toISOString(),
+                notes: notes,
+              }
+            : data.police_verification,
         });
       }
       onSuccess();
@@ -112,21 +150,21 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
     try {
       if (isRetailer) {
         await Retailer.update(data.id, {
-          onboarding_status: 'rejected',
-          status: 'suspended',
+          onboarding_status: "rejected",
+          status: "suspended",
           admin_approved_by: currentAdmin.id,
           admin_approved_at: new Date().toISOString(),
           rejection_reason: notes,
-          admin_notes: notes
+          admin_notes: notes,
         });
       } else {
         await DeliveryPartner.update(data.id, {
-          onboarding_status: 'rejected',
-          status: 'suspended',
+          onboarding_status: "rejected",
+          status: "suspended",
           admin_approved_by: currentAdmin.id,
           admin_approved_at: new Date().toISOString(),
           rejection_reason: notes,
-          admin_notes: notes
+          admin_notes: notes,
         });
       }
       onSuccess();
@@ -142,13 +180,22 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-            {isRetailer ? (
-              <><Building2 className="w-6 h-6 text-amber-600" /> Retailer Verification</>
-            ) : (
-              <><Shield className="w-6 h-6 text-green-600" /> Delivery Partner Verification</>
-            )}
+              {isRetailer ? (
+                <>
+                  <Building2 className="w-6 h-6 text-amber-600" /> Retailer
+                  Verification
+                </>
+              ) : (
+                <>
+                  <Shield className="w-6 h-6 text-green-600" /> Delivery Partner
+                  Verification
+                </>
+              )}
             </div>
-            <Button variant="outline" size="sm" onClick={handleDownloadReport}><Download className="w-4 h-4 mr-2" />Report</Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadReport}>
+              <Download className="w-4 h-4 mr-2" />
+              Report
+            </Button>
           </DialogTitle>
         </DialogHeader>
 
@@ -166,26 +213,30 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <Label className="text-gray-500">Full Name</Label>
-                <p className="font-medium">{data.full_name}</p>
+                <p className="font-medium">{data?.user.name || "N/A"}</p>
               </div>
-              {isRetailer && data.business_name && (
+              {isRetailer && data?.name && (
                 <div>
                   <Label className="text-gray-500">Business Name</Label>
-                  <p className="font-medium">{data.business_name}</p>
+                  <p className="font-medium">{data?.name || "N/A"}</p>
                 </div>
               )}
               <div>
                 <Label className="text-gray-500">Phone</Label>
                 <p className="font-medium flex items-center gap-2">
-                  {data.phone}
-                  {data.phone_verified && <CheckCircle className="w-4 h-4 text-green-600" />}
+                  {data?.user?.phone || "N/A"}
+                  {data?.user?.phone && (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  )}
                 </p>
               </div>
               <div>
                 <Label className="text-gray-500">Email</Label>
                 <p className="font-medium flex items-center gap-2">
-                  {data.email}
-                  {data.email_verified && <CheckCircle className="w-4 h-4 text-green-600" />}
+                  {data?.user?.email || "N/A"}
+                  {data?.user?.email && (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  )}
                 </p>
               </div>
             </div>
@@ -195,80 +246,111 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
           {isRetailer ? (
             <>
               {/* GST Verification */}
-              {data.gst_verified && data.gst_verification_data && (
+              {data?.gst_verified && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <h3 className="font-semibold flex items-center gap-2 mb-3">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    GST Verification Results
+                    <CheckCircle className="w-5 h-5 text-green-600" /> GST
+                    Verification Results
                   </h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <Label className="text-gray-500">GST Number</Label>
-                      <p className="font-mono">{data.gst_number}</p>
+                      <p className="font-mono">
+                        {data?.user?.gst_information?.GSTIN || "N/A"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Business Name</Label>
-                      <p className="font-medium">{data.gst_verification_data.business_name}</p>
+                      <p className="font-medium">
+                        {data?.user?.gst_information?.trade_name_of_business ||
+                          "N/A"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Owner Name</Label>
-                      <p className="font-medium">{data.gst_verification_data.owner_name}</p>
+                      <p className="font-medium">
+                        {data?.user?.gst_information?.legal_name_of_business ||
+                          "N/A"}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Registration Date</Label>
-                      <p className="font-medium">{data.gst_verification_data.registration_date}</p>
+                      <p className="font-medium">
+                        {data?.user?.gst_information?.date_of_registration ||
+                          "N/A"}
+                      </p>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Bank Verification */}
-              {data.bank_verified && data.bank_account && (
+              {data?.bank_verified && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <h3 className="font-semibold flex items-center gap-2 mb-3">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
-                    Bank Verification Results
+                    <CheckCircle className="w-5 h-5 text-blue-600" /> Bank
+                    Verification Results
                   </h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <Label className="text-gray-500">Account Number</Label>
-                      <p className="font-mono">****{data.bank_account.account_number?.slice(-4)}</p>
+                      <p className="font-mono">
+                        ****
+                        {data?.bank_acc_no?.slice(-4) || "N/A"}
+                      </p>
                     </div>
-                    <div>
+                    {/* <div>
                       <Label className="text-gray-500">IFSC Code</Label>
-                      <p className="font-mono">{data.bank_account.ifsc}</p>
-                    </div>
+                      <p className="font-mono">
+                        {data?.ban?.ifsc || "N/A"}
+                      </p>
+                    </div> */}
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
-                      <p className="font-medium">{data.bank_account.account_holder_name}</p>
+                      <p className="font-medium">
+                        {data?.bank_acc_name || "N/A"}
+                      </p>
                     </div>
-                    <div>
+                    {/* <div>
                       <Label className="text-gray-500">Bank Name</Label>
-                      <p className="font-medium">{data.bank_account.bank_name}</p>
+                      <p className="font-medium">
+                        {data?.bank_account?.bank_name || "N/A"}
+                      </p>
+                    </div> */}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Contacts */}
+              {Array.isArray(data?.alternate_phones) &&
+                data.alternate_phones.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-3">
+                      Additional Contact Numbers
+                    </h3>
+                    <div className="space-y-2">
+                      {data.alternate_phones.map((phone, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">
+                            {phone?.number || "N/A"}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {phone?.label || "Other"}
+                          </Badge>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              )}
-              {/* Additional Contacts */}
-              {data.alternate_phones && data.alternate_phones.length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-3">Additional Contact Numbers</h3>
-                  <div className="space-y-2">
-                    {data.alternate_phones.map((phone, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{phone.number}</span>
-                        <Badge variant="outline" className="text-xs">{phone.label}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
             </>
           ) : (
             <>
               {/* DL Verification */}
-              {data.driving_license_verified && data.dl_verification_data && (
+              {data?.dl_number && (
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <h3 className="font-semibold flex items-center gap-2 mb-3">
                     <CheckCircle className="w-5 h-5 text-green-600" />
@@ -277,23 +359,21 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <Label className="text-gray-500">DL Number</Label>
-                      <p className="font-mono">{data.driving_license}</p>
+                      <p className="font-mono">{data.dl_number}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Name on DL</Label>
-                      <p className="font-medium">{data.dl_verification_data.name}</p>
+                      <p className="font-medium">{data.name}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Date of Birth</Label>
-                      <p className="font-medium">{data.dl_verification_data.dob}</p>
+                      <p className="font-medium">{data.dob}</p>
                     </div>
                     <div>
                       <Label className="text-gray-500">Valid Until</Label>
-                      <p className="font-medium">{data.dl_verification_data.validity?.to}</p>
-                    </div>
-                    <div>
-                      <Label className="text-gray-500">Vehicle Classes</Label>
-                      <p className="font-medium">{data.dl_verification_data.vehicle_classes?.join(', ')}</p>
+                      <p className="font-medium">
+                        {data.dl_validity.non_transport?.to}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -306,10 +386,14 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
                   <div>
                     <Label className="text-gray-500">Vehicle Type</Label>
                     <p className="font-medium flex items-center gap-2">
-                      {data.vehicle_type === '2_wheeler' ? (
-                        <><Bike className="w-4 h-4" /> 2-Wheeler</>
+                      {data.vehicle_type === "2_wheeler" ? (
+                        <>
+                          <Bike className="w-4 h-4" /> 2-Wheeler
+                        </>
                       ) : (
-                        <><Car className="w-4 h-4" /> 4-Wheeler</>
+                        <>
+                          <Car className="w-4 h-4" /> 4-Wheeler
+                        </>
                       )}
                     </p>
                   </div>
@@ -321,45 +405,69 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
               </div>
 
               {/* Bank Verification */}
-              {data.bank_verified && data.bank_account && (
+              {(isRetailer && data?.user?.bank_information) ||
+              (!isRetailer && data?.user?.bank_information) ? (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <h3 className="font-semibold flex items-center gap-2 mb-3">
                     <CheckCircle className="w-5 h-5 text-blue-600" />
                     Bank Verification Results
                   </h3>
+
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <Label className="text-gray-500">Account Number</Label>
-                      <p className="font-mono">****{data.bank_account.account_number?.slice(-4)}</p>
+                      <p className="font-mono">
+                        ****
+                        {isRetailer
+                          ? data.user.bank_information.account_number?.slice(-4)
+                          : data.user?.bank_information?.bank_acc_no?.slice(-4)}
+                      </p>
                     </div>
-                    <div>
+
+                    {/* <div>
                       <Label className="text-gray-500">IFSC Code</Label>
-                      <p className="font-mono">{data.bank_account.ifsc}</p>
-                    </div>
+                      <p className="font-mono">
+                        {isRetailer
+                          ? data.user.bank_information.ifsc
+                          : data.bank_information.ifsc}
+                      </p>
+                    </div> */}
+
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
-                      <p className="font-medium">{data.bank_account.account_holder_name}</p>
+                      <p className="font-medium">
+                        {isRetailer
+                          ? data.user.bank_information.account_holder_name
+                          : data?.user?.bank_information?.bank_acc_name}
+                      </p>
                     </div>
-                    <div>
+
+                    {/* <div>
                       <Label className="text-gray-500">Bank Name</Label>
-                      <p className="font-medium">{data.bank_account.bank_name}</p>
-                    </div>
+                      <p className="font-medium">
+                        {isRetailer
+                          ? data.user.bank_information.bank_name
+                          : data.bank_information.bank_name}
+                      </p>
+                    </div> */}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Additional Contacts */}
               {data.alternate_phones && data.alternate_phones.length > 0 && (
                 <div>
-                  <h3 className="font-semibold mb-3">Additional Contact Numbers</h3>
+                  <h3 className="font-semibold mb-3">
+                    Additional Contact Numbers
+                  </h3>
                   <div className="space-y-2">
-                    {data.alternate_phones.map((phone, i) => (
+                    {/* {data.alternate_phones.map((phone, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
                         <Phone className="w-4 h-4 text-gray-400" />
                         <span className="font-medium">{phone.number}</span>
                         <Badge variant="outline" className="text-xs">{phone.label}</Badge>
                       </div>
-                    ))}
+                    ))} */}
                   </div>
                 </div>
               )}
@@ -367,24 +475,39 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
           )}
 
           {/* Shop Photos / Selfie / Documents */}
-          {((isRetailer && data.shop_photos && data.shop_photos.length > 0) || 
-            (!isRetailer && (data.selfie_url || data.documents?.length > 0))) && (
+          {((isRetailer &&
+            data.shop_photos &&
+            (Array.isArray(data.shop_photos)
+              ? data.shop_photos.length > 0
+              : !!data.shop_photos)) ||
+            (!isRetailer &&
+              (data.selfie_url ||
+                (Array.isArray(data.documents) &&
+                  data.documents.length > 0)))) && (
             <div>
-              <h3 className="font-semibold mb-3">{isRetailer ? "Shop Photos" : "Selfie & Documents"}</h3>
+              <h3 className="font-semibold mb-3">
+                {isRetailer ? "Shop Photos" : "Selfie & Documents"}
+              </h3>
               <div className="grid grid-cols-3 gap-4">
                 {isRetailer ? (
-                  data.shop_photos.map((photo, i) => (
+                  shopPhotos.map((photo, i) => (
                     <div key={i} className="relative">
-                      <a href={photo.url} target="_blank" rel="noopener noreferrer">
-                        <img 
-                          src={photo.url} 
-                          alt={photo.type} 
+                      <a
+                        href={photo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <img
+                          src={photo.url}
+                          alt={photo.type || `Shop photo ${i + 1}`}
                           className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                         />
                       </a>
-                      <Badge className="absolute top-2 left-2 bg-[#F4B321] text-gray-900">
-                        {photo.type}
-                      </Badge>
+                      {photo.type && (
+                        <Badge className="absolute top-2 left-2 bg-[#F4B321] text-gray-900">
+                          {photo.type}
+                        </Badge>
+                      )}
                       {photo.location && (
                         <Badge className="absolute top-2 right-2 bg-blue-600 text-white text-xs">
                           <MapPin className="w-3 h-3 mr-1" />
@@ -395,38 +518,56 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
                   ))
                 ) : (
                   <>
-                    {data.selfie_url && (
+                    {data?.selfie_file?.file_name && (
                       <div className="relative">
-                         <a href={data.selfie_url} target="_blank" rel="noopener noreferrer">
-                          <img src={data.selfie_url} alt="Selfie" className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500" />
-                         </a>
-                         <Badge className="absolute top-2 left-2 bg-[#F4B321] text-gray-900">Selfie</Badge>
-                         {data.selfie_location && (
-                            <Badge className="absolute top-2 right-2 bg-blue-600 text-white text-xs">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              Geo-tagged
-                            </Badge>
-                          )}
-                      </div>
-                    )}
-                    {data.documents?.map((doc, i) => (
-                      <div key={i} className="relative">
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                          <img 
-                            src={doc.url} 
-                            alt={doc.type} 
+                        <a
+                          href={`${API_BASE_URL}/${data?.selfie_file?.file_name}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <img
+                            src={`${API_BASE_URL}/${data?.selfie_file?.file_name}`}
+                            alt="Selfie"
                             className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                           />
                         </a>
-                        <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">{doc.type.replace('_', ' ')}</Badge>
+                        <Badge className="absolute top-2 left-2 bg-[#F4B321] text-gray-900">
+                          Selfie
+                        </Badge>
+                        {data.selfie_location && (
+                          <Badge className="absolute top-2 right-2 bg-blue-600 text-white text-xs">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            Geo-tagged
+                          </Badge>
+                        )}
                       </div>
-                    ))}
+                    )}
+                    {(Array.isArray(data.documents) ? data.documents : []).map(
+                      (doc, i) => (
+                        <div key={i} className="relative">
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              src={doc.url}
+                              alt={doc.type}
+                              className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
+                            />
+                          </a>
+                          <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
+                            {doc.type?.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      )
+                    )}
                   </>
                 )}
               </div>
             </div>
           )}
-          
+
           {isRetailer && data.documents && data.documents.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">KYC Documents</h3>
@@ -434,13 +575,15 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
                 {data.documents.map((doc, i) => (
                   <div key={i} className="relative">
                     <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                      <img 
-                        src={doc.url} 
-                        alt={doc.type} 
+                      <img
+                        src={doc.url}
+                        alt={doc.type}
                         className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                       />
                     </a>
-                    <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">{doc.type}</Badge>
+                    <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
+                      {doc.type}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -453,8 +596,8 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
             <div className="space-y-3">
               {isRetailer ? (
                 <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="physical" 
+                  <Checkbox
+                    id="physical"
                     checked={physicalVerified}
                     onCheckedChange={setPhysicalVerified}
                   />
@@ -464,8 +607,8 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="police" 
+                  <Checkbox
+                    id="police"
                     checked={policeVerified}
                     onCheckedChange={setPoliceVerified}
                   />
@@ -479,7 +622,12 @@ export default function VerificationDetailsDialog({ item, currentAdmin, onClose,
 
           {/* Admin Notes */}
           <div>
-            <Label htmlFor="notes">Admin Notes {!notes && <span className="text-red-500">(Required for rejection)</span>}</Label>
+            <Label htmlFor="notes">
+              Admin Notes{" "}
+              {!notes && (
+                <span className="text-red-500">(Required for rejection)</span>
+              )}
+            </Label>
             <Textarea
               id="notes"
               value={notes}

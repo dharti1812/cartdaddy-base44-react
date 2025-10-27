@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { User } from "@/api/entities"; // User entity remains from its original source
 import { Retailer, DeliveryPartner } from "@/components/utils/mockApi"; // Corrected path
@@ -7,12 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Search, Store, UserCheck, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import {
+  Search,
+  Store,
+  UserCheck,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 import RetailerVerificationCard from "../components/verifications/RetailerVerificationCard";
 import DeliveryBoyVerificationCard from "../components/verifications/DeliveryBoyVerificationCard";
 import VerificationDetailsDialog from "../components/verifications/VerificationDetailsDialog";
+import axios from "axios";
+import { API_BASE_URL } from "@/config";
 
 export default function VerificationsPage() {
   const [retailers, setRetailers] = useState([]);
@@ -31,44 +40,55 @@ export default function VerificationsPage() {
     setLoading(true);
     try {
       // User.me() is assumed to still be available from "@/api/entities"
-      const admin = await User.me();
-      setCurrentAdmin(admin);
+      // const admin = await User.me();
+      // setCurrentAdmin(admin);
 
-      // Fetch data from the mock API
-      const [retailersData, deliveryBoysData] = await Promise.all([
-        Retailer.list("-created_date"),
-        DeliveryPartner.list("-created_date")
+      const token = sessionStorage.getItem("token");
+
+      const [retailersRes, deliveryBoysRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/sellers/pending-sellers`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }),
+        fetch(`${API_BASE_URL}/api/delivery_boys/pending-delivery_boys`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }),
       ]);
 
-      setRetailers(retailersData);
-      setDeliveryBoys(deliveryBoysData);
+      const retailersData = await retailersRes.json();
+      const deliveryBoysData = await deliveryBoysRes.json();
+
+      setRetailers(retailersData.data || []);
+      setDeliveryBoys(deliveryBoysData.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
     }
     setLoading(false);
   };
 
-  const pendingRetailers = retailers.filter(r =>
-    r.onboarding_status === 'admin_approval_pending'
+  const pendingRetailers = retailers;
+
+  const pendingDeliveryBoys = deliveryBoys;
+
+  const filteredRetailers = retailers.filter(
+    (r) =>
+      !searchTerm ||
+      r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.gst_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingDeliveryBoys = deliveryBoys.filter(db =>
-    db.onboarding_status === 'retailers_pending' ||
-    !db.onboarding_completed_at
-  );
-
-  const filteredRetailers = pendingRetailers.filter(r =>
-    !searchTerm ||
-    r.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.gst_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredDeliveryBoys = pendingDeliveryBoys.filter(db =>
-    !searchTerm ||
-    db.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    db.phone?.includes(searchTerm) ||
-    db.driving_license?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDeliveryBoys = pendingDeliveryBoys.filter(
+    (db) =>
+      !searchTerm ||
+      db.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      db.phone?.includes(searchTerm) ||
+      db.driving_license?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -77,7 +97,9 @@ export default function VerificationsPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Verifications</h1>
-            <p className="text-white opacity-90 mt-1">Review and approve new registrations</p>
+            <p className="text-white opacity-90 mt-1">
+              Review and approve new registrations
+            </p>
           </div>
           <div className="flex gap-3">
             <Badge className="bg-amber-500 text-white text-lg px-4 py-2">
@@ -113,14 +135,18 @@ export default function VerificationsPage() {
                   <Store className="w-4 h-4 mr-2" />
                   Retailers
                   {pendingRetailers.length > 0 && (
-                    <Badge className="ml-2 bg-amber-500 text-white">{pendingRetailers.length}</Badge>
+                    <Badge className="ml-2 bg-amber-500 text-white">
+                      {pendingRetailers.length}
+                    </Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="delivery_boys" className="relative">
                   <UserCheck className="w-4 h-4 mr-2" />
                   Delivery Partners
                   {pendingDeliveryBoys.length > 0 && (
-                    <Badge className="ml-2 bg-green-500 text-white">{pendingDeliveryBoys.length}</Badge>
+                    <Badge className="ml-2 bg-green-500 text-white">
+                      {pendingDeliveryBoys.length}
+                    </Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
@@ -136,8 +162,12 @@ export default function VerificationsPage() {
                 ) : filteredRetailers.length === 0 ? (
                   <div className="text-center py-12">
                     <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Retailers</h3>
-                    <p className="text-gray-500">All retailer applications have been reviewed</p>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                      No Pending Retailers
+                    </h3>
+                    <p className="text-gray-500">
+                      All retailer applications have been reviewed
+                    </p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
@@ -145,7 +175,9 @@ export default function VerificationsPage() {
                       <RetailerVerificationCard
                         key={retailer.id}
                         retailer={retailer}
-                        onClick={() => setSelectedItem({ type: 'retailer', data: retailer })}
+                        onClick={() =>
+                          setSelectedItem({ type: "retailer", data: retailer })
+                        }
                       />
                     ))}
                   </div>
@@ -161,8 +193,12 @@ export default function VerificationsPage() {
                 ) : filteredDeliveryBoys.length === 0 ? (
                   <div className="text-center py-12">
                     <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Delivery Partners</h3>
-                    <p className="text-gray-500">All delivery partner applications have been reviewed</p>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                      No Pending Delivery Partners
+                    </h3>
+                    <p className="text-gray-500">
+                      All delivery partner applications have been reviewed
+                    </p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
@@ -170,7 +206,9 @@ export default function VerificationsPage() {
                       <DeliveryBoyVerificationCard
                         key={db.id}
                         deliveryBoy={db}
-                        onClick={() => setSelectedItem({ type: 'delivery_boy', data: db })}
+                        onClick={() =>
+                          setSelectedItem({ type: "delivery_boy", data: db })
+                        }
                       />
                     ))}
                   </div>
