@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Order, Retailer } from "@/components/utils/mockApi";
+import { OrderApi } from "@/components/utils/orderApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +36,8 @@ export default function OrdersPage() {
   const loadData = async () => {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([
-      Order.list("-created_date"),
-      Retailer.list()
+      OrderApi.list(),
+      OrderApi.list()
     ]);
     setOrders(ordersData);
     setRetailers(retailersData);
@@ -45,9 +45,9 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter(order => {
+    
     const matchesSearch = !searchTerm || 
       order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.website_ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
@@ -87,7 +87,7 @@ export default function OrdersPage() {
               <Tabs value={statusFilter} onValueChange={setStatusFilter}>
                 <TabsList className="bg-gray-100">
                   <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="pending_acceptance">Pending</TabsTrigger>
+                  <TabsTrigger value="pending">Pending</TabsTrigger>
                   <TabsTrigger value="assigned">Assigned</TabsTrigger>
                   <TabsTrigger value="en_route">En Route</TabsTrigger>
                   <TabsTrigger value="delivered">Delivered</TabsTrigger>

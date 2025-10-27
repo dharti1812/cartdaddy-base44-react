@@ -34,11 +34,6 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
       <CardContent className="p-0">
         <div className="divide-y">
           {orders.map((order) => {
-            // Get seller info
-            const sellerInfo = order.active_retailer_info || order.accepted_retailers?.[0];
-            const sellerName = sellerInfo?.retailer_name || 'Unknown Seller';
-            const shopName = sellerInfo?.retailer_business_name || '';
-            
             return (
               <div
                 key={order.id}
@@ -53,7 +48,7 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">
-                        {order.website_ref || `#${order.id.slice(0, 8)}`}
+                        {`#${order.id}`}
                       </h3>
                       <Badge className={getStatusBadgeClass(order.status)}>
                         {order.status.replace(/_/g, ' ')}
@@ -67,13 +62,11 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                     </div>
 
                     {/* Display Owner Name + Shop Name */}
-                    {(sellerName || shopName) && (
+                    {(order.retailer_name) && (
                       <div className="mb-2 flex items-center gap-2">
                         <Store className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-700">
-                          <strong>{shopName}</strong>
-                          {shopName && sellerName && ' - '}
-                          {sellerName}
+                          {order.retailer_name}
                         </span>
                       </div>
                     )}
@@ -85,7 +78,7 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <MapPin className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{order.drop_address?.street}, {order.drop_address?.city}</span>
+                        <span className="truncate">{order.drop_address}, {order.drop_address}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4 flex-shrink-0" />
@@ -95,10 +88,7 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xl font-bold text-gray-900">₹{order.total_amount}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''}
-                    </p>
+                    <p className="text-xl font-bold text-gray-900">₹{order.amount}</p>
                   </div>
                 </div>
               </div>
@@ -114,7 +104,7 @@ function getStatusBadgeClass(status) {
   switch (status) {
     case 'delivered': return 'bg-green-100 text-green-800';
     case 'en_route': return 'bg-blue-100 text-blue-800';
-    case 'pending_acceptance': return 'bg-amber-100 text-amber-800';
+    case 'pending': return 'bg-amber-100 text-amber-800';
     case 'cancelled': return 'bg-red-100 text-red-800';
     case 'assigned': return 'bg-purple-100 text-purple-800'; // Added assigned status
     default: return 'bg-gray-100 text-gray-800';

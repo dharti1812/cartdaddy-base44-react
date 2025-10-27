@@ -14,6 +14,4 @@ export const OrderApi = {
     if (!res.ok) throw new Error("Failed to fetch retailers");
     return res.json();
   },
-
-
 };

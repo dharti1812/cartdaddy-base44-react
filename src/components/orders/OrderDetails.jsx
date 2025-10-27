@@ -58,7 +58,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-gray-900">
-              {order.website_ref || `Order #${order.id.slice(0, 8)}`}
+              {`#${order.id}`}
             </h3>
             <Badge className={`${statusConfig[order.status]?.color} border`}>
               {statusConfig[order.status]?.label}
@@ -79,9 +79,8 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
               <div>
                 <p className="font-medium text-gray-700 mb-1">Delivery Address</p>
                 <p className="text-gray-600">
-                  {order.drop_address?.street}, {order.drop_address?.city}
+                  {order.drop_address}
                 </p>
-                <p className="text-gray-600">{order.drop_address?.pincode}</p>
               </div>
             </div>
 
@@ -114,23 +113,27 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
           <div className="mt-4 pt-4 border-t space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">₹{order.subtotal}</span>
+              <span className="font-medium">₹{order.amount}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Delivery Charge</span>
-              <span className="font-medium">₹{order.delivery_charge}</span>
+              {order.delivery_charge && order.delivery_charge != null && (
+                <>
+                  <span className="text-gray-600">Delivery Charge</span>
+                  <span className="font-medium">₹{order.delivery_charge}</span>
+                </>
+              )}
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t">
               <span>Total</span>
               <span className="flex items-center gap-1">
                 <IndianRupee className="w-4 h-4" />
-                {order.total_amount}
+                {order.amount}
               </span>
             </div>
           </div>
         </div>
 
-        {order.status === 'pending_acceptance' && (
+        {order.status === 'pending' && (
           <div>
             <h3 className="font-semibold text-gray-900 mb-3">Assign Retailer</h3>
             <div className="space-y-3">
