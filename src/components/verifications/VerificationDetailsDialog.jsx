@@ -46,7 +46,7 @@ export default function VerificationDetailsDialog({
 
   const isRetailer = item.type === "retailer";
   const data = item.data;
-  console.log(`${API_BASE_URL}/${data?.selfie_file?.file_name}`);
+
   let shopPhotos = [];
 
   try {
@@ -99,6 +99,7 @@ export default function VerificationDetailsDialog({
     setLoading(true);
     setError("");
     try {
+      const token = sessionStorage.getItem("token");
       if (isRetailer) {
         await Retailer.update(data.id, {
           onboarding_status: "approved",
@@ -116,30 +117,45 @@ export default function VerificationDetailsDialog({
             : data.physical_verification,
         });
       } else {
-        await DeliveryPartner.update(data.id, {
-          onboarding_status: "approved",
-          status: "active",
-          admin_approved_by: currentAdmin.id,
-          admin_approved_at: new Date().toISOString(),
-          admin_notes: notes,
-          police_verification: policeVerified
-            ? {
-                status: "completed",
-                verified_by: currentAdmin.id,
-                verified_at: new Date().toISOString(),
-                notes: notes,
-              }
-            : data.police_verification,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/delivery-partners/${data.id}/approve`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              onboarding_status: "approved",
+              status: "active",
+              police_verified: "approved",
+              admin_approved_by: currentAdmin.id,
+              admin_approved_at: new Date().toISOString(),
+              admin_notes: notes,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || "Approval failed");
+        }
       }
       onSuccess();
     } catch (err) {
+      console.error("Approval error:", err);
       setError(err.message);
       setLoading(false);
     }
   };
 
   const handleReject = async () => {
+    if (!data || !data.id) {
+      console.error("❌ No delivery partner data found");
+      setError("Unable to reject: missing delivery partner information.");
+      return;
+    }
+
     if (!notes) {
       setError("Please provide a reason for rejection");
       return;
@@ -147,29 +163,47 @@ export default function VerificationDetailsDialog({
 
     setLoading(true);
     setError("");
+
     try {
-      if (isRetailer) {
-        await Retailer.update(data.id, {
-          onboarding_status: "rejected",
-          status: "suspended",
-          admin_approved_by: currentAdmin.id,
-          admin_approved_at: new Date().toISOString(),
-          rejection_reason: notes,
-          admin_notes: notes,
-        });
-      } else {
-        await DeliveryPartner.update(data.id, {
-          onboarding_status: "rejected",
-          status: "suspended",
-          admin_approved_by: currentAdmin.id,
-          admin_approved_at: new Date().toISOString(),
-          rejection_reason: notes,
-          admin_notes: notes,
-        });
+      const token = sessionStorage.getItem("token");
+      if (!token) throw new Error("Authentication token missing");
+
+      const rejectedData = {
+        onboarding_status: "rejected",
+        status: "suspended",
+        police_verified: "rejected",
+        admin_approved_by: currentAdmin.id,
+        admin_approved_at: new Date().toISOString(),
+        rejection_reason: notes,
+        admin_notes: notes,
+      };
+      console.log("rejectedData", rejectedData);
+      const api = isRetailer
+        ? `${API_BASE_URL}/api/retailers/${data.id}/reject`
+        : `${API_BASE_URL}/api/delivery-partners/${data.id}/reject`;
+
+      const response = await fetch(api, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(rejectedData),
+      });
+
+      const result = await response.json();
+      console.log(result);
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to reject partner");
       }
+
+      console.log("✅ Rejection successful:", result);
       onSuccess();
     } catch (err) {
+      console.error("❌ Rejection error:", err);
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -300,11 +334,11 @@ export default function VerificationDetailsDialog({
                       </p>
                     </div>
                     {/* <div>
-                      <Label className="text-gray-500">IFSC Code</Label>
-                      <p className="font-mono">
-                        {data?.ban?.ifsc || "N/A"}
-                      </p>
-                    </div> */}
+                        <Label className="text-gray-500">IFSC Code</Label>
+                        <p className="font-mono">
+                          {data?.ban?.ifsc || "N/A"}
+                        </p>
+                      </div> */}
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
                       <p className="font-medium">
@@ -312,11 +346,11 @@ export default function VerificationDetailsDialog({
                       </p>
                     </div>
                     {/* <div>
-                      <Label className="text-gray-500">Bank Name</Label>
-                      <p className="font-medium">
-                        {data?.bank_account?.bank_name || "N/A"}
-                      </p>
-                    </div> */}
+                        <Label className="text-gray-500">Bank Name</Label>
+                        <p className="font-medium">
+                          {data?.bank_account?.bank_name || "N/A"}
+                        </p>
+                      </div> */}
                   </div>
                 </div>
               )}
@@ -425,13 +459,13 @@ export default function VerificationDetailsDialog({
                     </div>
 
                     {/* <div>
-                      <Label className="text-gray-500">IFSC Code</Label>
-                      <p className="font-mono">
-                        {isRetailer
-                          ? data.user.bank_information.ifsc
-                          : data.bank_information.ifsc}
-                      </p>
-                    </div> */}
+                        <Label className="text-gray-500">IFSC Code</Label>
+                        <p className="font-mono">
+                          {isRetailer
+                            ? data.user.bank_information.ifsc
+                            : data.bank_information.ifsc}
+                        </p>
+                      </div> */}
 
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
@@ -443,31 +477,31 @@ export default function VerificationDetailsDialog({
                     </div>
 
                     {/* <div>
-                      <Label className="text-gray-500">Bank Name</Label>
-                      <p className="font-medium">
-                        {isRetailer
-                          ? data.user.bank_information.bank_name
-                          : data.bank_information.bank_name}
-                      </p>
-                    </div> */}
+                        <Label className="text-gray-500">Bank Name</Label>
+                        <p className="font-medium">
+                          {isRetailer
+                            ? data.user.bank_information.bank_name
+                            : data.bank_information.bank_name}
+                        </p>
+                      </div> */}
                   </div>
                 </div>
               ) : null}
 
               {/* Additional Contacts */}
-              {data.alternate_phones && data.alternate_phones.length > 0 && (
+              {data.alternate_phone && (
                 <div>
                   <h3 className="font-semibold mb-3">
-                    Additional Contact Numbers
+                    Additional Contact Number
                   </h3>
                   <div className="space-y-2">
-                    {/* {data.alternate_phones.map((phone, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <span className="font-medium">{phone.number}</span>
-                        <Badge variant="outline" className="text-xs">{phone.label}</Badge>
-                      </div>
-                    ))} */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <span className="font-medium">
+                        {data.alternate_phone}
+                      </span>
+                      {/* <Badge variant="outline" className="text-xs">{data.alternate_phone.label}</Badge> */}
+                    </div>
                   </div>
                 </div>
               )}
@@ -480,10 +514,7 @@ export default function VerificationDetailsDialog({
             (Array.isArray(data.shop_photos)
               ? data.shop_photos.length > 0
               : !!data.shop_photos)) ||
-            (!isRetailer &&
-              (data.selfie_url ||
-                (Array.isArray(data.documents) &&
-                  data.documents.length > 0)))) && (
+            !isRetailer) && (
             <div>
               <h3 className="font-semibold mb-3">
                 {isRetailer ? "Shop Photos" : "Selfie & Documents"}
@@ -534,61 +565,91 @@ export default function VerificationDetailsDialog({
                         <Badge className="absolute top-2 left-2 bg-[#F4B321] text-gray-900">
                           Selfie
                         </Badge>
-                        {data.selfie_location && (
-                          <Badge className="absolute top-2 right-2 bg-blue-600 text-white text-xs">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            Geo-tagged
-                          </Badge>
-                        )}
                       </div>
                     )}
-                    {(Array.isArray(data.documents) ? data.documents : []).map(
-                      (doc, i) => (
-                        <div key={i} className="relative">
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <img
-                              src={doc.url}
-                              alt={doc.type}
-                              className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
-                            />
-                          </a>
-                          <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
-                            {doc.type?.replace("_", " ")}
-                          </Badge>
-                        </div>
-                      )
-                    )}
+                    {(() => {
+                      if (!data) return null;
+
+                      const docs = [];
+                      const kyc = data.kyc_documents;
+                      if (kyc.dl_front) {
+                        docs.push({
+                          type: "dl_front",
+                          url: `${API_BASE_URL}/${kyc.dl_front.file_name}`,
+                        });
+                      }
+                      if (kyc.pan) {
+                        docs.push({
+                          type: "pan",
+                          url: `${API_BASE_URL}/${kyc.pan.file_name}`,
+                        });
+                      }
+                      if (kyc.aadhar_front) {
+                        docs.push({
+                          type: "aadhar_front",
+                          url: `${API_BASE_URL}/${kyc.aadhar_front.file_name}`,
+                        });
+                      }
+                      if (kyc.vehicle_rc) {
+                        docs.push({
+                          type: "vehicle_rc",
+                          url: `${API_BASE_URL}/${kyc.vehicle_rc.file_name}`,
+                        });
+                      }
+
+                      return docs.length > 0 ? (
+                        docs.map((doc, i) => (
+                          <div key={i} className="relative">
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <img
+                                src={doc.url}
+                                alt={doc.type}
+                                className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
+                                // onError={(e) =>
+                                //   (e.target.src = "/placeholder.jpg")
+                                // }
+                              />
+                            </a>
+                            <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
+                              {doc.type?.replace("_", " ")}
+                            </Badge>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-gray-500">No documents uploaded</p>
+                      );
+                    })()}
                   </>
                 )}
               </div>
             </div>
           )}
 
-          {isRetailer && data.documents && data.documents.length > 0 && (
-            <div>
-              <h3 className="font-semibold mb-3">KYC Documents</h3>
-              <div className="grid grid-cols-3 gap-4">
-                {data.documents.map((doc, i) => (
-                  <div key={i} className="relative">
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                      <img
-                        src={doc.url}
-                        alt={doc.type}
-                        className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
-                      />
-                    </a>
-                    <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
-                      {doc.type}
-                    </Badge>
-                  </div>
-                ))}
+          {/* {isRetailer && data.documents && data.documents.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-3">KYC Documents</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  {data.documents.map((doc, i) => (
+                    <div key={i} className="relative">
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={doc.url}
+                          alt={doc.type}
+                          className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
+                        />
+                      </a>
+                      <Badge className="absolute top-2 left-2 bg-gray-600 text-white capitalize">
+                        {doc.type}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )} */}
 
           {/* Manual Verification Checkboxes */}
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">

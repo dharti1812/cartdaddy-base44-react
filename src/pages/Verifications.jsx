@@ -22,6 +22,7 @@ import DeliveryBoyVerificationCard from "../components/verifications/DeliveryBoy
 import VerificationDetailsDialog from "../components/verifications/VerificationDetailsDialog";
 import axios from "axios";
 import { API_BASE_URL } from "@/config";
+import { UserApi } from "@/components/utils/userApi";
 
 export default function VerificationsPage() {
   const [retailers, setRetailers] = useState([]);
@@ -40,8 +41,8 @@ export default function VerificationsPage() {
     setLoading(true);
     try {
       // User.me() is assumed to still be available from "@/api/entities"
-      // const admin = await User.me();
-      // setCurrentAdmin(admin);
+      const admin = await UserApi.me();
+      setCurrentAdmin(admin);
 
       const token = sessionStorage.getItem("token");
 
