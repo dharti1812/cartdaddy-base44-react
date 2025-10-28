@@ -101,21 +101,29 @@ export default function VerificationDetailsDialog({
     try {
       const token = sessionStorage.getItem("token");
       if (isRetailer) {
-        await Retailer.update(data.id, {
-          onboarding_status: "approved",
-          status: "active",
-          admin_approved_by: currentAdmin.id,
-          admin_approved_at: new Date().toISOString(),
-          admin_notes: notes,
-          physical_verification: physicalVerified
-            ? {
-                status: "completed",
-                verified_by: currentAdmin.id,
-                verified_at: new Date().toISOString(),
-                notes: notes,
-              }
-            : data.physical_verification,
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/retailers/${data.id}/approveByAdmin`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              onboarding_status: "approved",
+              status: "active",
+              admin_approved_by: currentAdmin.id,
+              admin_approved_at: new Date().toISOString(),
+              admin_notes: notes,
+              physical_verified: physicalVerified ? "approved" : "pending",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.message || "Retailer approval failed");
+        }
       } else {
         const response = await fetch(
           `${API_BASE_URL}/api/delivery-partners/${data.id}/approve`,
@@ -177,9 +185,9 @@ export default function VerificationDetailsDialog({
         rejection_reason: notes,
         admin_notes: notes,
       };
-      console.log("rejectedData", rejectedData);
+
       const api = isRetailer
-        ? `${API_BASE_URL}/api/retailers/${data.id}/reject`
+        ? `${API_BASE_URL}/api/retailers/${data.id}/rejectByAdmin`
         : `${API_BASE_URL}/api/delivery-partners/${data.id}/reject`;
 
       const response = await fetch(api, {
