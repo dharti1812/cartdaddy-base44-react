@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { User } from "@/api/entities"; // Keep User from original entities
-import { Order } from '@/components/utils/mockApi'; // Corrected path
+import { Order } from "@/components/utils/mockApi"; // Corrected path
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +8,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  User as UserIcon, Package, Phone, MapPin, Clock,
-  MessageSquare, Tag, FileText, TrendingUp, AlertCircle,
-  Plus, Edit2, Save, X, Search
+  User as UserIcon,
+  Package,
+  Phone,
+  MapPin,
+  Clock,
+  MessageSquare,
+  Tag,
+  FileText,
+  TrendingUp,
+  AlertCircle,
+  Plus,
+  Edit2,
+  Save,
+  X,
+  Search,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CallButton from "../components/communication/CallButton";
@@ -45,7 +56,19 @@ export default function CustomerCRM() {
   useEffect(() => {
     loadAdmin();
     loadCustomers();
-  }, []);
+
+    if (
+      selectedCustomer?.user_id &&
+      selectedCustomer?.phone &&
+      selectedCustomer?.user_type
+    ) {
+      fetchTags(
+        selectedCustomer.user_id,
+        selectedCustomer.phone,
+        selectedCustomer.user_type
+      );
+    }
+  }, [selectedCustomer]);
 
   const loadAdmin = async () => {
     // try {
@@ -67,20 +90,20 @@ export default function CustomerCRM() {
   const loadCustomers = async () => {
     setLoading(true);
     try {
-       const token = sessionStorage.getItem("token");
-    const res = await fetch(`${API_BASE_URL}/api/orders`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!res.ok) throw new Error("Failed to fetch orders");
-    const ordersData = await res.json(); 
-    console.log(ordersData);
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(`${API_BASE_URL}/api/orders`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      const ordersData = await res.json();
+
       // Group orders by customer phone
       const customerMap = new Map();
 
-      ordersData.forEach(order => {
+      ordersData.forEach((order) => {
         const phone = order.customer_phone;
         if (!phone) return;
 
@@ -88,21 +111,27 @@ export default function CustomerCRM() {
           customerMap.set(phone, {
             phone: phone,
             name: order.customer_name,
+            user_type: "customer",
+            user_id: order.user_id,
             orders: [],
             totalOrders: 0,
             activeOrders: 0,
             slaBreaches: 0,
             totalSpent: 0,
-            lastOrderDate: order.created_date
+            lastOrderDate: order.created_date,
           });
         }
 
         const customer = customerMap.get(phone);
+
         customer.orders.push(order);
         customer.totalOrders++;
-        customer.totalSpent += order.amount || 0;
+        if (order.payment_status === "paid") {
+          const finalAmount = order.amount?.toString().replace(/,/g, "") || "0";
+          customer.totalSpent += parseFloat(finalAmount);
+        }
         if (order.payment_status === "paid") customer.paidOrders++;
-        if (!['delivered', 'cancelled'].includes(order.delivery_status)) {
+        if (!["delivered", "cancelled"].includes(order.delivery_status)) {
           customer.activeOrders++;
         }
 
@@ -119,7 +148,6 @@ export default function CustomerCRM() {
       // Convert map to array
       const customersArray = Array.from(customerMap.values());
       setAllCustomers(customersArray);
-
     } catch (error) {
       console.error("Error loading customers:", error);
     }
@@ -129,9 +157,10 @@ export default function CustomerCRM() {
   const searchCustomers = async () => {
     if (!searchTerm) return;
 
-    const results = allCustomers.filter(customer =>
-      customer.phone?.includes(searchTerm) ||
-      customer.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    const results = allCustomers.filter(
+      (customer) =>
+        customer.phone?.includes(searchTerm) ||
+        customer.name?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (results.length > 0) {
@@ -142,17 +171,24 @@ export default function CustomerCRM() {
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
     setCustomerOrders(customer.orders);
-
+    fetchTags(customer.user_id);
     // Load notes and tags (simulated - would be from separate entity)
     // Clear and set new mock data for the selected customer
     setNotes([
-      { id: 1, text: "Customer prefers evening deliveries", created_by: "Admin", created_at: new Date().toISOString() },
-      { id: 2, text: "Always calls before placing large orders.", created_by: "Support", created_at: new Date(Date.now() - 86400000).toISOString() }
+      {
+        id: 1,
+        text: "Customer prefers evening deliveries",
+        created_by: "Admin",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: 2,
+        text: "Always calls before placing large orders.",
+        created_by: "Support",
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+      },
     ]);
-    setTags([
-      { id: 1, label: "VIP", color: "purple" },
-      { id: 2, label: "Frequent", color: "green" }
-    ]);
+    setTags([]);
   };
 
   const handleAddNote = () => {
@@ -161,33 +197,98 @@ export default function CustomerCRM() {
     const note = {
       id: Date.now(),
       text: newNote,
-      created_by: currentAdmin?.full_name || currentAdmin?.email || "Unknown Admin",
-      created_at: new Date().toISOString()
+      created_by:
+        currentAdmin?.full_name || currentAdmin?.email || "Unknown Admin",
+      created_at: new Date().toISOString(),
     };
 
     setNotes([note, ...notes]);
     setNewNote("");
   };
 
-  const handleAddTag = () => {
+  const handleAddTag = async () => {
     if (!newTag.trim()) return;
+    const colors = ["blue", "green", "purple", "red", "amber"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-    const tag = {
-      id: Date.now(),
-      label: newTag,
-      color: ['blue', 'green', 'purple', 'red', 'amber'][Math.floor(Math.random() * 5)]
-    };
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/customers/${selectedCustomer.phone}/tags`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            user_id: selectedCustomer?.user_id || null,
+            label: newTag,
+            color: randomColor,
+            phone: selectedCustomer?.phone || null,
+          }),
+        }
+      );
 
-    setTags([...tags, tag]);
-    setNewTag("");
+      const newTagData = await res.json();
+      setTags([...tags, newTagData]);
+      setNewTag("");
+    } catch (error) {
+      console.error("Error adding tag:", error);
+    }
+  };
+  const fetchTags = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/customers/${selectedCustomer?.user_id}/tags`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await res.json();
+      setTags(data);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
   };
 
-  const isSuperAdmin = currentAdmin?.role === 'super_admin';
+  const handleDeleteTag = async (id) => {
+    if (!selectedCustomer?.user_id) return;
 
-  const filteredCustomers = allCustomers.filter(customer =>
-    !searchTerm ||
-    customer.phone?.includes(searchTerm) ||
-    customer.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/customers/${selectedCustomer.user_id}/tags/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Failed to delete tag: ${res.status}`);
+      }
+
+      setTags((prevTags) => prevTags.filter((tag) => tag.id !== id));
+    } catch (error) {
+      console.error("Error deleting tag:", error);
+    }
+  };
+
+  const isSuperAdmin = currentAdmin?.role === "super_admin";
+
+  const filteredCustomers = allCustomers.filter(
+    (customer) =>
+      !searchTerm ||
+      customer.phone?.includes(searchTerm) ||
+      customer.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -195,7 +296,9 @@ export default function CustomerCRM() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">Customer CRM</h1>
-          <p className="text-white opacity-90 mt-1">Customer 360° view & relationship management</p>
+          <p className="text-white opacity-90 mt-1">
+            Customer 360° view & relationship management
+          </p>
         </div>
 
         {/* Search with customer list */}
@@ -210,7 +313,7 @@ export default function CustomerCRM() {
                     placeholder="Search customer..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && searchCustomers()}
+                    onKeyPress={(e) => e.key === "Enter" && searchCustomers()}
                     className="pl-10"
                   />
                 </div>
@@ -225,16 +328,22 @@ export default function CustomerCRM() {
               </CardHeader>
               <CardContent className="p-0">
                 {loading ? (
-                  <div className="p-4 text-center text-gray-500">Loading customers...</div>
+                  <div className="p-4 text-center text-gray-500">
+                    Loading customers...
+                  </div>
                 ) : filteredCustomers.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">No customers found.</div>
+                  <div className="p-4 text-center text-gray-500">
+                    No customers found.
+                  </div>
                 ) : (
                   filteredCustomers.map((customer, idx) => (
                     <div
                       key={idx}
                       onClick={() => handleSelectCustomer(customer)}
                       className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
-                        selectedCustomer?.phone === customer.phone ? 'bg-blue-50' : ''
+                        selectedCustomer?.phone === customer.phone
+                          ? "bg-blue-50"
+                          : ""
                       }`}
                     >
                       <p className="font-semibold text-sm">{customer.name}</p>
@@ -242,14 +351,18 @@ export default function CustomerCRM() {
                         <CustomerDataMask
                           data={customer.phone}
                           type="phone"
-                          userRole={isSuperAdmin ? 'super_admin' : 'admin'}
+                          userRole={isSuperAdmin ? "super_admin" : "admin"}
                           displayPartial={true} // Display partial if not super admin
                         />
                       </p>
                       <div className="flex gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">{customer.totalOrders} orders</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {customer.totalOrders} orders
+                        </Badge>
                         {customer.slaBreaches > 0 && (
-                          <Badge className="bg-red-500 text-white text-xs">{customer.slaBreaches} SLA</Badge>
+                          <Badge className="bg-red-500 text-white text-xs">
+                            {customer.slaBreaches} SLA
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -275,7 +388,9 @@ export default function CustomerCRM() {
                     <CardContent className="p-6 space-y-4">
                       <div>
                         <p className="text-sm text-gray-500">Name</p>
-                        <p className="font-semibold text-lg">{selectedCustomer.name}</p>
+                        <p className="font-semibold text-lg">
+                          {selectedCustomer.name}
+                        </p>
                       </div>
 
                       <div>
@@ -283,26 +398,34 @@ export default function CustomerCRM() {
                         <CustomerDataMask
                           data={selectedCustomer.phone}
                           type="phone"
-                          userRole={isSuperAdmin ? 'super_admin' : 'admin'}
+                          userRole={isSuperAdmin ? "super_admin" : "admin"}
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                         <div>
                           <p className="text-xs text-gray-500">Total Orders</p>
-                          <p className="text-2xl font-bold text-blue-600">{selectedCustomer.totalOrders}</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {selectedCustomer.totalOrders}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Active</p>
-                          <p className="text-2xl font-bold text-green-600">{selectedCustomer.activeOrders}</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {selectedCustomer.activeOrders}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">SLA Breaches</p>
-                          <p className="text-2xl font-bold text-red-600">{selectedCustomer.slaBreaches}</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            {selectedCustomer.slaBreaches}
+                          </p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Total Spent</p>
-                          <p className="text-2xl font-bold text-purple-600">₹{selectedCustomer.totalSpent}</p>
+                          <p className="text-2xl font-bold text-purple-600">
+                            ₹{selectedCustomer.totalSpent}
+                          </p>
                         </div>
                       </div>
 
@@ -323,26 +446,44 @@ export default function CustomerCRM() {
                       {/* Tags */}
                       <div className="pt-4 border-t">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-semibold text-gray-700">Tags</p>
-                          <Button size="sm" variant="ghost" onClick={() => document.getElementById('new-tag-input')?.focus()}>
+                          <p className="text-sm font-semibold text-gray-700">
+                            Tags
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              document.getElementById("new-tag-input")?.focus()
+                            }
+                          >
                             <Plus className="w-4 h-4" />
                           </Button>
                         </div>
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {tags.map(tag => (
-                            <Badge key={tag.id} className={`bg-${tag.color}-100 text-${tag.color}-800`}>
+                          {tags.map((tag, index) => (
+                            <Badge
+                              key={tag.id || `${tag.label}-${index}`}
+                              className={`flex items-center gap-1 bg-${tag.color}-100 text-${tag.color}-800`}
+                            >
                               <Tag className="w-3 h-3 mr-1" />
-                              {tag.label}
+                              <span>{tag.label}</span>
+                              <X
+                                className="w-3 h-3 cursor-pointer hover:text-red-500"
+                                onClick={() => handleDeleteTag(tag.id)}
+                              />
                             </Badge>
                           ))}
                         </div>
+
                         <div className="flex gap-2">
                           <Input
                             id="new-tag-input"
                             placeholder="Add tag..."
                             value={newTag}
                             onChange={(e) => setNewTag(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                            onKeyPress={(e) =>
+                              e.key === "Enter" && handleAddTag()
+                            }
                             size="sm"
                           />
                           <Button size="sm" onClick={handleAddTag}>
@@ -369,18 +510,28 @@ export default function CustomerCRM() {
                           onChange={(e) => setNewNote(e.target.value)}
                           rows={3}
                         />
-                        <Button size="sm" onClick={handleAddNote} className="w-full">
+                        <Button
+                          size="sm"
+                          onClick={handleAddNote}
+                          className="w-full"
+                        >
                           <Save className="w-4 h-4 mr-2" />
                           Save Note
                         </Button>
                       </div>
 
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {notes.map(note => (
-                          <div key={note.id} className="p-3 bg-gray-50 rounded-lg border">
-                            <div className="text-sm text-gray-900">{note.text}</div>
+                        {notes.map((note) => (
+                          <div
+                            key={note.id}
+                            className="p-3 bg-gray-50 rounded-lg border"
+                          >
+                            <div className="text-sm text-gray-900">
+                              {note.text}
+                            </div>
                             <div className="text-xs text-gray-500 mt-1">
-                              By {note.created_by} • {new Date(note.created_at).toLocaleDateString()}
+                              By {note.created_by} •{" "}
+                              {new Date(note.created_at).toLocaleDateString()}
                             </div>
                           </div>
                         ))}
@@ -414,33 +565,62 @@ export default function CustomerCRM() {
                         <CardContent className="p-4">
                           <div className="space-y-3">
                             {customerOrders.length === 0 ? (
-                              <p className="text-center text-gray-500 py-8">No orders for this customer.</p>
+                              <p className="text-center text-gray-500 py-8">
+                                No orders for this customer.
+                              </p>
                             ) : (
-                              customerOrders.map(order => (
-                                <div key={order.id} className="p-4 bg-gray-50 rounded-lg border">
+                              customerOrders.map((order) => (
+                                <div
+                                  key={order.id}
+                                  className="p-4 bg-gray-50 rounded-lg border"
+                                >
                                   <div className="flex items-start justify-between mb-2">
                                     <div>
-                                      <p className="font-semibold">{order.website_ref || `#${order.id.toString().slice(0, 8)}`}</p>
-                                      <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
+                                      <p className="font-semibold">
+                                        {order.website_ref ||
+                                          `#${order.id.toString().slice(0, 8)}`}
+                                      </p>
+                                      <p className="text-sm text-gray-600">
+                                        {new Date(
+                                          order.created_at
+                                        ).toLocaleDateString()}
+                                      </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="font-bold text-lg">₹{order.amount}</p>
-                                      <Badge className={
-                                        order.delivery_status === 'delivered' ? 'bg-green-500' :
-                                        order.delivery_status === 'en_route' ? 'bg-blue-500' :
-                                        'bg-amber-500'
-                                      }>
+                                      <p className="font-bold text-lg">
+                                        ₹{order.amount}
+                                      </p>
+                                      <Badge
+                                        className={
+                                          order.delivery_status === "delivered"
+                                            ? "bg-green-500"
+                                            : order.delivery_status ===
+                                              "en_route"
+                                            ? "bg-blue-500"
+                                            : "bg-amber-500"
+                                        }
+                                      >
                                         {order.status}
                                       </Badge>
                                     </div>
                                   </div>
                                   {order.active_retailer_info && (
                                     <p className="text-xs text-gray-600">
-                                      Seller: {order.active_retailer_info.retailer_business_name} ({order.active_retailer_info.retailer_name})
+                                      Seller:{" "}
+                                      {
+                                        order.active_retailer_info
+                                          .retailer_business_name
+                                      }{" "}
+                                      (
+                                      {order.active_retailer_info.retailer_name}
+                                      )
                                     </p>
                                   )}
                                   {order.sla_breach && (
-                                    <Badge variant="destructive" className="mt-2">
+                                    <Badge
+                                      variant="destructive"
+                                      className="mt-2"
+                                    >
                                       <AlertCircle className="w-3 h-3 mr-1" />
                                       SLA Breach
                                     </Badge>
@@ -455,19 +635,41 @@ export default function CustomerCRM() {
                       <TabsContent value="sla">
                         <CardContent className="p-4">
                           <div className="space-y-3">
-                            {customerOrders.filter(o => o.sla_breach).map(order => (
-                              <Alert key={order.id} className="bg-red-50 border-red-200">
-                                <AlertCircle className="w-4 h-4 text-red-600" />
-                                <AlertDescription>
-                                  <strong>{order.website_ref || `#${order.id.toString().slice(0, 8)}`}</strong><br/>
-                                  Status: {order.status}<br/>
-                                  Expected: {order.estimated_delivery_time && new Date(order.estimated_delivery_time).toLocaleString()}<br/>
-                                  Notified: {order.sla_breach_notified_at && new Date(order.sla_breach_notified_at).toLocaleString()}
-                                </AlertDescription>
-                              </Alert>
-                            ))}
-                            {customerOrders.filter(o => o.sla_breach).length === 0 && (
-                              <p className="text-center text-gray-500 py-8">No SLA breaches</p>
+                            {customerOrders
+                              .filter((o) => o.sla_breach)
+                              .map((order) => (
+                                <Alert
+                                  key={order.id}
+                                  className="bg-red-50 border-red-200"
+                                >
+                                  <AlertCircle className="w-4 h-4 text-red-600" />
+                                  <AlertDescription>
+                                    <strong>
+                                      {order.website_ref ||
+                                        `#${order.id.toString().slice(0, 8)}`}
+                                    </strong>
+                                    <br />
+                                    Status: {order.status}
+                                    <br />
+                                    Expected:{" "}
+                                    {order.estimated_delivery_time &&
+                                      new Date(
+                                        order.estimated_delivery_time
+                                      ).toLocaleString()}
+                                    <br />
+                                    Notified:{" "}
+                                    {order.sla_breach_notified_at &&
+                                      new Date(
+                                        order.sla_breach_notified_at
+                                      ).toLocaleString()}
+                                  </AlertDescription>
+                                </Alert>
+                              ))}
+                            {customerOrders.filter((o) => o.sla_breach)
+                              .length === 0 && (
+                              <p className="text-center text-gray-500 py-8">
+                                No SLA breaches
+                              </p>
                             )}
                           </div>
                         </CardContent>
@@ -478,7 +680,11 @@ export default function CustomerCRM() {
                           <div className="text-center py-12">
                             <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                             <p className="text-gray-500">No support tickets</p>
-                            <Button size="sm" variant="outline" className="mt-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-4"
+                            >
                               <Plus className="w-4 h-4 mr-2" />
                               Create Ticket
                             </Button>
@@ -493,8 +699,13 @@ export default function CustomerCRM() {
               <Card className="border-none shadow-md">
                 <CardContent className="p-12 text-center">
                   <UserIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-700 mb-2">Select a Customer</h3>
-                  <p className="text-gray-500">Choose a customer from the list to view their profile and history</p>
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    Select a Customer
+                  </h3>
+                  <p className="text-gray-500">
+                    Choose a customer from the list to view their profile and
+                    history
+                  </p>
                 </CardContent>
               </Card>
             )}
