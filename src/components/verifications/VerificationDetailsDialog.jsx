@@ -115,7 +115,7 @@ export default function VerificationDetailsDialog({
               admin_approved_by: currentAdmin.id,
               admin_approved_at: new Date().toISOString(),
               admin_notes: notes,
-              physical_verified: physicalVerified ? "approved" : "pending",
+              is_physically_verified: physicalVerified ? 1 : 0,
             }),
           }
         );
@@ -136,7 +136,7 @@ export default function VerificationDetailsDialog({
             body: JSON.stringify({
               onboarding_status: "approved",
               status: "active",
-              police_verified: "approved",
+              is_police_verified: policeVerified ? 1 : 0,
               admin_approved_by: currentAdmin.id,
               admin_approved_at: new Date().toISOString(),
               admin_notes: notes,
@@ -179,7 +179,14 @@ export default function VerificationDetailsDialog({
       const rejectedData = {
         onboarding_status: "rejected",
         status: "suspended",
-        police_verified: "rejected",
+        is_verified: isRetailer
+          ? physicalVerified
+            ? 1
+            : 0
+          : policeVerified
+          ? 1
+          : 0,
+
         admin_approved_by: currentAdmin.id,
         admin_approved_at: new Date().toISOString(),
         rejection_reason: notes,
@@ -234,10 +241,10 @@ export default function VerificationDetailsDialog({
                 </>
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={handleDownloadReport}>
+            {/* <Button variant="outline" size="sm" onClick={handleDownloadReport}>
               <Download className="w-4 h-4 mr-2" />
               Report
-            </Button>
+            </Button> */}
           </DialogTitle>
         </DialogHeader>
 
@@ -255,7 +262,7 @@ export default function VerificationDetailsDialog({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <Label className="text-gray-500">Full Name</Label>
-                <p className="font-medium">{data?.user.name || "N/A"}</p>
+                <p className="font-medium">{data?.user?.name || "N/A"}</p>
               </div>
               {isRetailer && data?.name && (
                 <div>
