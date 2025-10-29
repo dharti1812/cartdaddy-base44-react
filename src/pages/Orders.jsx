@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { OrderApi } from "@/components/utils/orderApi";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,9 +25,9 @@ export default function OrdersPage() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('order');
+    const orderId = urlParams.get("order");
     if (orderId && orders.length > 0) {
-      const order = orders.find(o => o.id === orderId);
+      const order = orders.find((o) => o.id === orderId);
       if (order) setSelectedOrder(order);
     }
   }, [orders]);
@@ -37,21 +36,22 @@ export default function OrdersPage() {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([
       OrderApi.list(),
-      OrderApi.list()
+      OrderApi.list(),
     ]);
     setOrders(ordersData);
     setRetailers(retailersData);
     setLoading(false);
   };
 
-  const filteredOrders = orders.filter(order => {
-    
-    const matchesSearch = !searchTerm || 
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
+      !searchTerm ||
       order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
+
+    const matchesStatus =
+      statusFilter === "all" || order.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -61,9 +61,11 @@ export default function OrdersPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Order Management</h1>
-            <p className="text-white opacity-90 mt-1">Track and manage all deliveries</p>
+            <p className="text-white opacity-90 mt-1">
+              Track and manage all deliveries
+            </p>
           </div>
-          <Button 
+          <Button
             onClick={() => setShowCreateDialog(true)}
             className="bg-[#F4B321] hover:bg-[#F4B321] hover:opacity-90 text-gray-900 font-bold"
           >
@@ -99,7 +101,7 @@ export default function OrdersPage() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className={selectedOrder ? "lg:col-span-2" : "lg:col-span-3"}>
-            <OrdersList 
+            <OrdersList
               orders={filteredOrders}
               loading={loading}
               onSelectOrder={setSelectedOrder}
@@ -107,8 +109,9 @@ export default function OrdersPage() {
             />
           </div>
           {selectedOrder && (
-            <div>
-              <OrderDetails 
+            <div key={selectedOrder.order_id || selectedOrder.id}>
+              <OrderDetails
+                key={selectedOrder.order_id || selectedOrder.id}
                 order={selectedOrder}
                 retailers={retailers}
                 onClose={() => setSelectedOrder(null)}
