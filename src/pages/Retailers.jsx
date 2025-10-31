@@ -191,12 +191,8 @@ export default function RetailersPage() {
             <RetailersList
               retailers={filteredRetailers}
               loading={loading}
-              // Modified onSelectRetailer logic
               onSelectRetailer={(r) => {
-                const shopStatus = retailerApi.shop_status?.status || null;
-
-                // Open approval dialog if shop is pending or has no status yet
-                if (!shopStatus || shopStatus === "pending") {
+                if (r.status === "pending") {
                   setRetailerToApprove(r);
                   setShowApprovalDialog(true);
                   setSelectedRetailer(null);
