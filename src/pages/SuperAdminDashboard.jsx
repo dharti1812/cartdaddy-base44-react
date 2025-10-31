@@ -142,7 +142,7 @@ export default function SuperAdminDashboard() {
     ).length,
     totalDeliveryPartners: deliveryPartners.length,
     activeDeliveryPartners: deliveryPartners.filter(
-      (dp) => dp.availability_status === "online"
+      (dp) => dp?.delivery_partner?.availability_status === "online"
     ).length,
     pendingDPVerifications: deliveryPartners.filter(
       (dp) => dp.onboarding_status === "retailers_pending"
@@ -176,8 +176,8 @@ export default function SuperAdminDashboard() {
   };
 
   const handleBanSeller = async (seller) => {
-    const reason = prompt(`Enter reason to ban ${seller.name}:`);
-    if (!reason) return alert("Ban cancelled.");
+    const reason = prompt(`Enter ban reason`);
+    if (!reason) return;
 
     try {
       const user = await UserApi.me();
@@ -187,7 +187,7 @@ export default function SuperAdminDashboard() {
         banned_by: user.id,
         banned_at: new Date().toISOString(),
       });
-      alert(`${seller.name} has been banned successfully.`);
+      setSuccess(`${seller.name} has been banned successfully.`);
       loadData(); // refresh the list
     } catch (error) {
       console.error("Error banning seller:", error);
@@ -240,8 +240,8 @@ export default function SuperAdminDashboard() {
     if (!reason) return;
 
     try {
-      const user = await User.me(); // User.me() should be mocked or available from mockApi
-      await DeliveryPartner.update(dp.id, {
+      const user = await UserApi.me();
+      await deliveryPartnerApi.ban(dp.id, {
         status: "suspended",
         ban_reason: reason,
         banned_by: user.id,
@@ -257,7 +257,7 @@ export default function SuperAdminDashboard() {
 
   const handleUnbanDeliveryPartner = async (dp) => {
     try {
-      await DeliveryPartner.update(dp.id, {
+      await deliveryPartnerApi.unban(dp.id, {
         status: "active",
         ban_reason: null,
         banned_by: null,
@@ -284,7 +284,7 @@ export default function SuperAdminDashboard() {
     //const notes = prompt("Add notes (optional):");
 
     try {
-      await DeliveryPartner.update(dp.id, {
+      await deliveryPartnerApi.rating(dp.id, {
         rating: rating,
       });
       setSuccess("Rating updated successfully");
@@ -772,19 +772,21 @@ export default function SuperAdminDashboard() {
                       <div className="flex items-center gap-2">
                         <Badge
                           className={
-                            dp.availability_status === "online"
+                            dp?.delivery_partner?.availability_status ===
+                            "online"
                               ? "bg-[#075E66] text-white"
                               : "bg-gray-400 text-white"
                           }
                         >
-                          {dp.availability_status || "offline"}
+                          {dp?.delivery_partner?.availability_status ||
+                            "offline"}
                         </Badge>
-                        {dp.rating && (
+                        {dp?.delivery_partner?.rating && (
                           <Badge className="bg-[#FFEB3B] text-black">
-                            ⭐ {dp.rating}
+                            ⭐ {dp?.delivery_partner?.rating}
                           </Badge>
                         )}
-                        {dp.status === "suspended" && (
+                        {dp.banned === 1 && (
                           <Badge className="bg-red-600 text-white">
                             BANNED
                           </Badge>
@@ -801,7 +803,7 @@ export default function SuperAdminDashboard() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        {dp.status === "suspended" ? (
+                        {dp.banned === 1 ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -963,7 +965,7 @@ export default function SuperAdminDashboard() {
                           {selectedDetail.data.email}
                         </p>
                       </div>
-                      {selectedDetail.data.alternate_phones?.length > 0 && (
+                      {selectedDetail.data.alternate_phones && (
                         <div className="col-span-2">
                           <p className="text-sm text-gray-500 mb-2">
                             Additional Contacts
@@ -1025,9 +1027,9 @@ export default function SuperAdminDashboard() {
                 {selectedDetail.type === "delivery_partner" && (
                   <>
                     <div className="flex items-center gap-4">
-                      {selectedDetail.data.selfie_url ? (
+                      {selectedDetail.data.selfie ? (
                         <img
-                          src={selectedDetail.data.selfie_url}
+                          src={selectedDetail.data.selfie}
                           alt={selectedDetail.data.name}
                           className="w-24 h-24 rounded-lg object-cover border-4 border-[#FFEB3B]"
                         />
@@ -1043,9 +1045,9 @@ export default function SuperAdminDashboard() {
                         <p className="text-gray-600 capitalize">
                           {selectedDetail.data.vehicle_type?.replace("_", " ")}
                         </p>
-                        <Badge className="mt-2 bg-[#075E66] text-white">
-                          {selectedDetail.data.onboarding_status}
-                        </Badge>
+                        {/* <Badge className="mt-2 bg-[#075E66] text-white">
+                          {selectedDetail.data.status}
+                        </Badge> */}
                       </div>
                     </div>
 
@@ -1064,28 +1066,19 @@ export default function SuperAdminDashboard() {
                           {selectedDetail.data.email}
                         </p>
                       </div>
-                      {selectedDetail.data.alternate_phones?.length > 0 && (
+                      {selectedDetail.data.delivery_partner.alternate_phone && (
                         <div className="col-span-2">
                           <p className="text-sm text-gray-500 mb-2">
-                            Additional Contacts
+                            Additional Contact
                           </p>
-                          {selectedDetail.data.alternate_phones.map(
-                            (phone, idx) => (
-                              <p
-                                key={idx}
-                                className="text-sm text-black flex items-center gap-2 mb-1"
-                              >
-                                <Phone className="w-3 h-3" /> {phone.number} (
-                                {phone.label})
-                              </p>
-                            )
-                          )}
+                          {selectedDetail.data.delivery_partner.alternate_phone}
                         </div>
                       )}
                       <div>
                         <p className="text-sm text-gray-500">Driving License</p>
                         <p className="font-semibold text-black">
-                          {selectedDetail.data.driving_license || "N/A"}
+                          {selectedDetail.data.delivery_partner.dl_number ||
+                            "N/A"}
                         </p>
                       </div>
                       <div>
@@ -1098,12 +1091,14 @@ export default function SuperAdminDashboard() {
                         <p className="text-sm text-gray-500">Status</p>
                         <Badge
                           className={
-                            selectedDetail.data.availability_status === "online"
+                            selectedDetail.data.delivery_partner
+                              .availability_status === "online"
                               ? "bg-[#075E66] text-white"
                               : "bg-gray-400 text-white"
                           }
                         >
-                          {selectedDetail.data.availability_status || "offline"}
+                          {selectedDetail.data.delivery_partner
+                            .availability_status || "offline"}
                         </Badge>
                       </div>
                       <div>
