@@ -100,16 +100,24 @@ export default function RetailersPage() {
       retailer.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const status = retailer.status;
-
+    const availability = retailer.availability_status;
     const matchesStatus =
       statusFilter === "all" ||
-      status === statusFilter ||
-      (statusFilter === "pending" && status === "pending");
+      (statusFilter === "pending" && status === "pending") ||
+      (statusFilter === "active" && status === "active") ||
+      (statusFilter === "inactive" && status === "inactive") ||
+      (statusFilter === "online" && availability === "online");
 
     return matchesSearch && matchesStatus;
   });
 
   const pendingApprovals = retailers.filter((r) => r.status === "pending");
+  const onlineSellers = retailers.filter(
+    (seller) => seller.availability_status === "online"
+  );
+  const activeSellers = retailers.filter(
+    (seller) => seller.status === "active"
+  );
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
@@ -177,8 +185,22 @@ export default function RetailersPage() {
                       </Badge>
                     )}
                   </TabsTrigger>
-                  <TabsTrigger value="online">Online</TabsTrigger>
-                  <TabsTrigger value="active">Active</TabsTrigger>
+                  <TabsTrigger value="online" className="relative">
+                    Online
+                    {onlineSellers.length > 0 && (
+                      <Badge className="ml-1 bg-green-500 text-white text-xs">
+                        {onlineSellers.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger value="active" className="relative">
+                    Active
+                    {activeSellers.length > 0 && (
+                      <Badge className="ml-1 bg-blue-500 text-white text-xs">
+                        {activeSellers.length}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
                   <TabsTrigger value="inactive">Inactive</TabsTrigger>
                 </TabsList>
               </Tabs>
