@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { OrderApi} from "@/components/utils/orderApi";
+import { OrderApi } from "@/components/utils/orderApi";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,7 +49,7 @@ export default function SellerPortal() {
     try {
 
       const token = sessionStorage.getItem("token");
-      
+
       if (!token) {
         window.location.href = createPageUrl("RetailerLogin");
         return;
@@ -59,7 +59,7 @@ export default function SellerPortal() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      
+
 
       if (!res.ok) {
         window.location.href = createPageUrl("RetailerLogin");
@@ -71,7 +71,7 @@ export default function SellerPortal() {
       console.log("Fetching seller profile:", sellerProfile);
 
       if (!sellerProfile.id) {
-          window.location.href = createPageUrl("RetailerOnboarding");
+        window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
 
@@ -102,21 +102,21 @@ export default function SellerPortal() {
 
 
 
-const handleLogout = async () => {
-      try {
-        const response = await AuthApi.logout();
-  
-        if (!response.ok) throw new Error("Logout failed");
-  
-        sessionStorage.removeItem("token");
-        sessionStorage.removeItem("user");
-  
-        window.location.href = createPageUrl("PortalSelector");
-      } catch (error) {
-        console.error("Error logging out:", error);
-        alert("Failed to log out. Please try again.");
-      }
-    };
+  const handleLogout = async () => {
+    try {
+      const response = await AuthApi.logout();
+
+      if (!response.ok) throw new Error("Logout failed");
+
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      window.location.href = createPageUrl("PortalSelector");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      alert("Failed to log out. Please try again.");
+    }
+  };
 
   if (error) {
     return (
@@ -221,11 +221,10 @@ const handleLogout = async () => {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
-        mobileView ? "max-w-md mx-auto" : ""
-      }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
+        }`}
     >
-      
+
 
       {/* <DeviceSessionManager
         retailerId={sellerProfile?.id}
@@ -252,11 +251,10 @@ const handleLogout = async () => {
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <Badge
-                className={`${
-                  sellerProfile?.availability_status === "online"
+                className={`${sellerProfile?.availability_status === "online"
                     ? "bg-[#FFEB3B] text-gray-900 font-bold"
                     : "bg-gray-500 text-white font-bold"
-                } border-0 text-base sm:text-lg px-3 py-1.5`}
+                  } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status}
