@@ -48,7 +48,7 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     };
     
     const updatedAcceptances = [...acceptedRetailers, newAcceptance];
-    console.log("retailerProfile:", retailerProfile);
+    
     // // If this is the first acceptance, make them the active retailer
     const updateData = {
       accepted_retailers: updatedAcceptances,

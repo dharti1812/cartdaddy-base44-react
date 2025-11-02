@@ -31,7 +31,7 @@ export const OrderApi = {
 
   acceptCOD: async (retailerId, data) => {
     const token = sessionStorage.getItem("token");
-    console.log("acceptCOD called with data:", data);
+
     const res = await fetch(`${API_BASE_URL}/api/retailer/accept-cod`, {
       method: "POST",
       headers: {
