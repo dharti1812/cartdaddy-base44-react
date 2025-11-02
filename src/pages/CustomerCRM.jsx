@@ -99,7 +99,7 @@ export default function CustomerCRM() {
       });
       if (!res.ok) throw new Error("Failed to fetch orders");
       const ordersData = await res.json();
-
+      console.log("Fetched orders data:", ordersData);
       // Group orders by customer phone
       const customerMap = new Map();
 
@@ -581,9 +581,7 @@ export default function CustomerCRM() {
                                           `#${order.id.toString().slice(0, 8)}`}
                                       </p>
                                       <p className="text-sm text-gray-600">
-                                        {new Date(
-                                          order.created_at
-                                        ).toLocaleDateString()}
+                                        {order.created_at}
                                       </p>
                                     </div>
                                     <div className="text-right">

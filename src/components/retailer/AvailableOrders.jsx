@@ -32,7 +32,7 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     
     const acceptedRetailers = order.accepted_retailers || [];
     const position = acceptedRetailers.length + 1;
-    
+
     // Get device info for tracking
     const deviceId = localStorage.getItem('cart_daddy_device_id') || 'unknown';
     const deviceName = /mobile/i.test(navigator.userAgent) ? 'Mobile Device' : 
@@ -40,8 +40,6 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     
     const newAcceptance = {
       retailer_id: retailerId,
-      retailer_name: retailerProfile?.full_name || "Retailer",
-      retailer_phone: retailerProfile?.phone || "",
       device_id: deviceId,
       device_name: deviceName,
       position: position,
@@ -50,14 +48,14 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     };
     
     const updatedAcceptances = [...acceptedRetailers, newAcceptance];
-    
-    // If this is the first acceptance, make them the active retailer
+    console.log("retailerProfile:", retailerProfile);
+    // // If this is the first acceptance, make them the active retailer
     const updateData = {
       accepted_retailers: updatedAcceptances,
       status: position === 1 ? 'accepted_primary' : 'accepted_backup',
       active_retailer_info: position === 1 ? {
         retailer_id: retailerId,
-        retailer_name: retailerProfile?.full_name || "Retailer",
+        retailer_name: retailerProfile?.name || "Retailer",
         retailer_phone: retailerProfile?.phone || "",
         device_id: deviceId,
         device_name: deviceName,
@@ -75,7 +73,7 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     
     await Order.update(order.id, updateData);
     
-    // Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
+    // // Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     await Retailer.update(retailerId, {
       current_orders: (retailerProfile?.current_orders || 0) + 1,
       active_order_ids: [...(retailerProfile?.active_order_ids || []), order.id]
@@ -274,7 +272,7 @@ ${retailer.full_name}`;
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter(order => {
     // Show pending orders and queued orders
-    if (order.status !== 'pending_acceptance' && order.status !== 'queued') return false;
+    if (order.status !== 'pending' && order.status !== 'queued') return false;
     
     // If order is COD, only show to retailers who accept COD
     if (order.is_cod || order.payment_method === 'cod') {
@@ -311,11 +309,12 @@ ${retailer.full_name}`;
           const isQueued = order.status === 'queued' || order.is_queued;
           
           // Calculate delivery charges
-          const charges = calculateDeliveryCharges(
-            order.subtotal || order.total_amount,
-            order.distance_km || 0,
-            config
-          );
+          // const charges = calculateDeliveryCharges(
+          //   order.subtotal || order.total_amount,
+          //   order.distance_km || 0,
+          //   config
+          // );
+          const charges = 0;
           
           return (
             <Card key={order.id} className={`border-none shadow-lg hover:shadow-xl transition-shadow ${isQueued ? 'border-2 border-amber-500' : ''}`}>
@@ -335,7 +334,7 @@ ${retailer.full_name}`;
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
                         <IndianRupee className="w-3 h-3 mr-1" />
-                        {order.total_amount}
+                        {order.amount}
                       </Badge>
                       {isCOD && (
                         <Badge className="bg-amber-500 text-white border-0">
@@ -447,11 +446,9 @@ ${retailer.full_name}`;
                       <div className="flex-1">
                         <p className="text-xs font-medium text-blue-800 mb-1">DELIVERY ADDRESS</p>
                         <p className="text-sm text-gray-900 font-medium">
-                          {order.drop_address?.street}
+                          {order.drop_address}
                         </p>
-                        <p className="text-sm text-gray-700">
-                          {order.drop_address?.city}, {order.drop_address?.pincode}
-                        </p>
+                        
                         {order.distance_km && (
                           <div className="mt-2 flex items-center gap-3 text-xs">
                             <span className="text-blue-700 font-medium">
@@ -494,6 +491,7 @@ ${retailer.full_name}`;
                   )}
 
                   {order.items && order.items.length > 0 && (
+                    
                     <div className="pt-3 border-t">
                       <p className="text-xs font-medium text-gray-500 mb-2">PRODUCT DETAILS</p>
                       <div className="space-y-1">

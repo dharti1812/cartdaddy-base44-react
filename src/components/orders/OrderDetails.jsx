@@ -95,13 +95,14 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
   }, []);
 
   const handleAssignRetailer = async () => {
+    
     if (!selectedRetailer) return;
 
     setUpdating(true);
 
     try {
       const token = sessionStorage.getItem("token");
-
+      alert("orderId: " + order.order_id + " retailerId: " + selectedRetailer);
       const response = await fetch(
         `${API_BASE_URL}/api/orders/${order.order_id}/assign-retailer`,
         {
@@ -134,6 +135,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
   };
 
   const handleStatusChange = async (newStatus) => {
+    alert("Changing status to: " + newStatus);
     setUpdating(true);
     await Order.update(order.id, { status: newStatus });
     setUpdating(false);

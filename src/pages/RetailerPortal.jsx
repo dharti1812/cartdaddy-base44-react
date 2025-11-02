@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Order, Retailer, User } from "@/components/utils/mockApi";
+import { OrderApi} from "@/components/utils/orderApi";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,38 +47,37 @@ export default function SellerPortal() {
 
   const loadData = async () => {
     try {
-      console.log("🔄 Loading seller data...");
 
       const token = sessionStorage.getItem("token");
-      console.log("🔑 Retrieved token:", token);
+      
       if (!token) {
-        console.log("❌ No seller token found");
         window.location.href = createPageUrl("RetailerLogin");
         return;
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/seller/get`, {
+      const res = await fetch(`${API_BASE_URL}/api/retailer`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      
+
       if (!res.ok) {
-        console.log("❌ Failed to fetch seller profile");
         window.location.href = createPageUrl("RetailerLogin");
         return;
       }
 
       const sellerProfile = await res.json();
-      console.log("✅ Seller profile:", sellerProfile);
+
+      console.log("Fetching seller profile:", sellerProfile);
 
       if (!sellerProfile.id) {
-        console.log("⚠️ Seller password not set, redirecting to onboarding");
-        window.location.href = createPageUrl("RetailerOnboarding");
+          window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
 
       setSellerProfile(sellerProfile);
 
-      const allOrders = await Order.list("-created_date");
+      const allOrders = await OrderApi.PendingAcceptanceOrders();
       setOrders(allOrders);
 
       setLoading(false);
@@ -195,7 +194,7 @@ const handleLogout = async () => {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id
     );
-    return o.status === "pending_acceptance" && !alreadyAccepted;
+    return o.status === "pending" && !alreadyAccepted;
   });
 
   const myAcceptedOrders = orders.filter((o) =>
@@ -228,10 +227,10 @@ const handleLogout = async () => {
     >
       
 
-      <DeviceSessionManager
+      {/* <DeviceSessionManager
         retailerId={sellerProfile?.id}
         onSessionConflict={() => setSessionConflict(true)}
-      />
+      /> */}
 
       <div className="bg-[#075E66] text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg border-b-4 border-[#FFEB3B]">
         <div className="max-w-7xl mx-auto">
@@ -297,7 +296,7 @@ const handleLogout = async () => {
       </div>
 
       <div className="max-w-6xl mx-auto p-4">
-        <OrderNotificationSound
+        {/* <OrderNotificationSound
           retailerId={sellerProfile?.id}
           onNewOrder={handleNewOrder}
         />
@@ -310,7 +309,7 @@ const handleLogout = async () => {
               active at a time.
             </AlertDescription>
           </Alert>
-        )}
+        )} */}
 
         {showNewOrderAlert && (
           <Alert className="mb-4 bg-[#F4B321] border-[#F4B321] border-2 animate-pulse">
