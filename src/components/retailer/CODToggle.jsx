@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { IndianRupee, Info } from "lucide-react";
 import { Retailer } from "@/api/entities";
+import { OrderApi} from "@/components/utils/orderApi";
 
 export default function CODToggle({ retailerId, retailerProfile, onUpdate }) {
   const [toggling, setToggling] = useState(false);
 
   const handleToggle = async (checked) => {
     setToggling(true);
-    await Retailer.update(retailerId, {
+    await OrderApi.acceptCOD(retailerId, {
       accepts_cod: checked
     });
     setToggling(false);

@@ -28,4 +28,20 @@ export const OrderApi = {
     if (!res.ok) throw new Error("Failed to fetch retailer orders");
     return res.json();
   },
+
+  acceptCOD: async (retailerId, data) => {
+    const token = sessionStorage.getItem("token");
+    console.log("acceptCOD called with data:", data);
+    const res = await fetch(`${API_BASE_URL}/api/retailer/accept-cod`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error("Failed to update COD preference");
+    return res.json();
+  }
 };
