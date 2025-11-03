@@ -444,6 +444,7 @@ export default function DeliveryPartnerOnboarding() {
       formData.dl_front &&
       formData.pan &&
       formData.aadhar_front &&
+      formData.aadhar_back &&
       formData.vehicle_rc
     ) {
       setStep(step + 1);
@@ -920,6 +921,7 @@ export default function DeliveryPartnerOnboarding() {
                   { key: "dl_front", label: "Driving License (Front)" },
                   { key: "pan", label: "PAN Card" },
                   { key: "aadhar_front", label: "Aadhaar (Front)" },
+                  { key: "aadhar_back", label: "Aadhaar (Back)" },
                   { key: "vehicle_rc", label: "Vehicle RC" },
                 ].map((doc) => (
                   <div key={doc.key}>
@@ -952,6 +954,7 @@ export default function DeliveryPartnerOnboarding() {
                   !formData.dl_front ||
                   !formData.pan ||
                   !formData.aadhar_front ||
+                  !formData.aadhar_back ||
                   !formData.vehicle_rc
                 }
                 className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
