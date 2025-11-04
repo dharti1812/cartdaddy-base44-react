@@ -1,18 +1,32 @@
-
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Order, DispatchConfig, Retailer } from "@/api/entities";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
-import { calculateDeliveryCharges, isWithinBusinessHours, notifyCustomerOrderQueued } from '../utils/deliveryChargeCalculator';
+import {
+  calculateDeliveryCharges,
+  isWithinBusinessHours,
+  notifyCustomerOrderQueued,
+} from "../utils/deliveryChargeCalculator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { retailerApi } from "../utils/retailerApi";
+import { deliverySettingApi } from "../utils/deliverySettingApi";
+import AddressAutocompleteInput from "@/components/AddressAutocompleteInput";
+import { productApi } from "../utils/productApi";
 
 export default function CreateOrderDialog({ onClose, onSuccess }) {
+  const inputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
   const [retailers, setRetailers] = useState([]);
+  const [products, setProducts] = useState([]);
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
@@ -22,71 +36,102 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
       city: "",
       pincode: "",
       lat: 0,
-      lng: 0
+      lng: 0,
     },
     pickup_address: {
       street: "",
       city: "",
       pincode: "",
       lat: 0,
-      lng: 0
+      lng: 0,
     },
     distance_km: 5,
-    items: [{ name: "", quantity: 1, price: 0, weight_category: "lightweight" }],
+    items: [
+      { name: "", quantity: 1, price: 0, weight_category: "lightweight" },
+    ],
     payment_status: "pending",
     payment_method: "online",
-    service_type: "delivery"
+    service_type: "delivery",
   });
 
   useEffect(() => {
     loadData();
-  }, []);
+
+    if (
+      formData.pickup_address.lat &&
+      formData.pickup_address.lng &&
+      formData.drop_address.lat &&
+      formData.drop_address.lng
+    ) {
+      calculateDistance();
+    }
+  }, [
+    formData.pickup_address.lat,
+    formData.pickup_address.lng,
+    formData.drop_address.lat,
+    formData.drop_address.lng,
+  ]);
 
   const loadData = async () => {
-    const [configs, retailersList] = await Promise.all([
-      DispatchConfig.list(),
-      Retailer.list()
+    const [configs, retailersList, productsList] = await Promise.all([
+      deliverySettingApi.list(),
+      retailerApi.list(),
+      productApi.list(),
     ]);
     if (configs.length > 0) setConfig(configs[0]);
     setRetailers(retailersList);
+    setProducts(productsList);
   };
 
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { name: "", quantity: 1, price: 0, weight_category: "lightweight" }]
+      items: [
+        ...formData.items,
+        { name: "", quantity: 1, price: 0, weight_category: "lightweight" },
+      ],
     });
   };
 
   const handleRemoveItem = (index) => {
     setFormData({
       ...formData,
-      items: formData.items.filter((_, i) => i !== index)
+      items: formData.items.filter((_, i) => i !== index),
     });
   };
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    newItems[index] = { 
-      ...newItems[index], 
-      [field]: field === 'quantity' || field === 'price' ? Number(value) : value 
+    newItems[index] = {
+      ...newItems[index],
+      [field]:
+        field === "quantity" || field === "price" ? Number(value) : value,
     };
     setFormData({ ...formData, items: newItems });
   };
 
   // Auto-determine required vehicle type
   const getRequiredVehicleType = () => {
-    const hasHeavyweight = formData.items.some(item => item.weight_category === 'heavyweight');
-    return hasHeavyweight ? '4_wheeler' : '2_wheeler';
+    const hasHeavyweight = formData.items.some(
+      (item) => item.weight_category === "heavyweight"
+    );
+    return hasHeavyweight ? "4_wheeler" : "2_wheeler";
   };
 
   const calculateSubtotal = () => {
-    return formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return formData.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
   };
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const charges = calculateDeliveryCharges(subtotal, formData.distance_km, config);
+    const charges = calculateDeliveryCharges(
+      subtotal,
+      formData.distance_km,
+      config
+    );
     return subtotal + charges.totalDeliveryCharge;
   };
 
@@ -94,30 +139,71 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   const hasInsufficientRetailerCoverage = (online, total, currentConfig) => {
     if (!currentConfig || total === 0) return false;
     const onlinePercentage = (online / total) * 100;
-    return onlinePercentage < (currentConfig.min_online_retailers_percentage || 0); // Default to 0 if config is missing
+    return (
+      onlinePercentage < (currentConfig.min_online_retailers_percentage || 0)
+    ); // Default to 0 if config is missing
+  };
+  const handleAddressSelect = (data) => {
+    setFormData((prev) => ({
+      ...prev,
+      pickup_address: {
+        ...prev.pickup_address,
+        street: data.street,
+        city: data.city,
+        pincode: data.pincode,
+        lat: data.lat,
+        lng: data.lng,
+      },
+    }));
+  };
+
+  const handleDropAddressSelect = (data) => {
+    setFormData((prev) => ({
+      ...prev,
+      drop_address: {
+        ...prev.drop_address,
+        street: data.street,
+        city: data.city,
+        pincode: data.pincode,
+        lat: data.lat,
+        lng: data.lng,
+      },
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const subtotal = calculateSubtotal();
-    const charges = calculateDeliveryCharges(subtotal, formData.distance_km, config);
-    
-    const onlineRetailers = retailers.filter(r => r.availability_status === 'online').length;
-    const totalRetailers = retailers.filter(r => r.status === 'active').length;
+    const charges = calculateDeliveryCharges(
+      subtotal,
+      formData.distance_km,
+      config
+    );
+
+    const onlineRetailers = retailers.filter(
+      (r) => r.availability_status === "online"
+    ).length;
+    const totalRetailers = retailers.filter(
+      (r) => r.status === "active"
+    ).length;
     const withinBusinessHours = isWithinBusinessHours(config);
-    const insufficientRetailerCoverage = hasInsufficientRetailerCoverage(onlineRetailers, totalRetailers, config);
-    
+    const insufficientRetailerCoverage = hasInsufficientRetailerCoverage(
+      onlineRetailers,
+      totalRetailers,
+      config
+    );
+
     // Only queue immediately if outside business hours
-    let initialStatus = 'pending_acceptance';
+    let initialStatus = "pending_acceptance";
     let isQueued = false;
-    
+
     if (!withinBusinessHours) {
-      initialStatus = 'queued';
+      initialStatus = "queued";
       isQueued = true;
     }
-    
+
     const orderData = {
       ...formData,
       subtotal,
@@ -133,41 +219,84 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
       queued_at: isQueued ? new Date().toISOString() : null,
       queue_retry_count: 0,
       pending_acceptance_since: !isQueued ? new Date().toISOString() : null,
-      insufficient_retailer_coverage: insufficientRetailerCoverage
+      insufficient_retailer_coverage: insufficientRetailerCoverage,
     };
-    
+
     const createdOrder = await Order.create(orderData);
-    
+
     // Send customer notification if queued
     if (isQueued) {
       await notifyCustomerOrderQueued(createdOrder);
     }
-    
+
     setLoading(false);
     onSuccess();
     onClose();
   };
 
-  const charges = calculateDeliveryCharges(calculateSubtotal(), formData.distance_km, config);
-  const onlineRetailers = retailers.filter(r => r.availability_status === 'online').length;
-  const totalRetailers = retailers.filter(r => r.status === 'active').length;
+  const charges = calculateDeliveryCharges(
+    calculateSubtotal(),
+    formData.distance_km,
+    config
+  );
+  const onlineRetailers = retailers.filter(
+    (r) => r.availability_status === "online"
+  ).length;
+  const totalRetailers = retailers.filter((r) => r.status === "active").length;
   const withinBusinessHours = isWithinBusinessHours(config);
-  const insufficientCoverage = hasInsufficientRetailerCoverage(onlineRetailers, totalRetailers, config);
+  const insufficientCoverage = hasInsufficientRetailerCoverage(
+    onlineRetailers,
+    totalRetailers,
+    config
+  );
   const willBeQueued = !withinBusinessHours; // Order will be immediately queued only if outside business hours
+
+  const calculateDistance = () => {
+    const { pickup_address, drop_address } = formData;
+
+    if (
+      pickup_address.lat &&
+      pickup_address.lng &&
+      drop_address.lat &&
+      drop_address.lng
+    ) {
+      const R = 6371;
+      const dLat = (drop_address.lat - pickup_address.lat) * (Math.PI / 180);
+      const dLng = (drop_address.lng - pickup_address.lng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(pickup_address.lat * (Math.PI / 180)) *
+          Math.cos(drop_address.lat * (Math.PI / 180)) *
+          Math.sin(dLng / 2) *
+          Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      setFormData((prev) => ({
+        ...prev,
+        distance_km: parseFloat(distance.toFixed(2)),
+      }));
+    }
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-gray-900">Create New Order</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-gray-900">
+            Create New Order
+          </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           {willBeQueued && (
             <Alert className="bg-amber-50 border-amber-500 border-2">
               <AlertCircle className="w-5 h-5 text-amber-600" />
               <AlertDescription className="text-amber-900">
-                <strong>Order will be queued:</strong> Outside business hours ({config?.business_hours_start || '08:00'} - {config?.business_hours_end || '22:00'}). Will be sent to retailers when they open in the morning.
+                <strong>Order will be queued:</strong> Outside business hours (
+                {config?.business_hours_start || "08:00"} -{" "}
+                {config?.business_hours_end || "22:00"}). Will be sent to
+                retailers when they open in the morning.
               </AlertDescription>
             </Alert>
           )}
@@ -176,7 +305,14 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
             <Alert className="bg-blue-50 border-blue-500 border-2">
               <AlertCircle className="w-5 h-5 text-blue-600" />
               <AlertDescription className="text-blue-900">
-                <strong>Limited retailer availability:</strong> Only {onlineRetailers} out of {totalRetailers} retailers online ({totalRetailers > 0 ? Math.round((onlineRetailers/totalRetailers)*100) : 0}%). Order will be sent to available retailers. If no one accepts within {config?.queue_retry_interval_minutes || 15} minutes, customer will be notified and order will be queued.
+                <strong>Limited retailer availability:</strong> Only{" "}
+                {onlineRetailers} out of {totalRetailers} retailers online (
+                {totalRetailers > 0
+                  ? Math.round((onlineRetailers / totalRetailers) * 100)
+                  : 0}
+                %). Order will be sent to available retailers. If no one accepts
+                within {config?.queue_retry_interval_minutes || 15} minutes,
+                customer will be notified and order will be queued.
               </AlertDescription>
             </Alert>
           )}
@@ -189,7 +325,9 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <Input
                   id="customer_name"
                   value={formData.customer_name}
-                  onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customer_name: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -198,7 +336,13 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <Input
                   id="contact"
                   value={formData.customer_phone}
-                  onChange={(e) => setFormData({...formData, customer_phone: e.target.value, customer_masked_contact: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      customer_phone: e.target.value,
+                      customer_masked_contact: e.target.value,
+                    })
+                  }
                   placeholder="+919876543210"
                   required
                 />
@@ -208,18 +352,27 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
 
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Delivery Addresses</h3>
-            
+
             <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm font-semibold text-blue-900">📍 Pickup Location (Store/Warehouse)</p>
+              <p className="text-sm font-semibold text-blue-900">
+                📍 Pickup Location (Store/Warehouse)
+              </p>
               <div>
                 <Label htmlFor="pickup_street">Pickup Street Address</Label>
-                <Input
+                <AddressAutocompleteInput
                   id="pickup_street"
+                  ref={inputRef}
                   value={formData.pickup_address.street}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    pickup_address: {...formData.pickup_address, street: e.target.value}
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      pickup_address: {
+                        ...formData.pickup_address,
+                        street: e.target.value,
+                      },
+                    })
+                  }
+                  onSelect={handleAddressSelect}
                   required
                 />
               </div>
@@ -227,24 +380,36 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <div>
                   <Label htmlFor="pickup_city">City</Label>
                   <Input
+                    readOnly
                     id="pickup_city"
                     value={formData.pickup_address.city}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      pickup_address: {...formData.pickup_address, city: e.target.value}
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pickup_address: {
+                          ...formData.pickup_address,
+                          city: e.target.value,
+                        },
+                      })
+                    }
                     required
                   />
                 </div>
                 <div>
                   <Label htmlFor="pickup_pincode">Pincode</Label>
                   <Input
+                    readOnly
                     id="pickup_pincode"
                     value={formData.pickup_address.pincode}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      pickup_address: {...formData.pickup_address, pincode: e.target.value}
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        pickup_address: {
+                          ...formData.pickup_address,
+                          pincode: e.target.value,
+                        },
+                      })
+                    }
                     required
                   />
                 </div>
@@ -252,16 +417,24 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
             </div>
 
             <div className="space-y-3 p-4 bg-green-50 rounded-lg border border-green-200">
-              <p className="text-sm font-semibold text-green-900">🏠 Drop Location (Customer)</p>
+              <p className="text-sm font-semibold text-green-900">
+                🏠 Drop Location (Customer)
+              </p>
               <div>
                 <Label htmlFor="drop_street">Drop Street Address</Label>
-                <Input
+                <AddressAutocompleteInput
                   id="drop_street"
                   value={formData.drop_address.street}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    drop_address: {...formData.drop_address, street: e.target.value}
-                  })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      drop_address: {
+                        ...formData.drop_address,
+                        street: e.target.value,
+                      },
+                    })
+                  }
+                  onSelect={handleDropAddressSelect}
                   required
                 />
               </div>
@@ -269,24 +442,36 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <div>
                   <Label htmlFor="city">City</Label>
                   <Input
+                    readOnly
                     id="city"
                     value={formData.drop_address.city}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      drop_address: {...formData.drop_address, city: e.target.value}
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        drop_address: {
+                          ...formData.drop_address,
+                          city: e.target.value,
+                        },
+                      })
+                    }
                     required
                   />
                 </div>
                 <div>
                   <Label htmlFor="pincode">Pincode</Label>
                   <Input
+                    readOnly
                     id="pincode"
                     value={formData.drop_address.pincode}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      drop_address: {...formData.drop_address, pincode: e.target.value}
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        drop_address: {
+                          ...formData.drop_address,
+                          pincode: e.target.value,
+                        },
+                      })
+                    }
                     required
                   />
                 </div>
@@ -301,32 +486,59 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 min="0"
                 step="0.1"
                 value={formData.distance_km}
-                onChange={(e) => setFormData({...formData, distance_km: parseFloat(e.target.value) || 0})}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Estimated distance from pickup to drop location</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Estimated distance from pickup to drop location
+              </p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold text-gray-900">Order Items</h3>
-              <Button type="button" onClick={handleAddItem} variant="outline" size="sm">
+              <Button
+                type="button"
+                onClick={handleAddItem}
+                variant="outline"
+                size="sm"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Item
               </Button>
             </div>
             {formData.items.map((item, index) => (
-              <div key={index} className="space-y-3 p-4 bg-gray-50 rounded-lg border">
+              <div
+                key={index}
+                className="space-y-3 p-4 bg-gray-50 rounded-lg border"
+              >
                 <div className="flex gap-3 items-end">
                   <div className="flex-1">
                     <Label>Item Name</Label>
-                    <Input
-                      value={item.name}
-                      onChange={(e) => handleItemChange(index, 'name', e.target.value)}
-                      placeholder="Product name"
+                    <select
+                      className="border rounded-md px-3 py-2 w-full"
+                      value={item.product_id || ""}
+                      onChange={(e) => {
+                        const selected = products.find(
+                          (p) => p.id === Number(e.target.value)
+                        );
+                        handleItemChange(
+                          index,
+                          "product_id",
+                          Number(e.target.value)
+                        );
+                        handleItemChange(index, "name", selected?.name || "");
+                        handleItemChange(index, "price", selected?.price || 0);
+                      }}
                       required
-                    />
+                    >
+                      <option value="">Select Product</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="w-24">
                     <Label>Qty</Label>
@@ -334,19 +546,15 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                       type="number"
                       min="1"
                       value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                      onChange={(e) =>
+                        handleItemChange(index, "quantity", e.target.value)
+                      }
                       required
                     />
                   </div>
                   <div className="w-32">
                     <Label>Price (₹)</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={item.price}
-                      onChange={(e) => handleItemChange(index, 'price', e.target.value)}
-                      required
-                    />
+                    <Input type="number" min="0" value={item.price} readOnly />
                   </div>
                   {formData.items.length > 1 && (
                     <Button
@@ -359,15 +567,25 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                     </Button>
                   )}
                 </div>
-                
+
                 <div>
                   <Label>Weight Category * (Determines Vehicle Type)</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <Button
                       type="button"
-                      variant={item.weight_category === 'lightweight' ? 'default' : 'outline'}
+                      variant={
+                        item.weight_category === "lightweight"
+                          ? "default"
+                          : "outline"
+                      }
                       size="sm"
-                      onClick={() => handleItemChange(index, 'weight_category', 'lightweight')}
+                      onClick={() =>
+                        handleItemChange(
+                          index,
+                          "weight_category",
+                          "lightweight"
+                        )
+                      }
                       className="justify-start h-auto py-3"
                     >
                       <div className="text-left">
@@ -376,14 +594,26 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                           <span className="font-bold">Lightweight</span>
                         </div>
                         <p className="text-xs opacity-75">2-Wheeler Delivery</p>
-                        <p className="text-xs opacity-75">Small packages, groceries</p>
+                        <p className="text-xs opacity-75">
+                          Small packages, groceries
+                        </p>
                       </div>
                     </Button>
                     <Button
                       type="button"
-                      variant={item.weight_category === 'heavyweight' ? 'default' : 'outline'}
+                      variant={
+                        item.weight_category === "heavyweight"
+                          ? "default"
+                          : "outline"
+                      }
                       size="sm"
-                      onClick={() => handleItemChange(index, 'weight_category', 'heavyweight')}
+                      onClick={() =>
+                        handleItemChange(
+                          index,
+                          "weight_category",
+                          "heavyweight"
+                        )
+                      }
                       className="justify-start h-auto py-3"
                     >
                       <div className="text-left">
@@ -392,27 +622,34 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                           <span className="font-bold">Heavyweight</span>
                         </div>
                         <p className="text-xs opacity-75">4-Wheeler Delivery</p>
-                        <p className="text-xs opacity-75">Large items, bulk orders</p>
+                        <p className="text-xs opacity-75">
+                          Large items, bulk orders
+                        </p>
                       </div>
                     </Button>
                   </div>
                 </div>
               </div>
             ))}
-            
+
             {/* Show required vehicle type */}
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-900 text-sm">
-                <strong>🚗 Required Vehicle Type:</strong>{' '}
-                {getRequiredVehicleType() === '2_wheeler' ? (
-                  <span className="font-bold text-blue-700">🏍️ 2-Wheeler (All items lightweight)</span>
+                <strong>🚗 Required Vehicle Type:</strong>{" "}
+                {getRequiredVehicleType() === "2_wheeler" ? (
+                  <span className="font-bold text-blue-700">
+                    🏍️ 2-Wheeler (All items lightweight)
+                  </span>
                 ) : (
-                  <span className="font-bold text-green-700">🚗 4-Wheeler (Contains heavyweight items)</span>
+                  <span className="font-bold text-green-700">
+                    🚗 4-Wheeler (Contains heavyweight items)
+                  </span>
                 )}
-                <br/>
+                <br />
                 <span className="text-xs">
-                  Only delivery partners with matching vehicle type will receive this order
+                  Only delivery partners with matching vehicle type will receive
+                  this order
                 </span>
               </AlertDescription>
             </Alert>
@@ -421,9 +658,11 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
           <div className="space-y-3 pt-4 border-t">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Subtotal (Products)</span>
-              <span className="font-medium text-gray-900">₹{calculateSubtotal()}</span>
+              <span className="font-medium text-gray-900">
+                ₹{calculateSubtotal()}
+              </span>
             </div>
-            
+
             {charges.totalDeliveryCharge > 0 && (
               <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-300 rounded-lg space-y-2 text-sm">
                 <p className="font-semibold text-blue-900 flex items-center gap-2">
@@ -431,11 +670,21 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 </p>
                 <div className="space-y-1.5 text-gray-700">
                   <div className="flex justify-between">
-                    <span>Distance: {formData.distance_km} km × ₹{config?.fuel_cost_per_km || 5}/km</span>
+                    <span>
+                      Distance: {formData.distance_km} km × ₹
+                      {config?.fuel_cost_per_km || 5}/km
+                    </span>
                     <span className="font-medium">₹{charges.fuelCost}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Base Charge ({calculateSubtotal() < (config?.delivery_charge_threshold || 20000) ? 'Below' : 'Above'} ₹{config?.delivery_charge_threshold || 20000})</span>
+                    <span>
+                      Base Charge (
+                      {calculateSubtotal() <
+                      (config?.delivery_charge_threshold || 20000)
+                        ? "Below"
+                        : "Above"}{" "}
+                      ₹{config?.delivery_charge_threshold || 20000})
+                    </span>
                     <span className="font-medium">₹{charges.baseCharge}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-blue-900 pt-2 border-t border-blue-300">
@@ -444,14 +693,24 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                   </div>
                 </div>
                 <div className="pt-3 border-t border-blue-300 space-y-1.5 text-xs">
-                  <p className="font-semibold text-gray-700">💰 Commission Split:</p>
+                  <p className="font-semibold text-gray-700">
+                    💰 Commission Split:
+                  </p>
                   <div className="flex justify-between text-green-700">
-                    <span>→ Retailer/Seller ({charges.breakdown?.retailerPercent}%):</span>
-                    <span className="font-bold text-base">₹{charges.retailerEarning}</span>
+                    <span>
+                      → Retailer/Seller ({charges.breakdown?.retailerPercent}%):
+                    </span>
+                    <span className="font-bold text-base">
+                      ₹{charges.retailerEarning}
+                    </span>
                   </div>
                   <div className="flex justify-between text-blue-700">
-                    <span>→ Delivery Boy ({charges.breakdown?.deliveryBoyPercent}%):</span>
-                    <span className="font-bold text-base">₹{charges.deliveryBoyEarning}</span>
+                    <span>
+                      → Delivery Boy ({charges.breakdown?.deliveryBoyPercent}%):
+                    </span>
+                    <span className="font-bold text-base">
+                      ₹{charges.deliveryBoyEarning}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -467,8 +726,16 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-[#075E66] hover:bg-[#064d54] text-white font-semibold">
-              {loading ? "Creating..." : willBeQueued ? "Create & Queue Order" : "Create Order"}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-[#075E66] hover:bg-[#064d54] text-white font-semibold"
+            >
+              {loading
+                ? "Creating..."
+                : willBeQueued
+                ? "Create & Queue Order"
+                : "Create Order"}
             </Button>
           </div>
         </form>

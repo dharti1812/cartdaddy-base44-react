@@ -1,4 +1,5 @@
-import { DispatchConfig } from "@/api/entities";
+
+import { deliverySettingApi } from "./deliverySettingApi";
 
 /**
  * Calculate delivery charges for an order
@@ -6,7 +7,7 @@ import { DispatchConfig } from "@/api/entities";
  */
 export async function calculateDeliveryCharges(orderValue, distanceKm) {
   try {
-    const configs = await DispatchConfig.list();
+    const configs = await deliverySettingApi.list();
     const config = configs[0];
     
     if (!config) {
