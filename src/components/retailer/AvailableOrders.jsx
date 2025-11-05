@@ -9,6 +9,7 @@ import { MapPin, Package, IndianRupee, Clock, Navigation as NavigationIcon, Aler
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
+import { encryptValue } from "../../utils/encrypt";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { calculateDeliveryCharges } from '../utils/deliveryChargeCalculator';
+import { OrderApi } from '../utils/orderApi';
 
 export default function AvailableOrders({ orders, retailerId, config, onAccept, retailerProfile }) {
   const [accepting, setAccepting] = useState(null);
@@ -49,7 +51,7 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     
     const updatedAcceptances = [...acceptedRetailers, newAcceptance];
     
-    // // If this is the first acceptance, make them the active retailer
+    //If this is the first acceptance, make them the active retailer
     const updateData = {
       accepted_retailers: updatedAcceptances,
       status: position === 1 ? 'accepted_primary' : 'accepted_backup',
@@ -70,35 +72,42 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     if (position === 1) {
       updateData.active_retailer_id = retailerId;
     }
+
+    console.log("updateData", updateData);
     
-    await Order.update(order.id, updateData);
+    const apiData = {
+      "orderId": encryptValue(order.id),
+      "retailerId": encryptValue(retailerId)
+    };
+
+    await OrderApi.acceptOrder(apiData);
+
+    // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
+    // await Retailer.update(retailerId, {
+    //   current_orders: (retailerProfile?.current_orders || 0) + 1,
+    //   active_order_ids: [...(retailerProfile?.active_order_ids || []), order.id]
+    // });
     
-    // // Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
-    await Retailer.update(retailerId, {
-      current_orders: (retailerProfile?.current_orders || 0) + 1,
-      active_order_ids: [...(retailerProfile?.active_order_ids || []), order.id]
-    });
+    // // Send customer notification
+    // if (position === 1) {
+    //   const { notifyOrderAcceptedByRetailer } = await import('../utils/customerNotifications');
+    //   await notifyOrderAcceptedByRetailer({...order, ...updateData}, retailerProfile);
+    // }
     
-    // Send customer notification
-    if (position === 1) {
-      const { notifyOrderAcceptedByRetailer } = await import('../utils/customerNotifications');
-      await notifyOrderAcceptedByRetailer({...order, ...updateData}, retailerProfile);
-    }
+    // // NEW: Notify all active delivery boys under this retailer
+    // if (position === 1) {
+    //   await notifyAllDeliveryBoys(order, retailerProfile);
+    // }
     
-    // NEW: Notify all active delivery boys under this retailer
-    if (position === 1) {
-      await notifyAllDeliveryBoys(order, retailerProfile);
-    }
+    // setAccepting(null);
     
-    setAccepting(null);
-    
-    // If payment link needed and this retailer is active, show dialog immediately
-    if (position === 1 && order.payment_status === 'needs_paylink') {
-      setPendingOrder({...order, ...updateData});
-      setShowPaylinkDialog(true);
-    } else {
-      onAccept();
-    }
+    // // If payment link needed and this retailer is active, show dialog immediately
+    // if (position === 1 && order.payment_status === 'needs_paylink') {
+    //   setPendingOrder({...order, ...updateData});
+    //   setShowPaylinkDialog(true);
+    // } else {
+    //   onAccept();
+    // }
   };
 
   // Notify all active delivery boys about new order
