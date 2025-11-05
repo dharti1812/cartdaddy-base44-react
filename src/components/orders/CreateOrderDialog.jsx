@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Order, DispatchConfig, Retailer } from "@/api/entities";
 import { Plus, Trash2, AlertCircle } from "lucide-react";
+import Select from "react-select";
 import {
   calculateDeliveryCharges,
   isWithinBusinessHours,
@@ -20,6 +21,7 @@ import { retailerApi } from "../utils/retailerApi";
 import { deliverySettingApi } from "../utils/deliverySettingApi";
 import AddressAutocompleteInput from "@/components/AddressAutocompleteInput";
 import { productApi } from "../utils/productApi";
+import { API_BASE_URL } from "@/config";
 
 export default function CreateOrderDialog({ onClose, onSuccess }) {
   const inputRef = useRef(null);
@@ -27,6 +29,27 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   const [config, setConfig] = useState(null);
   const [retailers, setRetailers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [phoneError, setPhoneError] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneValid, setPhoneValid] = useState(null);
+  const productOptions = products.flatMap((p) => {
+    if (p.stocks && p.stocks.length > 0) {
+      return p.stocks.map((stock) => ({
+        value: stock.id,
+        label: `${p.name} (${stock.variant})`,
+        price: stock.sale_price || p.price || 0,
+      }));
+    }
+
+    return [
+      {
+        value: p.id,
+        label: p.name,
+        price: p.price || 0,
+      },
+    ];
+  });
+
   const [formData, setFormData] = useState({
     customer_name: "",
     customer_phone: "",
@@ -47,7 +70,13 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     },
     distance_km: 5,
     items: [
-      { name: "", quantity: 1, price: 0, weight_category: "lightweight" },
+      {
+        product_id: "",
+        name: "",
+        quantity: 1,
+        price: 0,
+        weight_category: "lightweight",
+      },
     ],
     payment_status: "pending",
     payment_method: "online",
@@ -55,8 +84,27 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   });
 
   useEffect(() => {
-    loadData();
+    const fetchData = async () => {
+      try {
+        const [configs, retailersList, productsList] = await Promise.all([
+          deliverySettingApi.list(),
+          retailerApi.list(),
+          productApi.list(),
+        ]);
 
+        if (configs?.length > 0) setConfig(configs[0]);
+        setRetailers(retailersList || []);
+        setProducts(productsList || []);
+      } catch (error) {
+        console.error("Error loading initial data:", error);
+      }
+    };
+    console.log("📡 CreateOrderDialog mounted — fetching data...");
+    fetchData();
+  }, []); // ✅ Runs once
+
+  // Calculate distance only when lat/lng change
+  useEffect(() => {
     if (
       formData.pickup_address.lat &&
       formData.pickup_address.lng &&
@@ -72,23 +120,45 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     formData.drop_address.lng,
   ]);
 
-  const loadData = async () => {
-    const [configs, retailersList, productsList] = await Promise.all([
-      deliverySettingApi.list(),
-      retailerApi.list(),
-      productApi.list(),
-    ]);
-    if (configs.length > 0) setConfig(configs[0]);
-    setRetailers(retailersList);
-    setProducts(productsList);
-  };
+  useEffect(() => {
+    if (!phone) return;
+
+    const delayDebounce = setTimeout(async () => {
+      const isValid = await checkCustomerPhone(phone);
+      setPhoneValid(isValid);
+    }, 1000);
+
+    return () => clearTimeout(delayDebounce);
+  }, [phone]);
+
+  // Example input field
+  <Input
+    id="contact"
+    value={phone}
+    onChange={(e) => setPhone(e.target.value)}
+    placeholder="+919876543210"
+    required
+  />;
+  {
+    phoneValid === false && (
+      <p className="text-red-500 text-sm">
+        Customer not found with this number.
+      </p>
+    );
+  }
 
   const handleAddItem = () => {
     setFormData({
       ...formData,
       items: [
         ...formData.items,
-        { name: "", quantity: 1, price: 0, weight_category: "lightweight" },
+        {
+          product_id: "",
+          name: "",
+          quantity: 1,
+          price: 0,
+          weight_category: "lightweight",
+        },
       ],
     });
   };
@@ -101,13 +171,9 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   };
 
   const handleItemChange = (index, field, value) => {
-    const newItems = [...formData.items];
-    newItems[index] = {
-      ...newItems[index],
-      [field]:
-        field === "quantity" || field === "price" ? Number(value) : value,
-    };
-    setFormData({ ...formData, items: newItems });
+    const updatedItems = [...formData.items];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    setFormData({ ...formData, items: updatedItems });
   };
 
   // Auto-determine required vehicle type
@@ -120,7 +186,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
 
   const calculateSubtotal = () => {
     return formData.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
       0
     );
   };
@@ -129,10 +195,10 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     const subtotal = calculateSubtotal();
     const charges = calculateDeliveryCharges(
       subtotal,
-      formData.distance_km,
+      Number(formData.distance_km || 0),
       config
     );
-    return subtotal + charges.totalDeliveryCharge;
+    return subtotal + Number(charges.totalDeliveryCharge || 0);
   };
 
   // Helper function to determine if retailer coverage is insufficient
@@ -171,9 +237,42 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     }));
   };
 
+  const checkCustomerPhone = async (phone) => {
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/check-customer-phone/${phone}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to check phone number");
+
+      const data = await res.json();
+      return data.exists;
+    } catch (err) {
+      console.error("Error checking phone:", err);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setPhoneError("");
+
+    const phoneExists = await checkCustomerPhone(formData.customer_phone);
+
+    if (!phoneExists) {
+      setPhoneError("Customer does not exist.");
+      setLoading(false);
+      return;
+    }
 
     const subtotal = calculateSubtotal();
     const charges = calculateDeliveryCharges(
@@ -195,7 +294,6 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
       config
     );
 
-    // Only queue immediately if outside business hours
     let initialStatus = "pending_acceptance";
     let isQueued = false;
 
@@ -213,7 +311,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
       total_delivery_charge: charges.totalDeliveryCharge,
       retailer_earning: charges.retailerEarning,
       delivery_boy_earning: charges.deliveryBoyEarning,
-      required_vehicle_type: getRequiredVehicleType(), // AUTO-DETERMINED
+      required_vehicle_type: getRequiredVehicleType(),
       status: initialStatus,
       is_queued: isQueued,
       queued_at: isQueued ? new Date().toISOString() : null,
@@ -224,7 +322,6 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
 
     const createdOrder = await Order.create(orderData);
 
-    // Send customer notification if queued
     if (isQueued) {
       await notifyCustomerOrderQueued(createdOrder);
     }
@@ -336,16 +433,20 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <Input
                   id="contact"
                   value={formData.customer_phone}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       customer_phone: e.target.value,
                       customer_masked_contact: e.target.value,
-                    })
-                  }
+                    });
+                    setPhoneError("");
+                  }}
                   placeholder="+919876543210"
                   required
                 />
+                {phoneError && (
+                  <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+                )}
               </div>
             </div>
           </div>
@@ -485,7 +586,10 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 type="number"
                 min="0"
                 step="0.1"
-                value={formData.distance_km}
+                value={formData.distance_km || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, distance_km: e.target.value })
+                }
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -515,31 +619,37 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 <div className="flex gap-3 items-end">
                   <div className="flex-1">
                     <Label>Item Name</Label>
-                    <select
-                      className="border rounded-md px-3 py-2 w-full"
-                      value={item.product_id || ""}
-                      onChange={(e) => {
-                        const selected = products.find(
-                          (p) => p.id === Number(e.target.value)
-                        );
-                        handleItemChange(
-                          index,
-                          "product_id",
-                          Number(e.target.value)
-                        );
-                        handleItemChange(index, "name", selected?.name || "");
-                        handleItemChange(index, "price", selected?.price || 0);
+                    <Select
+                      className="w-full"
+                      options={productOptions}
+                      placeholder="Search and select product..."
+                      isSearchable
+                      isClearable
+                      value={
+                        productOptions.find(
+                          (opt) =>
+                            opt.value === formData.items[index].product_id
+                        ) || null
+                      }
+                      onChange={(selectedOption) => {
+                        setFormData((prev) => {
+                          const updatedItems = [...prev.items];
+                          updatedItems[index] = {
+                            ...updatedItems[index],
+                            product_id: selectedOption
+                              ? selectedOption.value
+                              : "",
+                            name: selectedOption ? selectedOption.label : "",
+                            price: Number(
+                              selectedOption ? selectedOption.price : 0
+                            ),
+                          };
+                          return { ...prev, items: updatedItems };
+                        });
                       }}
-                      required
-                    >
-                      <option value="">Select Product</option>
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
+
                   <div className="w-24">
                     <Label>Qty</Label>
                     <Input
@@ -547,7 +657,11 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                       min="1"
                       value={item.quantity}
                       onChange={(e) =>
-                        handleItemChange(index, "quantity", e.target.value)
+                        handleItemChange(
+                          index,
+                          "quantity",
+                          Number(e.target.value)
+                        )
                       }
                       required
                     />
