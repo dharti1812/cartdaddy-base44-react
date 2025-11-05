@@ -80,7 +80,10 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
       "retailerId": encryptValue(retailerId)
     };
 
-    await OrderApi.acceptOrder(apiData);
+    const encryptedOrderId = encryptValue(order.id);
+    const encryptedRetailerId = encryptValue(order.id);
+    
+    await OrderApi.acceptOrder(encryptedOrderId, encryptedRetailerId);
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     // await Retailer.update(retailerId, {

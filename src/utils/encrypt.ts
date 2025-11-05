@@ -1,8 +1,10 @@
 import JSEncrypt from "jsencrypt";
-import publicKey from "../keys/public.pem";
 
-export function encryptValue(value) {
+export async function encryptValue(value) {
+  const key = await fetch("/public.pem").then((r) => r.text());
+
   const encryptor = new JSEncrypt();
-  encryptor.setPublicKey(publicKey);
+  encryptor.setPublicKey(key);
+
   return encryptor.encrypt(value.toString());
 }

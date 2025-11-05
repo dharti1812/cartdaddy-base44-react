@@ -1,4 +1,3 @@
-import { exit } from "process";
 import { API_BASE_URL } from "../../config";
 
 export const OrderApi = {
@@ -46,20 +45,18 @@ export const OrderApi = {
     return res.json();
   },
 
-  acceptOrder: async (apiData) => {
-    const token = sessionStorage.getItem("token");
-    console.log(apiData);
-    exit;
-    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accept`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(apiData),
-    });
+      acceptOrder: async (encryptedOrderId, encryptedRetailerId) => {
+        const token = sessionStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accept`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ encryptedOrderId, encryptedRetailerId }),
+        });
 
-    if (!res.ok) throw new Error("Failed to accept order");
-    return res.json();
-  },
+        if (!res.ok) throw new Error("Failed to accept order");
+        return res.json();
+      },
 };
