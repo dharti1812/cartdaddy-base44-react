@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrdersList from "../components/orders/OrdersList";
 import OrderDetails from "../components/orders/OrderDetails";
 import CreateOrderDialog from "../components/orders/CreateOrderDialog";
+import { retailerApi } from "@/components/utils/retailerApi";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -23,6 +24,7 @@ export default function OrdersPage() {
     loadData();
   }, []);
 
+  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get("order");
@@ -36,7 +38,7 @@ export default function OrdersPage() {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([
       OrderApi.list(),
-      OrderApi.list(),
+      retailerApi.list(),
     ]);
     setOrders(ordersData);
     setRetailers(retailersData);

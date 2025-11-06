@@ -1,17 +1,39 @@
-import React from 'react';
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, MapPin, Clock, IndianRupee, Store, Phone, User, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  Package,
+  MapPin,
+  Clock,
+  IndianRupee,
+  Store,
+  Phone,
+  User,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function OrdersList({ orders, loading, onSelectOrder, selectedOrderId }) {
+export default function OrdersList({
+  orders,
+  loading,
+  onSelectOrder,
+  selectedOrderId,
+}) {
   if (loading) {
     return (
       <Card className="border-none shadow-md">
         <CardContent className="p-4 space-y-3">
-          {Array(6).fill(0).map((_, i) => ( // Changed from 8 to 6
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
+          {Array(6)
+            .fill(0)
+            .map(
+              (
+                _,
+                i // Changed from 8 to 6
+              ) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              )
+            )}
         </CardContent>
       </Card>
     );
@@ -22,7 +44,9 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
       <Card className="border-none shadow-md">
         <CardContent className="p-12 text-center">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">No orders found</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">
+            No orders found
+          </h3>
           <p className="text-gray-500">Try adjusting your filters</p>
         </CardContent>
       </Card>
@@ -39,9 +63,9 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                 key={order.id}
                 onClick={() => onSelectOrder(order)}
                 className={`p-4 cursor-pointer transition-all duration-200 ${
-                  selectedOrderId === order.id 
-                    ? 'bg-blue-50 border-l-4 border-l-blue-600' 
-                    : 'hover:bg-gray-50'
+                  selectedOrderId === order.id
+                    ? "bg-blue-50 border-l-4 border-l-blue-600"
+                    : "hover:bg-gray-50"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -51,18 +75,22 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                         {`#${order.id}`}
                       </h3>
                       <Badge className={getStatusBadgeClass(order.status)}>
-                        {order.status.replace(/_/g, ' ')}
+                        {order.status.replace(/_/g, " ")}
                       </Badge>
                       {order.is_cod && (
-                        <Badge className="bg-green-100 text-green-800">COD</Badge>
+                        <Badge className="bg-green-100 text-green-800">
+                          COD
+                        </Badge>
                       )}
                       {order.sla_breach && (
-                        <Badge className="bg-red-100 text-red-800">SLA Breach</Badge>
+                        <Badge className="bg-red-100 text-red-800">
+                          SLA Breach
+                        </Badge>
                       )}
                     </div>
 
                     {/* Display Owner Name + Shop Name */}
-                    {(order.retailer_name) && (
+                    {order.retailer_name && (
                       <div className="mb-2 flex items-center gap-2">
                         <Store className="w-4 h-4 text-gray-400" />
                         <span className="text-sm text-gray-700">
@@ -78,17 +106,21 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <MapPin className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{order.drop_address}, {order.drop_address}</span>
+                        <span className="truncate">{order.drop_address}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4 flex-shrink-0" />
-                        <span>{new Date(order.created_date).toLocaleString()}</span>
+                        <span>
+                          {new Date(order.created_date).toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xl font-bold text-gray-900">₹{order.amount}</p>
+                    <p className="text-xl font-bold text-gray-900">
+                      ₹{order.amount}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -102,11 +134,17 @@ export default function OrdersList({ orders, loading, onSelectOrder, selectedOrd
 
 function getStatusBadgeClass(status) {
   switch (status) {
-    case 'delivered': return 'bg-green-100 text-green-800';
-    case 'en_route': return 'bg-blue-100 text-blue-800';
-    case 'pending': return 'bg-amber-100 text-amber-800';
-    case 'cancelled': return 'bg-red-100 text-red-800';
-    case 'assigned': return 'bg-purple-100 text-purple-800'; // Added assigned status
-    default: return 'bg-gray-100 text-gray-800';
+    case "delivered":
+      return "bg-green-100 text-green-800";
+    case "en_route":
+      return "bg-blue-100 text-blue-800";
+    case "pending":
+      return "bg-amber-100 text-amber-800";
+    case "cancelled":
+      return "bg-red-100 text-red-800";
+    case "assigned":
+      return "bg-purple-100 text-purple-800"; // Added assigned status
+    default:
+      return "bg-gray-100 text-gray-800";
   }
 }

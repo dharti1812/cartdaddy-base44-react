@@ -29,9 +29,10 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   const [config, setConfig] = useState(null);
   const [retailers, setRetailers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [phoneError, setPhoneError] = useState("");
-  const [phone, setPhone] = useState("");
-  const [phoneValid, setPhoneValid] = useState(null);
+  const [shops, setShops] = useState([]);
+  const [shopQuery, setShopQuery] = useState("");
+  const [filteredShops, setFilteredShops] = useState([]);
+
   const productOptions = products.flatMap((p) => {
     if (p.stocks && p.stocks.length > 0) {
       return p.stocks.map((stock) => ({
@@ -84,17 +85,27 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   });
 
   useEffect(() => {
+    const token = sessionStorage.getItem("token");
+
     const fetchData = async () => {
       try {
-        const [configs, retailersList, productsList] = await Promise.all([
-          deliverySettingApi.list(),
-          retailerApi.list(),
-          productApi.list(),
-        ]);
+        const [configs, retailersList, productsList, shopsList] =
+          await Promise.all([
+            deliverySettingApi.list(),
+            retailerApi.list(),
+            productApi.list(),
+            fetch(`${API_BASE_URL}/api/shops`, {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }).then((res) => res.json()),
+          ]);
 
         if (configs?.length > 0) setConfig(configs[0]);
         setRetailers(retailersList || []);
         setProducts(productsList || []);
+        setShops(shopsList || []);
       } catch (error) {
         console.error("Error loading initial data:", error);
       }
@@ -120,33 +131,6 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     formData.drop_address.lng,
   ]);
 
-  useEffect(() => {
-    if (!phone) return;
-
-    const delayDebounce = setTimeout(async () => {
-      const isValid = await checkCustomerPhone(phone);
-      setPhoneValid(isValid);
-    }, 1000);
-
-    return () => clearTimeout(delayDebounce);
-  }, [phone]);
-
-  // Example input field
-  <Input
-    id="contact"
-    value={phone}
-    onChange={(e) => setPhone(e.target.value)}
-    placeholder="+919876543210"
-    required
-  />;
-  {
-    phoneValid === false && (
-      <p className="text-red-500 text-sm">
-        Customer not found with this number.
-      </p>
-    );
-  }
-
   const handleAddItem = () => {
     setFormData({
       ...formData,
@@ -161,6 +145,31 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
         },
       ],
     });
+  };
+
+  const handleShopSearch = (e) => {
+    const value = e.target.value;
+    setShopQuery(value);
+
+    const filtered = shops.filter((shop) =>
+      shop.name.toLowerCase().includes(value.toLowerCase())
+    );
+    setFilteredShops(filtered);
+  };
+
+  const handleShopSelect = (shop) => {
+    setFormData((prev) => ({
+      ...prev,
+      pickup_address: {
+        street: shop.address,
+        city: shop.city,
+        pincode: shop.pincode,
+        lat: parseFloat(shop.latitude) || 0,
+        lng: parseFloat(shop.longitude) || 0,
+      },
+    }));
+    setFilteredShops([]); // hide the dropdown
+    setShopQuery(shop.name); // show selected shop in input
   };
 
   const handleRemoveItem = (index) => {
@@ -237,42 +246,9 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     }));
   };
 
-  const checkCustomerPhone = async (phone) => {
-    try {
-      const token = sessionStorage.getItem("token");
-
-      const res = await fetch(
-        `${API_BASE_URL}/api/check-customer-phone/${phone}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to check phone number");
-
-      const data = await res.json();
-      return data.exists;
-    } catch (err) {
-      console.error("Error checking phone:", err);
-      return false;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setPhoneError("");
-
-    const phoneExists = await checkCustomerPhone(formData.customer_phone);
-
-    if (!phoneExists) {
-      setPhoneError("Customer does not exist.");
-      setLoading(false);
-      return;
-    }
 
     const subtotal = calculateSubtotal();
     const charges = calculateDeliveryCharges(
@@ -320,7 +296,32 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
       insufficient_retailer_coverage: insufficientRetailerCoverage,
     };
 
-    const createdOrder = await Order.create(orderData);
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(`${API_BASE_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to create order");
+      }
+
+      console.log("✅ Order created:", result);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("❌ Error creating order:", error);
+      alert("Failed to create order: " + error.message);
+    } finally {
+      setLoading(false);
+    }
 
     if (isQueued) {
       await notifyCustomerOrderQueued(createdOrder);
@@ -439,15 +440,37 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                       customer_phone: e.target.value,
                       customer_masked_contact: e.target.value,
                     });
-                    setPhoneError("");
                   }}
                   placeholder="+919876543210"
                   required
                 />
-                {phoneError && (
-                  <p className="text-red-500 text-sm mt-1">{phoneError}</p>
-                )}
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900">Select Store</h3>
+            <div className="space-y-3 rounded-lg relative">
+              <Input
+                id="select_store"
+                value={shopQuery}
+                onChange={handleShopSearch}
+                placeholder="Type to search shop..."
+                required
+              />
+              {filteredShops.length > 0 && (
+                <ul className="absolute z-10 bg-white border w-full mt-1 max-h-48 overflow-auto rounded-md shadow-lg">
+                  {filteredShops.map((shop) => (
+                    <li
+                      key={shop.id}
+                      className="p-2 cursor-pointer hover:bg-gray-200"
+                      onClick={() => handleShopSelect(shop)}
+                    >
+                      {shop.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
@@ -585,7 +608,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 id="distance"
                 type="number"
                 min="0"
-                step="0.1"
+                step="any"
                 value={formData.distance_km || ""}
                 onChange={(e) =>
                   setFormData({ ...formData, distance_km: e.target.value })
@@ -601,7 +624,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold text-gray-900">Order Items</h3>
-              <Button
+              {/* <Button
                 type="button"
                 onClick={handleAddItem}
                 variant="outline"
@@ -609,7 +632,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Item
-              </Button>
+              </Button> */}
             </div>
             {formData.items.map((item, index) => (
               <div
