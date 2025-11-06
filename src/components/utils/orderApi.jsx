@@ -45,7 +45,7 @@ export const OrderApi = {
     return res.json();
   },
 
-      acceptOrder: async (encryptedOrderId, encryptedRetailerId) => {
+      acceptOrder: async (data) => {
         const token = sessionStorage.getItem("token");
         const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accept`, {
           method: "POST",
@@ -53,7 +53,7 @@ export const OrderApi = {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ encryptedOrderId, encryptedRetailerId }),
+          body: JSON.stringify(data),
         });
 
         if (!res.ok) throw new Error("Failed to accept order");
