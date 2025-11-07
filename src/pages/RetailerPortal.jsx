@@ -68,8 +68,6 @@ export default function SellerPortal() {
 
       const sellerProfile = await res.json();
 
-      console.log("Fetching seller profile:", sellerProfile);
-
       if (!sellerProfile.id) {
         window.location.href = createPageUrl("RetailerOnboarding");
         return;
@@ -81,7 +79,6 @@ export default function SellerPortal() {
       setOrders(allOrders);
 
       setLoading(false);
-      console.log("✅ Portal loaded successfully");
     } catch (error) {
       console.error("❌ Error loading portal:", error);
       setError(error.message || "Something went wrong");
@@ -103,20 +100,40 @@ export default function SellerPortal() {
 
 
   const handleLogout = async () => {
-    try {
-      const response = await AuthApi.logout();
+  try {
+    const token = sessionStorage.getItem("token");
+    const userData = sessionStorage.getItem("user");
+    const user = userData ? JSON.parse(userData) : null;
 
-      if (!response.ok) throw new Error("Logout failed");
-
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("user");
-
-      window.location.href = createPageUrl("PortalSelector");
-    } catch (error) {
-      console.error("Error logging out:", error);
-      alert("Failed to log out. Please try again.");
+    if (user && token) {
+    
+      await fetch(`${API_BASE_URL}/api/updateAvailabilityStatus`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: user.id,
+          availability_status: "offline",
+          last_seen: new Date().toISOString(),
+        }),
+      });
     }
-  };
+
+    if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+    if (window.statusInterval) clearInterval(window.statusInterval);
+
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+
+    window.location.href = createPageUrl("PortalSelector");
+  } catch (error) {
+    console.error("❌ Error logging out:", error);
+    alert("Failed to log out. Please try again.");
+  }
+};
+
 
   if (error) {
     return (
@@ -242,7 +259,7 @@ export default function SellerPortal() {
               />
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-white">
-                  {sellerProfile?.full_name}
+                  {sellerProfile?.name}
                 </h1>
                 <p className="text-[#FFEB3B] text-base sm:text-lg font-bold">
                   {sellerProfile?.business_name || "Seller Portal"}
@@ -251,7 +268,7 @@ export default function SellerPortal() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <Badge
-                className={`${sellerProfile?.availability_status === "online"
+                className={`${sellerProfile?.user?.availability_status === "online"
                     ? "bg-[#FFEB3B] text-gray-900 font-bold"
                     : "bg-gray-500 text-white font-bold"
                   } border-0 text-base sm:text-lg px-3 py-1.5`}

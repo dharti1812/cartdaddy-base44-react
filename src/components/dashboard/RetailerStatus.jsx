@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Users, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { API_BASE_URL } from "@/config";
@@ -8,40 +7,109 @@ import { API_BASE_URL } from "@/config";
 export default function RetailerStatus() {
   const [retailers, setRetailers] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchRetailers = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
 
-        const response = await fetch(
-          `${API_BASE_URL}/api/approvedSellersStatus`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+  const fetchRetailers = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/approvedSellersStatus`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         }
+      );
+      const data = await response.json();
+      setRetailers(data);
+    } catch (error) {
+      console.error("❌ Error fetching retailer data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const data = await response.json(); // ✅ Parse JSON response
-        setRetailers(data); // ✅ Store API data
-      } catch (error) {
-        console.error("Error fetching retailer data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
+  const sendHeartbeat = async () => {
+    const token = sessionStorage.getItem("token");
+    const userData = sessionStorage.getItem("user");
+
+    if (!token || !userData) {
+      console.warn("⚠️ Missing user or token for heartbeat");
+      return;
+    }
+
+    const user = JSON.parse(userData);
+    const userId = user.id;
+
+    try {
+      await fetch(`${API_BASE_URL}/api/updateAvailabilityStatus`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          id: userId,
+          availability_status: "online",
+          last_seen: new Date().toISOString(),
+        }),
+        keepalive: true,
+      });
+    } catch (error) {
+      console.error("❌ Heartbeat failed:", error);
+    }
+  };
+
+
+  const handleUnload = () => {
+    const userData = sessionStorage.getItem("user");
+    if (!userData) return;
+
+    const user = JSON.parse(userData);
+    const userId = user.id;
+    if (!userId) return;
+
+    const blob = new Blob(
+      [
+        JSON.stringify({
+          id: userId,
+          availability_status: "offline",
+          last_seen: new Date().toISOString(),
+        }),
+      ],
+      { type: "application/json" }
+    );
+
+    navigator.sendBeacon(`${API_BASE_URL}/api/updateAvailabilityStatus`, blob);
+  };
+
+  useEffect(() => {
     fetchRetailers();
+    sendHeartbeat();
+
+    const retailerInterval = setInterval(fetchRetailers, 3000);
+    const heartbeatInterval = setInterval(sendHeartbeat, 15000);
+
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("unload", handleUnload);
+
+    return () => {
+      clearInterval(retailerInterval);
+      clearInterval(heartbeatInterval);
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("unload", handleUnload);
+    };
   }, []);
+
 
   const onlineRetailers = retailers.filter(
     (r) => r.availability_status === "online"
   );
+
   const topRetailers = retailers
     .filter((r) => r.successful_deliveries)
     .sort((a, b) => b.successful_deliveries - a.successful_deliveries)
@@ -85,7 +153,7 @@ export default function RetailerStatus() {
                 Top Performers
               </h3>
               <div className="space-y-3">
-                {topRetailers.map((retailer, index) => (
+                {topRetailers.map((retailer) => (
                   <div
                     key={retailer.id}
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
@@ -113,11 +181,6 @@ export default function RetailerStatus() {
                     </div>
                   </div>
                 ))}
-                {topRetailers.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No retailer data yet
-                  </p>
-                )}
               </div>
             </div>
           </>
