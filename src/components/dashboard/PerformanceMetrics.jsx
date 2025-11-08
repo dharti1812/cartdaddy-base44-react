@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PerformanceMetrics({ orders, loading }) {
   const calculateMetrics = () => {
-    const delivered = orders.filter(o => o.status === 'delivered');
+    const delivered = orders.filter(o => o.delivery_status === 'delivered');
     const total = orders.length;
     
     const onTime = delivered.filter(o => {

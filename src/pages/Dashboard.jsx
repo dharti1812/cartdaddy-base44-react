@@ -12,6 +12,8 @@ import PerformanceMetrics from "../components/dashboard/PerformanceMetrics";
 import QueuedOrdersMonitor from "../components/orders/QueuedOrdersMonitor";
 import SLAMonitor from "../components/sla/SLAMonitor";
 import { AuthApi } from "@/components/utils/authApi";
+import { OrderApi } from "@/components/utils/orderApi";
+import { retailerApi } from "@/components/utils/retailerApi";
 
 export default function Dashboard() {
   const [orders, setOrders] = useState([]);
@@ -25,12 +27,13 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([
-      Order.list("-created_date", 100),
-      Retailer.list("-created_date")
+      OrderApi.list("-created_date", 100),
+      retailerApi.list("-created_date")
     ]);
     setOrders(ordersData);
     setRetailers(retailersData);
     setLoading(false);
+    console.log(ordersData);
   };
 
   const handleLogout = async () => {
@@ -53,14 +56,14 @@ export default function Dashboard() {
 
   const stats = {
     totalOrders: orders.length,
-    activeOrders: orders.filter(o => ['assigned', 'en_route', 'arrived'].includes(o.status)).length,
+    activeOrders: orders.filter(o => ['assigned', 'en_route', 'arrived'].includes(o.assignment_status || o.delivery_status )).length,
     deliveredToday: orders.filter(o => {
       if (o.status !== 'delivered') return false;
       const today = new Date().toDateString();
       return new Date(o.actual_delivery_time || o.updated_date).toDateString() === today;
     }).length,
     activeRetailers: retailers.filter(r => r.availability_status === 'online').length,
-    pendingAssignment: orders.filter(o => o.status === 'pending_acceptance').length,
+    pendingAssignment: orders.filter(o => o.delivery_status === 'pending').length,
     slaBreaches: orders.filter(o => {
       if (!o.estimated_delivery_time) return false;
       return new Date(o.estimated_delivery_time) < new Date() && o.status !== 'delivered';

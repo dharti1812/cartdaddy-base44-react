@@ -107,7 +107,7 @@ export default function SellerPortal() {
 
     if (user && token) {
     
-      await fetch(`${API_BASE_URL}/api/updateAvailabilityStatus`, {
+      await fetch(`${API_BASE_URL}/api/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
