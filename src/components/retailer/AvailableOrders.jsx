@@ -98,16 +98,20 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     // if (position === 1) {
     //   await notifyAllDeliveryBoys(order, retailerProfile);
     // }
+
+    if (typeof onAccept === "function") {
+      await onAccept();
+    }
     
-    // setAccepting(null);
+    setAccepting(null);
     
-    // // If payment link needed and this retailer is active, show dialog immediately
-    // if (position === 1 && order.payment_status === 'needs_paylink') {
-    //   setPendingOrder({...order, ...updateData});
-    //   setShowPaylinkDialog(true);
-    // } else {
-    //   onAccept();
-    // }
+    // If payment link needed and this retailer is active, show dialog immediately
+    if (position === 1 && order.payment_status === 'needs_paylink') {
+      setPendingOrder({...order, ...updateData});
+      setShowPaylinkDialog(true);
+    } else {
+      onAccept();
+    }
   };
 
   // Notify all active delivery boys about new order
@@ -338,7 +342,7 @@ ${retailer.full_name}`;
                   
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-gray-900">
-                      {order.website_ref || `Order #${order.id.slice(0, 8)}`}
+                      {order.website_ref || `Order #${order.id}`}
                     </h3>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
