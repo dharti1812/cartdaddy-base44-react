@@ -37,7 +37,7 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
   );
 
   useEffect(() => {
-    // Check for orders needing paylink
+    
     orders.forEach(order => {
       if (order.active_retailer_id === retailerId &&
           order.payment_status === 'needs_paylink' &&
@@ -153,9 +153,9 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
   // Helper function for status badges
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'pending_acceptance':
+      case 'pending':
         return 'bg-yellow-500 text-white';
-      case 'accepted_primary':
+      case 'accepted':
         return 'bg-green-500 text-white';
       case 'en_route':
         return 'bg-blue-500 text-white';
@@ -209,7 +209,7 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-bold text-lg text-gray-900">
-                          {order.website_ref || `#${order.id.slice(0, 8)}`}
+                          {order.id}
                         </h3>
                         <Badge className={getStatusBadgeClass(order.status)}>
                           {order.status.replace(/_/g, ' ')}
@@ -234,7 +234,7 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
 
                         <div className="flex items-center gap-2 text-gray-700">
                           <MapPin className="w-4 h-4" />
-                          <span>{order.drop_address?.street}, {order.drop_address?.city}</span>
+                          <span>{order.drop_address}</span>
                         </div>
 
                         {order.distance_km && (
@@ -250,7 +250,7 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
                           <div className="space-y-1 text-xs">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Order Value:</span>
-                              <span className="font-bold text-gray-900">₹{order.total_amount}</span>
+                              <span className="font-bold text-gray-900">₹{order.amount}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Delivery Charges:</span>
@@ -305,11 +305,9 @@ export default function ActiveDeliveries({ orders, retailerId, config, onUpdate,
                       <div className="flex-1">
                         <p className="text-xs font-medium text-blue-800 mb-1">DELIVERY ADDRESS</p>
                         <p className="text-sm text-gray-900 font-medium">
-                          {order.drop_address?.street}
+                          {order.drop_address}
                         </p>
-                        <p className="text-sm text-gray-700 mb-2">
-                          {order.drop_address?.city}, {order.drop_address?.pincode}
-                        </p>
+                        
                         {order.distance_km && (
                           <div className="flex items-center gap-2 text-xs text-blue-700">
                             <NavigationIcon className="w-3 h-3" />

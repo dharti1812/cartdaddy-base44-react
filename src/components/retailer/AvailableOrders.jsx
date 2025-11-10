@@ -342,7 +342,7 @@ ${retailer.full_name}`;
                   
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-gray-900">
-                      {order.website_ref || `Order #${order.id}`}
+                      {`Order #${order.id}`}
                     </h3>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">

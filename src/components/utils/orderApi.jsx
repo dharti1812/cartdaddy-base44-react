@@ -59,4 +59,12 @@ export const OrderApi = {
     if (!res.ok) throw new Error("Failed to accept order");
     return res.json();
   },
+
+  AcceptedOrders: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accepted`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
+  },
 };

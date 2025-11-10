@@ -44,6 +44,8 @@ export default function SellerPortal() {
   const [selectedOrderForAssign, setSelectedOrderForAssign] = useState(null);
   const [showHandoffDialog, setShowHandoffDialog] = useState(false);
   const [selectedOrderForHandoff, setSelectedOrderForHandoff] = useState(null);
+  const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
+
 
   const loadData = async () => {
     try {
@@ -76,7 +78,10 @@ export default function SellerPortal() {
       setSellerProfile(sellerProfile);
 
       const allOrders = await OrderApi.PendingAcceptanceOrders();
-      setOrders(allOrders);
+      setOrders(allOrders?.data || []); 
+
+      const acceptedOrders = await OrderApi.AcceptedOrders();
+      setMyAcceptedOrders(acceptedOrders?.data || []); 
 
       setLoading(false);
     } catch (error) {
@@ -214,13 +219,6 @@ export default function SellerPortal() {
     return o.status === "pending" && !alreadyAccepted;
   });
 
-  const myAcceptedOrders = orders.filter((o) =>
-    o.accepted_retailers?.some(
-      (ar) =>
-        ar.retailer_id === sellerProfile?.id &&
-        ["active", "assigned", "handed_off"].includes(ar.status)
-    )
-  );
 
   const myActiveOrders = myAcceptedOrders.filter(
     (o) =>
@@ -434,6 +432,7 @@ export default function SellerPortal() {
                     setShowHandoffDialog(true);
                   }}
                 />
+
               </TabsContent>
 
               <TabsContent value="completed">
