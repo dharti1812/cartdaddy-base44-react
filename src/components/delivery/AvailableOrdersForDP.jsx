@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MapPin, Package, IndianRupee, Clock, Navigation as NavigationIcon, Store } from "lucide-react";
 import { Order, DeliveryPartner } from "@/api/entities";
 import { format } from "date-fns";
+import { OrderApi } from '../utils/orderApi';
+import { deliveryPartnerApi } from '../utils/deliveryPartnerApi';
 
 export default function AvailableOrdersForDP({ orders, deliveryPartner, onAccept }) {
   const [accepting, setAccepting] = useState(null);
@@ -19,7 +21,7 @@ export default function AvailableOrdersForDP({ orders, deliveryPartner, onAccept
                        /tablet/i.test(navigator.userAgent) ? 'Tablet' : 'Desktop/Laptop';
 
     // Update order with delivery boy assignment
-    await Order.update(order.id, {
+    await OrderApi.update(order.id, {
       assigned_delivery_boy: {
         id: deliveryPartner.id,
         name: deliveryPartner.full_name,
@@ -30,11 +32,11 @@ export default function AvailableOrdersForDP({ orders, deliveryPartner, onAccept
         assigned_at: new Date().toISOString()
       },
       awaiting_delivery_boy: false,
-      status: 'assigned_to_delivery_boy'
+      status: 'assign_to_delivery_boy'
     });
 
     // Update delivery partner
-    await DeliveryPartner.update(deliveryPartner.id, {
+    await deliveryPartnerApi.update(deliveryPartner.id, {
       current_order_id: order.id,
       availability_status: 'on_delivery'
     });
@@ -99,7 +101,7 @@ export default function AvailableOrdersForDP({ orders, deliveryPartner, onAccept
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-2xl">{vehicleIcon}</span>
                       <h3 className="text-xl font-bold text-gray-900">
-                        Order #{order.website_ref || order.id.slice(0, 8)}
+                         #{order.website_ref || order.id.slice(0, 8)}
                       </h3>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -144,7 +146,7 @@ export default function AvailableOrdersForDP({ orders, deliveryPartner, onAccept
                   <div className="bg-white border border-gray-200 rounded-lg p-3 text-center">
                     <IndianRupee className="w-5 h-5 text-green-600 mx-auto mb-1" />
                     <p className="text-xs text-gray-500">Order Value</p>
-                    <p className="font-bold text-gray-900">₹{order.total_amount}</p>
+                    <p className="font-bold text-gray-900">₹{order.items.price}</p>
                   </div>
                 </div>
 

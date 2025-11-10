@@ -44,16 +44,12 @@ export default function DeliveryBoyPortal() {
     setError("");
 
     try {
-      console.log("🔄 Loading delivery partner data...");
       const token = sessionStorage.getItem("access_token");
       const user = JSON.parse(sessionStorage.getItem("user"));
-      console.log(user);
 
       const allPartners = await deliveryPartnerApi.list();
-      console.log("📋 Total partners:", allPartners.length);
 
       const myPartners = await deliveryPartnerApi.getByUserId(user.id);
-      console.log("✅ My partners:", myPartners.length); // ✅ works because it's an array
 
       if (!myPartners) {
         setError("No delivery partner found for this user.");
@@ -62,7 +58,6 @@ export default function DeliveryBoyPortal() {
       }
 
       if (myPartners.length === 0) {
-        console.log("❌ No partner profile");
         window.location.href = createPageUrl("DeliveryPartnerOnboarding");
         return;
       }
@@ -71,11 +66,14 @@ export default function DeliveryBoyPortal() {
 
       setPartner(partnerData);
 
-      const allOrders = await Order.list("-created_date");
-      setOrders(allOrders);
+      const allOrders = await deliveryPartnerApi.getAvailableOrders();
+      const myDeliveries = await deliveryPartnerApi.getMyDeliveries(
+        partnerData.id
+      );
+      const combinedOrders = [...allOrders, ...myDeliveries];
 
+      setOrders(combinedOrders);
       setLoading(false);
-      console.log("✅ Portal loaded");
     } catch (error) {
       console.error("❌ Error:", error);
       setError(error.message);
@@ -83,22 +81,21 @@ export default function DeliveryBoyPortal() {
     }
   };
 
-
   const handleLogout = async () => {
-      try {
-        const response = await AuthApi.logout();
-  
-        if (!response.ok) throw new Error("Logout failed");
-  
-        sessionStorage.removeItem("token");
-        sessionStorage.removeItem("user");
-  
-        window.location.href = createPageUrl("PortalSelector");
-      } catch (error) {
-        console.error("Error logging out:", error);
-        alert("Failed to log out. Please try again.");
-      }
-    };
+    try {
+      const response = await AuthApi.logout();
+
+      if (!response.ok) throw new Error("Logout failed");
+
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      window.location.href = createPageUrl("PortalSelector");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      alert("Failed to log out. Please try again.");
+    }
+  };
 
   // ERROR STATE
   if (error) {
@@ -174,21 +171,22 @@ export default function DeliveryBoyPortal() {
   // Calculate orders
   const availableOrders = orders.filter(
     (o) =>
-      ["pending_acceptance", "queued", "accepted_primary"].includes(o.status) &&
-      o.awaiting_delivery_boy === true &&
-      !o.assigned_delivery_boy &&
-      (!o.preferred_vehicle_type ||
-        o.preferred_vehicle_type === partner.vehicle_type)
+      o.delivery_status !== "delivered" &&
+      o.delivery_status !== "cancelled" &&
+      !o.assign_delivery_boy
   );
-
+  console.log(partner.id);
   const myActiveDeliveries = orders.filter(
     (o) =>
-      o.assigned_delivery_boy?.id === partner.id &&
-      !["delivered", "cancelled"].includes(o.status)
+      o.assign_delivery_boy === partner.id &&
+      !["delivered", "cancelled"].includes(o.delivery_status)
   );
-
+  console.log("🟣 My Active Deliveries:", myActiveDeliveries);
   const completedToday = orders.filter((o) => {
-    if (o.assigned_delivery_boy?.id !== partner.id || o.status !== "delivered")
+    if (
+      o.assign_delivery_boy?.id !== partner.id ||
+      o.delivery_status !== "delivered"
+    )
       return false;
     const today = new Date().toDateString();
     return (
@@ -346,11 +344,10 @@ export default function DeliveryBoyPortal() {
                       >
                         <CardContent className="p-4">
                           <h3 className="font-bold text-lg mb-2">
-                            {order.website_ref ||
-                              `Order #${order.id.slice(0, 8)}`}
+                            {order.website_ref || `#${String(order.id)}`}
                           </h3>
                           <p className="text-sm text-gray-600 mb-2">
-                            Customer: {order.customer_name}
+                            Customer: {order.name}
                           </p>
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
@@ -358,9 +355,24 @@ export default function DeliveryBoyPortal() {
                           </p>
                           <div className="flex justify-between items-center">
                             <span className="text-lg font-bold">
-                              ₹{order.total_amount}
+                              ₹{order.amount}
                             </span>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white">
+                            <Button
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              onClick={async () => {
+                                try {
+                                  const response =
+                                    await deliveryPartnerApi.acceptOrder(
+                                      order.id,
+                                      partner.id
+                                    );
+                                  console.log(response.message);
+                                  loadData();
+                                } catch (error) {
+                                  console.log(error.message);
+                                }
+                              }}
+                            >
                               Accept Order
                             </Button>
                           </div>
@@ -399,7 +411,7 @@ export default function DeliveryBoyPortal() {
                             {order.drop_address?.city}
                           </p>
                           <Badge className="bg-blue-500 text-white">
-                            Status: {order.status}
+                            Status: {order.delivery_status}
                           </Badge>
                         </CardContent>
                       </Card>

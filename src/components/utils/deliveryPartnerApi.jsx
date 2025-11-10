@@ -21,16 +21,14 @@ export const deliveryPartnerApi = {
         Authorization: `Bearer ${token}`,
       },
     });
-    if (!res.ok) throw new Error("Failed to fetch delivery partners");
-    const data = await res.json();
-
-    return data;
+    if (!res.ok) throw new Error("Failed to fetch delivery partner");
+    return res.json();
   },
 
   update: async (id, data) => {
     const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/delivery_boy/${id}`, {
-      method: "PUT", // or PATCH
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -57,33 +55,66 @@ export const deliveryPartnerApi = {
 
   unban: async (id) => {
     const token = sessionStorage.getItem("token");
-    const res = await fetch(
-      `${API_BASE_URL}/api/delivery-partners/${id}/unban`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partners/${id}/unban`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     if (!res.ok) throw new Error("Failed to unban retailer");
     return res.json();
   },
 
   rating: async (id, data) => {
     const token = sessionStorage.getItem("token");
-    const res = await fetch(
-      `${API_BASE_URL}/api/delivery-partners/${id}/rating`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(data),
-      }
-    );
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partners/${id}/rating`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
     if (!res.ok) throw new Error("Failed to rate retailer");
+    return res.json();
+  },
+
+
+  getAvailableOrders: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partner/available-orders`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch available orders");
+    return res.json();
+  },
+
+  acceptOrder: async (orderId, partnerId) => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partner/accept-order/${orderId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ partner_id: partnerId }),
+    });
+    if (!res.ok) throw new Error("Failed to accept order");
+    return res.json();
+  },
+
+  getMyDeliveries: async (partnerId) => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partner/my-deliveries/${partnerId}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch deliveries");
     return res.json();
   },
 };
