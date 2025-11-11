@@ -1,5 +1,7 @@
 import { API_BASE_URL } from "../../config";
 
+const token = sessionStorage.getItem("token");
+
 export const retailerApi = {
   list: async () => {
     const token = sessionStorage.getItem("token");
@@ -89,4 +91,26 @@ export const retailerApi = {
     if (!res.ok) throw new Error("Failed to rate retailer");
     return res.json();
   },
+
+  deliveryPartners: async () => {
+    const res = await fetch(`${API_BASE_URL}/api/retailer/delivery-partners`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      }
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch delivery partners");
+    return await res.json();
+  },
+
+  getRetailerData: async () => {
+    const res = sessionStorage.getItem("user");
+
+    if (!res.ok) throw new Error("Failed to fetch delivery partners");
+    return await res.json();
+  }
+
+
 };

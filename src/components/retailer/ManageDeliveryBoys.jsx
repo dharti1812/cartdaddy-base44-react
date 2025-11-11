@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { DeliveryPartner, Retailer } from "@/api/entities";
+import { retailerApi } from "@/components/utils/retailerApi";
+import {deliveryPartnerApi} from "@/components/utils/deliveryPartnerApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,28 +28,30 @@ export default function ManageDeliveryBoys({ retailerId }) {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [retailerData, deliveryBoys] = await Promise.all([
-        Retailer.filter({ id: retailerId }).then(r => r[0]),
-        DeliveryPartner.filter({ 
-          status: 'active',
-          onboarding_status: 'approved'
-        })
-      ]);
+const loadData = async () => {
+  setLoading(true);
+  try {
 
-      setRetailer(retailerData);
-      setAllDeliveryBoys(deliveryBoys);
-      
-      // Load already selected delivery boys
-      const selected = retailerData?.selected_delivery_partners || [];
-      setSelectedIds(selected);
-    } catch (error) {
-      console.error("Error loading data:", error);
-    }
-    setLoading(false);
-  };
+    
+    const retailerData = await retailerApi.list();
+    const deliveryBoys = await deliveryPartnerApi.list();
+
+    console.log("➡️ Retailer:", retailerData);
+    console.log("➡️ Delivery Boys Loaded:", deliveryBoys.length, deliveryBoys);
+
+    setRetailer(retailerData);
+    setAllDeliveryBoys(deliveryBoys);
+
+    // Load selected delivery partners from retailer record
+    const selected = retailerData?.selected_delivery_partners || [];
+    setSelectedIds(selected);
+
+  } catch (error) {
+    console.error("Error loading data:", error);
+  }
+  setLoading(false);
+};
+
 
   const handleToggle = (deliveryBoyId) => {
     setSelectedIds(prev => 
@@ -228,12 +231,12 @@ export default function ManageDeliveryBoys({ retailerId }) {
                   />
 
                   <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
-                    {db.full_name?.[0]?.toUpperCase() || 'D'}
+                    {db.name?.[0]?.toUpperCase() || 'D'}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{db.full_name}</p>
+                      <p className="font-semibold text-gray-900">{db.name}</p>
                       {isMutuallyLinked && (
                         <Badge className="bg-green-100 text-green-800 border-green-200">
                           <CheckCircle className="w-3 h-3 mr-1" />
@@ -253,18 +256,18 @@ export default function ManageDeliveryBoys({ retailerId }) {
                           <Bike className="w-3 h-3 mr-1" />
                           2-Wheeler
                         </Badge>
-                      ) : (
+                      ) : db.vehicle_type === '4_wheeler' ? (
                         <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
                           <Car className="w-3 h-3 mr-1" />
                           4-Wheeler
                         </Badge>
-                      )}
-                      {db.rating && (
-                        <Badge variant="outline" className="text-xs">
-                          ⭐ {db.rating.toFixed(1)}
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                         No vehicle information
                         </Badge>
                       )}
                     </div>
+
                   </div>
                 </div>
               );

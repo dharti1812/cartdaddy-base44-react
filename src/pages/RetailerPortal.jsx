@@ -440,7 +440,7 @@ export default function SellerPortal() {
               </TabsContent>
 
               <TabsContent value="delivery_boys" className="mt-0">
-                <ManageDeliveryBoys retailerId={sellerProfile?.id} />
+                  <ManageDeliveryBoys retailerId={sellerProfile?.id} />
               </TabsContent>
             </CardContent>
           </Card>
