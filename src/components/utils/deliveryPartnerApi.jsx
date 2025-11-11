@@ -117,4 +117,16 @@ export const deliveryPartnerApi = {
     if (!res.ok) throw new Error("Failed to fetch deliveries");
     return res.json();
   },
+
+  getNotifications: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partner/notifications`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch notifications");
+    return res.json();
+  },
 };

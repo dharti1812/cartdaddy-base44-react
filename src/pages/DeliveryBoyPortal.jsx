@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Bell } from "lucide-react";
 import {
   Package,
   LogOut,
@@ -26,6 +27,7 @@ import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { AuthApi } from "@/components/utils/authApi";
 
 import SelectRetailers from "../components/delivery/SelectRetailers";
+import { API_BASE_URL } from "@/config";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -34,9 +36,30 @@ export default function DeliveryBoyPortal() {
   const [activeTab, setActiveTab] = useState("available");
   const [error, setError] = useState("");
   const [mobileView, setMobileView] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+        const data = await deliveryPartnerApi.getNotifications(token);
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unread_count || 0);
+      } catch (error) {
+        console.error("Notification fetch error:", error);
+      }
+    };
+    fetchNotifications();
+
+    // Auto-refresh every 30s
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
@@ -44,7 +67,7 @@ export default function DeliveryBoyPortal() {
     setError("");
 
     try {
-      const token = sessionStorage.getItem("access_token");
+      const token = sessionStorage.getItem("token");
       const user = JSON.parse(sessionStorage.getItem("user"));
 
       const allPartners = await deliveryPartnerApi.list();
@@ -66,6 +89,10 @@ export default function DeliveryBoyPortal() {
 
       setPartner(partnerData);
 
+      const notifyData = await deliveryPartnerApi.getNotifications(token);
+      setNotifications(notifyData.notifications);
+      setUnreadCount(notifyData.unread_count);
+
       const allOrders = await deliveryPartnerApi.getAvailableOrders();
       const myDeliveries = await deliveryPartnerApi.getMyDeliveries(
         partnerData.id
@@ -78,6 +105,54 @@ export default function DeliveryBoyPortal() {
       console.error("❌ Error:", error);
       setError(error.message);
       setLoading(false);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      console.log(token);
+      const res = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/notifications/read`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      console.log(data);
+      setUnreadCount(0); // update UI
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/notifications/${id}/read`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const data = await res.json();
+      
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+        )
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking single notification as read:", error);
     }
   };
 
@@ -115,13 +190,47 @@ export default function DeliveryBoyPortal() {
                 Retry
               </Button>
               <Button
-                onClick={handleLogout}
+                onClick={loadData}
                 variant="outline"
-                className="flex-1 border-white text-white"
+                size="icon"
+                className="border-2 border-[#FFEB3B] text-[#FFEB3B] relative"
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                <div
+                  className="relative cursor-pointer"
+                  onClick={markAllAsRead}
+                >
+                  <Bell className="w-6 h-6 text-[#FFEB3B]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
               </Button>
+              <div className="flex items-center gap-4">
+                {/* Notification Bell */}
+                <div
+                  className="relative cursor-pointer"
+                  onClick={() => alert("Notifications coming soon!")}
+                >
+                  <Bell className="w-6 h-6 text-[#FFEB3B]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+
+                {/* Logout Button */}
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="border-2 border-[#FFEB3B] text-[#FFEB3B] hover:bg-[#FFEB3B] hover:text-black"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -175,13 +284,13 @@ export default function DeliveryBoyPortal() {
       o.delivery_status !== "cancelled" &&
       !o.assign_delivery_boy
   );
-  console.log(partner.id);
+  
   const myActiveDeliveries = orders.filter(
     (o) =>
       o.assign_delivery_boy === partner.id &&
       !["delivered", "cancelled"].includes(o.delivery_status)
   );
-  console.log("🟣 My Active Deliveries:", myActiveDeliveries);
+
   const completedToday = orders.filter((o) => {
     if (
       o.assign_delivery_boy?.id !== partner.id ||
@@ -240,14 +349,64 @@ export default function DeliveryBoyPortal() {
                     <p className="text-[#FFEB3B] text-base">{partner.phone}</p>
                   </div>
                 </div>
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  className="border-2 border-[#FFEB3B] text-[#FFEB3B] hover:bg-[#FFEB3B] hover:text-black"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
+
+                <div className="flex items-center gap-4">
+                 
+                  <div className="relative">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setShowDropdown(!showDropdown);
+                        if (!showDropdown && unreadCount > 0) {
+                          markAllAsRead();
+                        }
+                      }}
+                    >
+                      <Bell className="w-6 h-6 text-[#FFEB3B]" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+
+                   
+                    {showDropdown && (
+                      <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-2 z-50">
+                        {notifications.length === 0 ? (
+                          <p className="text-gray-500 text-sm text-center py-2">
+                            No notifications
+                          </p>
+                        ) : (
+                          notifications.map((n, index) => (
+                            <div
+                              key={n.id}
+                              className={`p-2 border-b last:border-0 text-sm cursor-pointer ${
+                                n.read_at ? "bg-gray-100" : "bg-yellow-50"
+                              }`}
+                              onClick={() => markNotificationAsRead(n.id)}
+                            >
+                              <p className="font-semibold">
+                                {n.data?.title || "Notification"}
+                              </p>
+                              <p>{n.data?.message}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 🚪 Logout Button */}
+                  <Button
+                    onClick={handleLogout}
+                    variant="outline"
+                    className="border-2 border-[#FFEB3B] text-[#FFEB3B] hover:bg-[#FFEB3B] hover:text-black"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
