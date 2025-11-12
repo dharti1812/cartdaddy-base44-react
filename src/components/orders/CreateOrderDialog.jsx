@@ -52,6 +52,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   });
 
   const [formData, setFormData] = useState({
+    shop_id: "",
     customer_name: "",
     customer_phone: "",
     customer_masked_contact: "",
@@ -160,6 +161,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   const handleShopSelect = (shop) => {
     setFormData((prev) => ({
       ...prev,
+      shop_id: shop.id,
       pickup_address: {
         street: shop.address,
         city: shop.city,
@@ -281,6 +283,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     const orderData = {
       ...formData,
       subtotal,
+      seller_id: formData.shop_id,
       total_amount: calculateTotal(),
       fuel_cost: charges.fuelCost,
       base_delivery_charge: charges.baseCharge,

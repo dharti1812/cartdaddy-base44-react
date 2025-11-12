@@ -21,6 +21,7 @@ import { createPageUrl } from "@/utils";
 import { API_BASE_URL } from "../../src/config";
 import AvailableOrders from "../components/retailer/AvailableOrders";
 import ActiveDeliveries from "../components/retailer/ActiveDeliveries";
+import TrackOrderMap from "../components/TrackOrderMap";
 import CompletedOrders from "../components/retailer/CompletedOrders";
 import RetailerStats from "../components/retailer/RetailerStats";
 import OrderNotificationSound from "../components/retailer/OrderNotificationSound";
@@ -224,13 +225,15 @@ export default function SellerPortal() {
     (o) =>
       o.active_retailer_id === sellerProfile?.id &&
       ["payment_pending", "en_route", "arrived"].includes(o.status)
+      
   );
+  
 
   const myCompletedOrders = orders.filter((o) =>
     o.accepted_retailers?.some(
       (ar) =>
         ar.retailer_id === sellerProfile?.id &&
-        ["completed", "cancelled"].includes(ar.status)
+        ["delivered", "cancelled"].includes(ar.status)
     )
   );
 
@@ -379,7 +382,7 @@ export default function SellerPortal() {
                   value="active"
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
-                  <span className="hidden sm:inline">My Orders</span>
+                  <span className="hidden sm:inline">On Going Orders</span>
                   <span className="sm:hidden">Active</span>
                   {myAcceptedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-blue-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
@@ -423,6 +426,7 @@ export default function SellerPortal() {
                   config={sellerProfile}
                   onUpdate={loadData}
                   retailerProfile={sellerProfile}
+                  onTrackOrder={(orderId) => setActiveTab(`track-${orderId}`)}
                   onAssignDeliveryBoy={(order) => {
                     setSelectedOrderForAssign(order);
                     setShowAssignDialog(true);

@@ -57,7 +57,6 @@ export default function DeliveryBoyPortal() {
     };
     fetchNotifications();
 
-    // Auto-refresh every 30s
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -124,7 +123,7 @@ export default function DeliveryBoyPortal() {
       );
       const data = await res.json();
       console.log(data);
-      setUnreadCount(0); // update UI
+      setUnreadCount(0); 
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -560,7 +559,7 @@ export default function DeliveryBoyPortal() {
                         <CardContent className="p-4">
                           <h3 className="font-bold text-lg mb-2">
                             {order.website_ref ||
-                              `Order #${order.id.slice(0, 8)}`}
+                              `Order #${order.id}`}
                           </h3>
                           <p className="text-sm text-gray-600 mb-2">
                             Customer: {order.customer_name}
