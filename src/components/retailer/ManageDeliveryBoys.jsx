@@ -78,7 +78,7 @@ const loadData = async () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await Retailer.update(retailerId, {
+      await retailerApi.selectDeliveryPartners({
         selected_delivery_partners: selectedIds
       });
       

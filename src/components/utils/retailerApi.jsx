@@ -110,7 +110,22 @@ export const retailerApi = {
 
     if (!res.ok) throw new Error("Failed to fetch delivery partners");
     return await res.json();
+  },
+
+  selectDeliveryPartners: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/api/retailer/save-delivery-partners`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Failed to save delivery partners");
+    return await res.json();
   }
+
 
 
 };
