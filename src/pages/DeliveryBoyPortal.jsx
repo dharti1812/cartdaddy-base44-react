@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   DeliveryPartner,
   Order,
@@ -39,6 +39,8 @@ export default function DeliveryBoyPortal() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const watchIdRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -123,7 +125,7 @@ export default function DeliveryBoyPortal() {
       );
       const data = await res.json();
       console.log(data);
-      setUnreadCount(0); 
+      setUnreadCount(0);
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -143,7 +145,7 @@ export default function DeliveryBoyPortal() {
         }
       );
       const data = await res.json();
-      
+
       setNotifications((prev) =>
         prev.map((n) =>
           n.id === id ? { ...n, read_at: new Date().toISOString() } : n
@@ -170,6 +172,46 @@ export default function DeliveryBoyPortal() {
       alert("Failed to log out. Please try again.");
     }
   };
+
+  useEffect(() => {
+    if (!partner) return;
+
+    if (!("geolocation" in navigator)) {
+      console.warn("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log("Sending live location:", latitude, longitude);
+
+        try {
+          await fetch(`${API_BASE_URL}/api/delivery-partner/live-location`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              delivery_partner_id: partner.id,
+              latitude,
+              longitude,
+              timestamp: new Date().toISOString(),
+            }),
+          });
+        } catch (error) {
+          console.error("Error sending live location:", error);
+        }
+      },
+      (err) => console.error("Geolocation error:", err),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+    );
+
+    return () => {
+      if (watchIdRef.current)
+        navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, [partner]);
 
   // ERROR STATE
   if (error) {
@@ -283,7 +325,7 @@ export default function DeliveryBoyPortal() {
       o.delivery_status !== "cancelled" &&
       !o.assign_delivery_boy
   );
-  
+
   const myActiveDeliveries = orders.filter(
     (o) =>
       o.assign_delivery_boy === partner.id &&
@@ -350,7 +392,6 @@ export default function DeliveryBoyPortal() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                 
                   <div className="relative">
                     <div
                       className="cursor-pointer"
@@ -369,7 +410,6 @@ export default function DeliveryBoyPortal() {
                       )}
                     </div>
 
-                   
                     {showDropdown && (
                       <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-2 z-50">
                         {notifications.length === 0 ? (
@@ -558,8 +598,7 @@ export default function DeliveryBoyPortal() {
                       <Card key={order.id} className="border-2 border-blue-500">
                         <CardContent className="p-4">
                           <h3 className="font-bold text-lg mb-2">
-                            {order.website_ref ||
-                              `Order #${order.id}`}
+                            {order.website_ref || `Order #${order.id}`}
                           </h3>
                           <p className="text-sm text-gray-600 mb-2">
                             Customer: {order.customer_name}

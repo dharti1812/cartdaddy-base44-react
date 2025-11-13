@@ -1,220 +1,81 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Retailer } from "@/api/entities";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, MapPin, WifiOff } from "lucide-react";
+import { MapPin, WifiOff } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from "@/config";
 
-export default function LocationTracker({
-  deliveryBoyId,
-  retailerId,
-  retailerProfile,
-}) {
-  const [locationError, setLocationError] = useState(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [locationEnabled, setLocationEnabled] = useState(true);
-  const [coords, setCoords] = useState(null); 
+export default function LocationTracker({ deliveryBoyId, orderId }) {
+  const [trackingData, setTrackingData] = useState(null);
+  const [error, setError] = useState(null);
 
-  const logViolation = useCallback(
-    async (type) => {
-      try {
-        const updatedDeliveryBoys = retailerProfile.delivery_boys.map((db) =>
-          db.id === deliveryBoyId
-            ? {
-                ...db,
-                violations: [
-                  ...(db.violations || []),
-                  {
-                    type: type,
-                    timestamp: new Date().toISOString(),
-                    message: `Compliance violation: ${type}`,
-                  },
-                ],
-              }
-            : db
-        );
-
-        await Retailer.update(retailerId, {
-          delivery_boys: updatedDeliveryBoys,
-        });
-      } catch (error) {
-        console.error("Error logging violation:", error);
-      }
-    },
-    [deliveryBoyId, retailerId, retailerProfile]
-  );
-
-  const updateLocationStatus = useCallback(
-    async (enabled) => {
-      try {
-        const updatedDeliveryBoys = retailerProfile.delivery_boys.map((db) =>
-          db.id === deliveryBoyId
-            ? {
-                ...db,
-                location_tracking: {
-                  ...db.location_tracking,
-                  enabled: enabled,
-                  last_update: new Date().toISOString(),
-                },
-              }
-            : db
-        );
-
-        await Retailer.update(retailerId, {
-          delivery_boys: updatedDeliveryBoys,
-        });
-      } catch (error) {
-        console.error("Error updating location status:", error);
-      }
-    },
-    [deliveryBoyId, retailerId, retailerProfile]
-  );
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => {
-      setIsOnline(false);
-      logViolation("internet_disconnected");
-    };
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, [logViolation]);
-
-  useEffect(() => {
-    let watchId;
-    let updateInterval;
-
-    const updateLocation = async (position) => {
-      const newCoords = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        accuracy: position.coords.accuracy,
-      };
-      setCoords(newCoords); 
-      console.log("Location coords:", coords);
-      try {
-       
-        await axios.post(
-          `${API_BASE_URL}/api/delivery-partner/update-location`,
-          {
-            delivery_boy_id: deliveryBoyId,
-            latitude: newCoords.lat,
-            longitude: newCoords.lng,
-          }
-        );
-
-        console.log("📍 Location sent:", newCoords);
-
-        setLocationEnabled(true);
-        setLocationError(null);
-      } catch (err) {
-        console.error("Error sending location:", err);
-      }
-    };
-
-    const handleLocationError = (error) => {
-      setLocationEnabled(false);
-      let errorMessage = "Location access denied";
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage = "Location permission denied!";
-          logViolation("location_permission_denied");
-          break;
-        case error.POSITION_UNAVAILABLE:
-          errorMessage = "Location unavailable. GPS may be off!";
-          logViolation("location_unavailable");
-          break;
-        case error.TIMEOUT:
-          errorMessage = "Location request timed out";
-          break;
-      }
-      setLocationError(errorMessage);
-      updateLocationStatus(false);
-    };
-
-    if (navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition(
-        updateLocation,
-        handleLocationError,
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        }
+  const fetchLocation = useCallback(async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`
       );
-
-      updateInterval = setInterval(() => {
-        navigator.geolocation.getCurrentPosition(
-          updateLocation,
-          handleLocationError,
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
-          }
-        );
-      }, 30000); 
-    } else {
-      setLocationError("GPS not supported on this device!");
+      setTrackingData(res.data);
+      console.log("Tracking Data  111:", res.data);
+      setError(null);
+    } catch (err) {
+      setError("Unable to fetch live tracking data");
     }
+  }, [orderId]);
 
-    return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
-      if (updateInterval) clearInterval(updateInterval);
-    };
-  }, [
-    deliveryBoyId,
-    retailerId,
-    retailerProfile,
-    logViolation,
-    updateLocationStatus,
-  ]);
+  useEffect(() => {
+    fetchLocation();
+    const interval = setInterval(fetchLocation, 10000); // refresh every 10 sec
+    return () => clearInterval(interval);
+  }, [fetchLocation]);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 p-3 rounded-md flex items-center text-red-700 gap-2">
+        <WifiOff className="w-4 h-4" />
+        <span>{error}</span>
+      </div>
+    );
+  }
+
+  if (!trackingData) {
+    return (
+      <div className="bg-gray-50 p-3 rounded-md text-gray-700 flex items-center gap-2">
+        <MapPin className="w-4 h-4" />
+        <span>Loading delivery partner location...</span>
+      </div>
+    );
+  }
+
+  const { delivery_boy, destination } = trackingData;
+
+  // Use customer as destination
+  const destLat = destination?.customer?.latitude;
+  const destLng = destination?.customer?.longitude;
+
+  if (!destLat || !destLng) {
+    return (
+      <div className="text-red-600">Destination coordinates not available</div>
+    );
+  }
+
+  const mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${delivery_boy.latitude},${delivery_boy.longitude}&destination=${destLat},${destLng}`;
 
   return (
-    <>
-      {/* Internet alert */}
-      {!isOnline && (
-        <Alert className="mb-2 bg-red-50 border-2 border-red-500 animate-pulse">
-          <WifiOff className="w-5 h-5 text-red-600" />
-          <AlertDescription className="text-red-900 font-bold">
-            🚨 INTERNET DISCONNECTED!
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Location alert */}
-      {!locationEnabled && locationError && (
-        <Alert className="mb-2 bg-red-50 border-2 border-red-500 animate-pulse">
-          <AlertTriangle className="w-5 h-5 text-red-600" />
-          <AlertDescription className="text-red-900 font-bold">
-            🚨 {locationError}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Debug box to show coordinates */}
-      {/* {coords && (
-        <div className="fixed bottom-4 right-4 bg-gray-100 border border-gray-400 p-3 rounded shadow-lg text-sm z-50">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-red-600" />
-            <span>
-              Lat: {coords.lat.toFixed(6)}, Lng: {coords.lng.toFixed(6)}
-            </span>
-          </div>
-          <div>Accuracy: {coords.accuracy} meters</div>
-          <div className="text-green-700 font-semibold">
-            {isOnline && locationEnabled
-              ? "✅ Tracking Active"
-              : "⚠️ Issue Detected"}
-          </div>
-        </div>
-      )} */}
-    </>
+    <div className="p-3 bg-green-50 border-2 border-green-300 rounded-xl shadow-sm mt-4">
+      <div className="flex items-center gap-2 mb-2">
+        <MapPin className="w-5 h-5 text-green-700" />
+        <p className="text-green-900 font-semibold">Live Tracking</p>
+      </div>
+      <p className="text-sm text-gray-700 mb-2">
+        Last updated:{" "}
+        {new Date(delivery_boy.last_updated || Date.now()).toLocaleTimeString()}
+      </p>
+      <a
+        href={mapUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 underline text-sm hover:text-blue-800"
+      >
+        📍 View Live Route on Google Maps
+      </a>
+    </div>
   );
 }

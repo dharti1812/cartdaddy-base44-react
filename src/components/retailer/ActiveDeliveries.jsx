@@ -32,6 +32,7 @@ import {
 // New import for LocationTracker
 import LocationTracker from "./LocationTracker";
 import { API_BASE_URL } from "@/config";
+import LiveTrackingMap from "../LiveTrackingMap";
 
 export default function ActiveDeliveries({
   orders,
@@ -53,7 +54,7 @@ export default function ActiveDeliveries({
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
     (db) => db.device_id === currentDeviceId && db.is_active
   );
-console.log("Current Delivery Boy:", retailerProfile);
+  console.log("Current Delivery Boy:", retailerProfile);
 
   useEffect(() => {
     orders.forEach((order) => {
@@ -214,10 +215,9 @@ console.log("Current Delivery Boy:", retailerProfile);
 
   return (
     <>
-     
-      {currentDeliveryBoy && currentDeliveryBoy.current_order_id && (
+      {currentDeliveryBoy && (
         <LocationTracker
-          deliveryBoyId={6}
+          deliveryBoyId={currentDeliveryBoy.id}
           retailerId={retailerId}
           retailerProfile={retailerProfile}
         />
@@ -439,14 +439,7 @@ console.log("Current Delivery Boy:", retailerProfile);
                       </div>
 
                       <div className="mt-3">
-                        <a
-                          href={`${API_BASE_URL}/api/delivery-partner/track-order/${order.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 underline hover:text-blue-800"
-                        >
-                          📍 Track Live Route
-                        </a>
+                        <LiveTrackingMap orderId={order.id} />
                       </div>
 
                       {/* Profile Section */}
