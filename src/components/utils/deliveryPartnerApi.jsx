@@ -13,6 +13,19 @@ export const deliveryPartnerApi = {
     return res.json();
   },
 
+  
+  getApprovedDeliveryBoys: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/retailer/delivery-partners/approved`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) throw new Error("Failed to fetch delivery partners");
+    return res.json();
+  },
+
   getByUserId: async (userId) => {
     const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/delivery_boy/${userId}`, {

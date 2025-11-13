@@ -71,6 +71,7 @@ export default function SellerLogin() {
           }
           console.log("✅ Login successful, redirecting...");
           // Step 3: Redirect
+          
           window.location.href = createPageUrl("RetailerPortal");
     
         } catch (err) {

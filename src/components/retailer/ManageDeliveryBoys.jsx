@@ -34,11 +34,8 @@ const loadData = async () => {
 
     
     const retailerData = await retailerApi.list();
-    const deliveryBoys = await deliveryPartnerApi.list();
-
-    console.log("➡️ Retailer:", retailerData);
-    console.log("➡️ Delivery Boys Loaded:", deliveryBoys.length, deliveryBoys);
-
+    const deliveryBoys = await deliveryPartnerApi.getApprovedDeliveryBoys();
+    console.log("deliveryBoys",deliveryBoys);
     setRetailer(retailerData);
     setAllDeliveryBoys(deliveryBoys);
 
@@ -94,7 +91,7 @@ const loadData = async () => {
   const getFilteredDeliveryBoys = () => {
     return allDeliveryBoys.filter(db => {
       const matchesSearch = !searchTerm || 
-        db.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        db.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         db.phone?.includes(searchTerm);
       
       const matchesVehicle = filterVehicle === 'all' || db.vehicle_type === filterVehicle;
@@ -211,8 +208,16 @@ const loadData = async () => {
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {filteredDeliveryBoys.map((db) => {
               const isSelected = selectedIds.includes(db.id);
-              const hasSelectedRetailer = db.selected_retailers?.includes(retailerId);
-              const isMutuallyLinked = isSelected && hasSelectedRetailer;
+
+// delivery partner has selected this retailer?
+const hasSelectedRetailer = Array.isArray(db.selected_retailers)
+  ? db.selected_retailers.includes(retailerId)
+  : false;
+
+// mutual = either backend tells OR both have selected
+const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
+
+
 
               return (
                 <div
