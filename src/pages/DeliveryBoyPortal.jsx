@@ -28,6 +28,7 @@ import { AuthApi } from "@/components/utils/authApi";
 
 import SelectRetailers from "../components/delivery/SelectRetailers";
 import { API_BASE_URL } from "@/config";
+import DeliveryStatusModal from "@/components/DeliveryStatusModal";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -39,6 +40,8 @@ export default function DeliveryBoyPortal() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
 
   const watchIdRef = useRef(null);
 
@@ -582,40 +585,54 @@ export default function DeliveryBoyPortal() {
               </TabsContent>
 
               <TabsContent value="active" className="mt-0">
-                {myActiveDeliveries.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                      No Active Deliveries
-                    </h3>
-                    <p className="text-gray-500 text-sm">
-                      Your accepted deliveries will appear here
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {myActiveDeliveries.map((order) => (
-                      <Card key={order.id} className="border-2 border-blue-500">
-                        <CardContent className="p-4">
-                          <h3 className="font-bold text-lg mb-2">
-                            {order.website_ref || `Order #${order.id}`}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Customer: {order.customer_name}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-4">
-                            📍 {order.drop_address?.street},{" "}
-                            {order.drop_address?.city}
-                          </p>
-                          <Badge className="bg-blue-500 text-white">
-                            Status: {order.delivery_status}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
+
+  {/* If NO active deliveries */}
+  {myActiveDeliveries.length === 0 ? (
+    <p className="text-center text-gray-500 py-6">
+      No active deliveries found.
+    </p>
+  ) : (
+    // If deliveries exist
+    <div className="space-y-4">
+      {myActiveDeliveries.map((order) => (
+        <Card
+          key={order.id}
+          className="border-2 border-blue-500 cursor-pointer"
+          onClick={() => setSelectedOrder(order)}   // OPEN MODAL
+        >
+          <CardContent className="p-4">
+            <h3 className="font-bold text-lg mb-2">
+              {order.website_ref || `Order #${order.id}`}
+            </h3>
+
+            <p className="text-sm text-gray-600 mb-2">
+              Customer: {order.customer_name}
+            </p>
+
+            <p className="text-sm text-gray-600 mb-4">
+              📍 {order.drop_address?.street}, {order.drop_address?.city}
+            </p>
+
+            <Badge className="bg-blue-500 text-white">
+              Status: {order.delivery_status}
+            </Badge>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )}
+
+  {/* Modal OUTSIDE list */}
+  {selectedOrder && (
+    <DeliveryStatusModal
+      order={selectedOrder}
+      onClose={() => setSelectedOrder(null)}
+      onUpdate={loadData}
+    />
+  )}
+
+</TabsContent>
+
 
               <TabsContent value="retailers" className="mt-0">
                 <SelectRetailers deliveryPartnerId={partner.id} />
