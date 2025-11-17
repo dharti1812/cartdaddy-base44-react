@@ -46,6 +46,7 @@ export default function SuperAdminDashboard() {
   const [selectedDetail, setSelectedDetail] = useState(null);
   const [success, setSuccess] = useState(null); // New state for success messages
   const [actionLoading, setActionLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -743,15 +744,18 @@ export default function SuperAdminDashboard() {
                       className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-4">
-                        {dp.selfie ? (
+                        {dp.selfie && !imgError ? (
                           <img
                             src={dp.selfie}
                             alt={dp.name}
+                            onError={() => setImgError(true)} // IMAGE FAILS → SWITCH TO LETTER
                             className="w-12 h-12 rounded-full object-cover border-2 border-[#FFEB3B]"
                           />
                         ) : (
                           <div className="w-12 h-12 bg-[#075E66] bg-opacity-10 rounded-full flex items-center justify-center">
-                            <Users className="w-6 h-6 text-[#075E66]" />
+                            <span className="text-[#075E66] font-bold text-lg">
+                              {dp.name?.charAt(0).toUpperCase()}
+                            </span>
                           </div>
                         )}
                         <div>
@@ -772,14 +776,12 @@ export default function SuperAdminDashboard() {
                       <div className="flex items-center gap-2">
                         <Badge
                           className={
-                            dp?.delivery_partner?.availability_status ===
-                            "online"
+                            dp?.availability_status === "online"
                               ? "bg-[#075E66] text-white"
                               : "bg-gray-400 text-white"
                           }
                         >
-                          {dp?.delivery_partner?.availability_status ||
-                            "offline"}
+                          {dp?.availability_status || "offline"}
                         </Badge>
                         {dp?.delivery_partner?.rating && (
                           <Badge className="bg-[#FFEB3B] text-black">
