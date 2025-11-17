@@ -47,10 +47,8 @@ export default function SellerPortal() {
   const [selectedOrderForHandoff, setSelectedOrderForHandoff] = useState(null);
   const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
 
-
   const loadData = async () => {
     try {
-
       const token = sessionStorage.getItem("token");
 
       if (!token) {
@@ -62,14 +60,13 @@ export default function SellerPortal() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-
-
       if (!res.ok) {
         window.location.href = createPageUrl("RetailerLogin");
         return;
       }
 
       const sellerProfile = await res.json();
+      console.log("🚀 Loaded seller profile:", sellerProfile);
 
       if (!sellerProfile.id) {
         window.location.href = createPageUrl("RetailerOnboarding");
@@ -79,10 +76,10 @@ export default function SellerPortal() {
       setSellerProfile(sellerProfile);
 
       const allOrders = await OrderApi.PendingAcceptanceOrders();
-      setOrders(allOrders?.data || []); 
+      setOrders(allOrders?.data || []);
 
       const acceptedOrders = await OrderApi.AcceptedOrders();
-      setMyAcceptedOrders(acceptedOrders?.data || []); 
+      setMyAcceptedOrders(acceptedOrders?.data || []);
 
       setLoading(false);
     } catch (error) {
@@ -103,43 +100,39 @@ export default function SellerPortal() {
     loadData();
   }, []);
 
-
-
   const handleLogout = async () => {
-  try {
-    const token = sessionStorage.getItem("token");
-    const userData = sessionStorage.getItem("user");
-    const user = userData ? JSON.parse(userData) : null;
+    try {
+      const token = sessionStorage.getItem("token");
+      const userData = sessionStorage.getItem("user");
+      const user = userData ? JSON.parse(userData) : null;
 
-    if (user && token) {
-    
-      await fetch(`${API_BASE_URL}/api/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          id: user.id,
-          availability_status: "offline",
-          last_seen: new Date().toISOString(),
-        }),
-      });
+      if (user && token) {
+        await fetch(`${API_BASE_URL}/api/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            id: user.id,
+            availability_status: "offline",
+            last_seen: new Date().toISOString(),
+          }),
+        });
+      }
+
+      if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
+      if (window.statusInterval) clearInterval(window.statusInterval);
+
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+
+      window.location.href = createPageUrl("PortalSelector");
+    } catch (error) {
+      console.error("❌ Error logging out:", error);
+      alert("Failed to log out. Please try again.");
     }
-
-    if (window.heartbeatInterval) clearInterval(window.heartbeatInterval);
-    if (window.statusInterval) clearInterval(window.statusInterval);
-
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("user");
-
-    window.location.href = createPageUrl("PortalSelector");
-  } catch (error) {
-    console.error("❌ Error logging out:", error);
-    alert("Failed to log out. Please try again.");
-  }
-};
-
+  };
 
   if (error) {
     return (
@@ -220,14 +213,11 @@ export default function SellerPortal() {
     return o.status === "pending" && !alreadyAccepted;
   });
 
-
   const myActiveOrders = myAcceptedOrders.filter(
     (o) =>
       o.active_retailer_id === sellerProfile?.id &&
       ["payment_pending", "en_route", "arrived"].includes(o.status)
-      
   );
-  
 
   const myCompletedOrders = orders.filter((o) =>
     o.accepted_retailers?.some(
@@ -239,11 +229,10 @@ export default function SellerPortal() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
-        }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
+        mobileView ? "max-w-md mx-auto" : ""
+      }`}
     >
-
-
       {/* <DeviceSessionManager
         retailerId={sellerProfile?.id}
         onSessionConflict={() => setSessionConflict(true)}
@@ -269,10 +258,11 @@ export default function SellerPortal() {
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <Badge
-                className={`${sellerProfile?.user?.availability_status === "online"
+                className={`${
+                  sellerProfile?.user?.availability_status === "online"
                     ? "bg-[#FFEB3B] text-gray-900 font-bold"
                     : "bg-gray-500 text-white font-bold"
-                  } border-0 text-base sm:text-lg px-3 py-1.5`}
+                } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status}
@@ -436,7 +426,6 @@ export default function SellerPortal() {
                     setShowHandoffDialog(true);
                   }}
                 />
-
               </TabsContent>
 
               <TabsContent value="completed">
@@ -444,7 +433,7 @@ export default function SellerPortal() {
               </TabsContent>
 
               <TabsContent value="delivery_boys" className="mt-0">
-                  <ManageDeliveryBoys retailerId={sellerProfile?.id} />
+                <ManageDeliveryBoys retailerId={sellerProfile?.id} />
               </TabsContent>
             </CardContent>
           </Card>

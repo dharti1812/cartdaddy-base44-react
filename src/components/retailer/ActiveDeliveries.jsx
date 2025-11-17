@@ -54,7 +54,6 @@ export default function ActiveDeliveries({
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
     (db) => db.device_id === currentDeviceId && db.is_active
   );
-  console.log("Current Delivery Boy:", retailerProfile);
 
   useEffect(() => {
     orders.forEach((order) => {
@@ -262,8 +261,13 @@ export default function ActiveDeliveries({
                         <h3 className="font-bold text-lg text-gray-900">
                           {order.id}
                         </h3>
-                        <Badge className={getStatusBadgeClass(order.status)}>
-                          {order.status.replace(/_/g, " ")}
+                        <Badge
+                          className={getStatusBadgeClass(order.delivery_status)}
+                        >
+                          {(order.delivery_status || "unknown").replace(
+                            /_/g,
+                            " "
+                          )}
                         </Badge>
                         {isPrimary && (
                           <Badge className="bg-green-600 text-white">

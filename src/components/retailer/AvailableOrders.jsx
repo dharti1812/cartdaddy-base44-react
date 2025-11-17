@@ -1,11 +1,21 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Package, IndianRupee, Clock, Navigation as NavigationIcon, AlertCircle, Users, Link as LinkIcon, XCircle, TrendingUp } from "lucide-react";
+import {
+  MapPin,
+  Package,
+  IndianRupee,
+  Clock,
+  Navigation as NavigationIcon,
+  AlertCircle,
+  Users,
+  Link as LinkIcon,
+  XCircle,
+  TrendingUp,
+} from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
@@ -18,10 +28,16 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { calculateDeliveryCharges } from '../utils/deliveryChargeCalculator';
-import { OrderApi } from '../utils/orderApi';
+import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
+import { OrderApi } from "../utils/orderApi";
 
-export default function AvailableOrders({ orders, retailerId, config, onAccept, retailerProfile }) {
+export default function AvailableOrders({
+  orders,
+  retailerId,
+  config,
+  onAccept,
+  retailerProfile,
+}) {
   const [accepting, setAccepting] = useState(null);
   const [showPaylinkDialog, setShowPaylinkDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -31,55 +47,62 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
-    
+
     const acceptedRetailers = order.accepted_retailers || [];
     const position = acceptedRetailers.length + 1;
 
     // Get device info for tracking
-    const deviceId = localStorage.getItem('cart_daddy_device_id') || 'unknown';
-    const deviceName = /mobile/i.test(navigator.userAgent) ? 'Mobile Device' : 
-                       /tablet/i.test(navigator.userAgent) ? 'Tablet' : 'Desktop/Laptop';
-    
+    const deviceId = localStorage.getItem("cart_daddy_device_id") || "unknown";
+    const deviceName = /mobile/i.test(navigator.userAgent)
+      ? "Mobile Device"
+      : /tablet/i.test(navigator.userAgent)
+      ? "Tablet"
+      : "Desktop/Laptop";
+
     const newAcceptance = {
       retailer_id: retailerId,
       device_id: deviceId,
       device_name: deviceName,
       position: position,
       accepted_at: new Date().toISOString(),
-      status: 'active'
+      status: "active",
     };
-    
+
     const updatedAcceptances = [...acceptedRetailers, newAcceptance];
-    
+
     //If this is the first acceptance, make them the active retailer
     const updateData = {
       accepted_retailers: updatedAcceptances,
-      status: position === 1 ? 'accepted_primary' : 'accepted_backup',
-      active_retailer_info: position === 1 ? {
-        retailer_id: retailerId,
-        retailer_name: retailerProfile?.name || "Retailer",
-        retailer_phone: retailerProfile?.phone || "",
-        device_id: deviceId,
-        device_name: deviceName,
-        assigned_at: new Date().toISOString()
-      } : order.active_retailer_info,
+      status: position === 1 ? "accepted_primary" : "accepted_backup",
+      active_retailer_info:
+        position === 1
+          ? {
+              retailer_id: retailerId,
+              retailer_name: retailerProfile?.name || "Retailer",
+              retailer_phone: retailerProfile?.phone || "",
+              device_id: deviceId,
+              device_name: deviceName,
+              assigned_at: new Date().toISOString(),
+            }
+          : order.active_retailer_info,
       // Mark as pending delivery boy assignment
       awaiting_delivery_boy: position === 1 ? true : false,
       delivery_boy_notification_sent: position === 1 ? true : false,
-      delivery_boy_notified_at: position === 1 ? new Date().toISOString() : null
+      delivery_boy_notified_at:
+        position === 1 ? new Date().toISOString() : null,
     };
-    
+
     if (position === 1) {
       updateData.active_retailer_id = retailerId;
     }
 
     console.log("updateData", updateData);
-    
+
     const apiData = {
-      "orderId": order.id,
-      "retailerId": retailerId
+      orderId: order.code || order.id,
+      retailerId: retailerId,
     };
-    
+    console.log("apiData", apiData);
     await OrderApi.acceptOrder(apiData);
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
@@ -87,13 +110,13 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     //   current_orders: (retailerProfile?.current_orders || 0) + 1,
     //   active_order_ids: [...(retailerProfile?.active_order_ids || []), order.id]
     // });
-    
+
     // // Send customer notification
     // if (position === 1) {
     //   const { notifyOrderAcceptedByRetailer } = await import('../utils/customerNotifications');
     //   await notifyOrderAcceptedByRetailer({...order, ...updateData}, retailerProfile);
     // }
-    
+
     // // NEW: Notify all active delivery boys under this retailer
     // if (position === 1) {
     //   await notifyAllDeliveryBoys(order, retailerProfile);
@@ -102,12 +125,12 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
     if (typeof onAccept === "function") {
       await onAccept();
     }
-    
+
     setAccepting(null);
-    
+
     // If payment link needed and this retailer is active, show dialog immediately
-    if (position === 1 && order.payment_status === 'needs_paylink') {
-      setPendingOrder({...order, ...updateData});
+    if (position === 1 && order.payment_status === "needs_paylink") {
+      setPendingOrder({ ...order, ...updateData });
       setShowPaylinkDialog(true);
     } else {
       onAccept();
@@ -118,56 +141,80 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
   const notifyAllDeliveryBoys = async (order, retailer) => {
     const allDeliveryBoys = retailer.delivery_boys || [];
     const { DeliveryPartner } = await import("@/api/entities"); // Import once
-    
+
     const matchingDeliveryBoysPromises = allDeliveryBoys.map(async (db) => {
       if (!db.is_active) {
-        console.log(`⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Not active`);
+        console.log(
+          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Not active`
+        );
         return null;
       }
-      
+
       // Check vehicle type match
       // If order.required_vehicle_type is not specified, any vehicle type is allowed.
       // If it is specified, the delivery boy's vehicle_type must match.
-      if (order.required_vehicle_type && db.vehicle_type !== order.required_vehicle_type) {
-        console.log(`⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Vehicle mismatch (needs ${order.required_vehicle_type}, has ${db.vehicle_type})`);
+      if (
+        order.required_vehicle_type &&
+        db.vehicle_type !== order.required_vehicle_type
+      ) {
+        console.log(
+          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Vehicle mismatch (needs ${order.required_vehicle_type}, has ${db.vehicle_type})`
+        );
         return null;
       }
 
       // Check mutual partnership
       // The DB must have also selected this retailer in their partnered_retailers
       const partner = await DeliveryPartner.get(db.delivery_partner_id);
-      
+
       if (!partner) {
-          console.log(`⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Delivery Partner not found in DB`);
-          return null;
-      }
-      
-      const hasRetailerInPreferences = (partner.partnered_retailers || []).some(
-        pr => pr.retailer_id === retailer.id && pr.partnership_status === 'approved'
-      );
-      
-      if (!hasRetailerInPreferences) {
-        console.log(`⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Hasn't selected this retailer in their preferences or not approved`);
+        console.log(
+          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Delivery Partner not found in DB`
+        );
         return null;
       }
-      
+
+      const hasRetailerInPreferences = (partner.partnered_retailers || []).some(
+        (pr) =>
+          pr.retailer_id === retailer.id && pr.partnership_status === "approved"
+      );
+
+      if (!hasRetailerInPreferences) {
+        console.log(
+          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Hasn't selected this retailer in their preferences or not approved`
+        );
+        return null;
+      }
+
       return db; // If all checks pass, return the delivery boy
     });
 
-    const resolvedDeliveryBoys = await Promise.all(matchingDeliveryBoysPromises);
-    const activeDeliveryBoys = resolvedDeliveryBoys.filter(db => db !== null); // Filter out nulls
-    
+    const resolvedDeliveryBoys = await Promise.all(
+      matchingDeliveryBoysPromises
+    );
+    const activeDeliveryBoys = resolvedDeliveryBoys.filter((db) => db !== null); // Filter out nulls
+
     if (activeDeliveryBoys.length === 0) {
-      console.log(`⚠️ No matching delivery boys found for ${order.required_vehicle_type ? order.required_vehicle_type + ' order' : 'order with any vehicle type'} from retailer ${retailer.id}`);
+      console.log(
+        `⚠️ No matching delivery boys found for ${
+          order.required_vehicle_type
+            ? order.required_vehicle_type + " order"
+            : "order with any vehicle type"
+        } from retailer ${retailer.id}`
+      );
       return;
     }
 
-    console.log(`📢 Notifying ${activeDeliveryBoys.length} ${order.required_vehicle_type || 'any vehicle type'} delivery boys about order ${order.id}`);
-    
+    console.log(
+      `📢 Notifying ${activeDeliveryBoys.length} ${
+        order.required_vehicle_type || "any vehicle type"
+      } delivery boys about order ${order.id}`
+    );
+
     // In a real system, you would send push notifications via FCM/OneSignal
     // For now, we'll update the order to mark that notifications were sent
     // Delivery boys will see this order when they check their available orders list
-    
+
     // Send SMS/WhatsApp to each delivery boy
     for (const db of activeDeliveryBoys) {
       if (db.phone) {
@@ -177,14 +224,22 @@ export default function AvailableOrders({ orders, retailerId, config, onAccept, 
   };
 
   const sendDeliveryBoyNotification = async (deliveryBoy, order, retailer) => {
-    const vehicleEmoji = order.required_vehicle_type === '2_wheeler' ? '🏍️' : 
-                         order.required_vehicle_type === '4_wheeler' ? '🚗' : '📦'; // Default emoji
-    
-    const message = `${vehicleEmoji} NEW ${order.required_vehicle_type ? order.required_vehicle_type.toUpperCase() : 'ANY VEHICLE'} DELIVERY!
+    const vehicleEmoji =
+      order.required_vehicle_type === "2_wheeler"
+        ? "🏍️"
+        : order.required_vehicle_type === "4_wheeler"
+        ? "🚗"
+        : "📦"; // Default emoji
+
+    const message = `${vehicleEmoji} NEW ${
+      order.required_vehicle_type
+        ? order.required_vehicle_type.toUpperCase()
+        : "ANY VEHICLE"
+    } DELIVERY!
 
 Order #${order.website_ref || order.id.slice(0, 8)}
 💰 Earn: ₹${(order.total_amount * 0.1).toFixed(0)} (estimated)
-📍 Distance: ${order.distance_km || 'Unknown'} km
+📍 Distance: ${order.distance_km || "Unknown"} km
 ⏱️ Deliver in: ${order.sla_minutes || 60} min
 
 ${order.customer_name}
@@ -205,11 +260,15 @@ ${retailer.full_name}`;
           sender: "CARTDD",
           route: "TR",
           mobile: deliveryBoy.phone.replace("+91", ""),
-          message: message
-        })
+          message: message,
+        }),
       });
-      
-      console.log(`✅ Notified delivery boy: ${deliveryBoy.name} for ${order.required_vehicle_type || 'any vehicle type'} order`);
+
+      console.log(
+        `✅ Notified delivery boy: ${deliveryBoy.name} for ${
+          order.required_vehicle_type || "any vehicle type"
+        } order`
+      );
     } catch (error) {
       console.error(`Error notifying delivery boy ${deliveryBoy.name}:`, error);
     }
@@ -217,18 +276,20 @@ ${retailer.full_name}`;
 
   const handleSubmitPaylink = async () => {
     if (!paylinkUrl || !pendingOrder) return;
-    
+
     setSubmitting(true);
     await Order.update(pendingOrder.id, {
       paylink_url: paylinkUrl,
       paylink_generated_at: new Date().toISOString(),
-      payment_status: 'paylink_sent'
+      payment_status: "paylink_sent",
     });
-    
+
     // Send payment link notification
-    const { notifyPaymentLink } = await import('../utils/customerNotifications');
+    const { notifyPaymentLink } = await import(
+      "../utils/customerNotifications"
+    );
     await notifyPaymentLink(pendingOrder, paylinkUrl);
-    
+
     setSubmitting(false);
     setShowPaylinkDialog(false);
     setPaylinkUrl("");
@@ -238,40 +299,47 @@ ${retailer.full_name}`;
 
   const handleCancelOrder = async () => {
     if (!pendingOrder) return;
-    
+
     setSubmitting(true);
-    
+
     const penalties = pendingOrder.penalties || [];
-    const penaltyAmount = (pendingOrder.total_amount * (config?.cancellation_penalty_percentage || 2)) / 100;
-    
+    const penaltyAmount =
+      (pendingOrder.total_amount *
+        (config?.cancellation_penalty_percentage || 2)) /
+      100;
+
     penalties.push({
       retailer_id: retailerId,
       reason: "Cancellation after acceptance",
       amount: penaltyAmount,
       percentage: config?.cancellation_penalty_percentage || 2,
-      applied_at: new Date().toISOString()
+      applied_at: new Date().toISOString(),
     });
 
     // Update this retailer's acceptance status
-    const updatedAcceptances = pendingOrder.accepted_retailers.map(ar => 
-      ar.retailer_id === retailerId ? {...ar, status: 'cancelled'} : ar
+    const updatedAcceptances = pendingOrder.accepted_retailers.map((ar) =>
+      ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar
     );
 
     // Find next retailer in line
-    const nextRetailer = updatedAcceptances.find(ar => ar.status === 'active' && ar.retailer_id !== retailerId);
+    const nextRetailer = updatedAcceptances.find(
+      (ar) => ar.status === "active" && ar.retailer_id !== retailerId
+    );
 
     await Order.update(pendingOrder.id, {
       accepted_retailers: updatedAcceptances,
       active_retailer_id: nextRetailer?.retailer_id || null,
       active_retailer_info: nextRetailer || null,
-      status: nextRetailer ? 'accepted_primary' : 'pending_acceptance',
-      penalties
+      status: nextRetailer ? "accepted_primary" : "pending_acceptance",
+      penalties,
     });
 
     // Decrement retailer's current_orders count and remove from active_order_ids
     await Retailer.update(retailerId, {
       current_orders: Math.max(0, (retailerProfile?.current_orders || 0) - 1),
-      active_order_ids: (retailerProfile?.active_order_ids || []).filter(id => id !== pendingOrder.id)
+      active_order_ids: (retailerProfile?.active_order_ids || []).filter(
+        (id) => id !== pendingOrder.id
+      ),
     });
 
     setSubmitting(false);
@@ -283,12 +351,12 @@ ${retailer.full_name}`;
   };
 
   // Filter orders based on COD preference and status
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
-    if (order.status !== 'pending' && order.status !== 'queued') return false;
-    
+    if (order.status !== "pending" && order.status !== "queued") return false;
+
     // If order is COD, only show to retailers who accept COD
-    if (order.is_cod || order.payment_method === 'cod') {
+    if (order.is_cod || order.payment_method === "cod") {
       return retailerProfile?.accepts_cod === true;
     }
     // Non-COD orders shown to everyone
@@ -300,12 +368,13 @@ ${retailer.full_name}`;
       <Card className="border-none shadow-md">
         <CardContent className="p-12 text-center">
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No Available Orders</h3>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+            No Available Orders
+          </h3>
           <p className="text-gray-500">
-            {!retailerProfile?.accepts_cod 
+            {!retailerProfile?.accepts_cod
               ? "Enable COD in settings to receive cash orders"
-              : "New orders will appear here. Check back soon!"
-            }
+              : "New orders will appear here. Check back soon!"}
           </p>
         </CardContent>
       </Card>
@@ -317,10 +386,11 @@ ${retailer.full_name}`;
       <div className="space-y-4">
         {filteredOrders.map((order) => {
           const acceptedCount = order.accepted_retailers?.length || 0;
-          const maxAcceptances = order.max_acceptances || config?.max_retailer_acceptances || 3;
-          const isCOD = order.is_cod || order.payment_method === 'cod';
-          const isQueued = order.status === 'queued' || order.is_queued;
-          
+          const maxAcceptances =
+            order.max_acceptances || config?.max_retailer_acceptances || 3;
+          const isCOD = order.is_cod || order.payment_method === "cod";
+          const isQueued = order.status === "queued" || order.is_queued;
+
           // Calculate delivery charges
           // const charges = calculateDeliveryCharges(
           //   order.subtotal || order.total_amount,
@@ -328,18 +398,31 @@ ${retailer.full_name}`;
           //   config
           // );
           const charges = 0;
-          
+
           return (
-            <Card key={order.id} className={`border-none shadow-lg hover:shadow-xl transition-shadow ${isQueued ? 'border-2 border-amber-500' : ''}`}>
+            <Card
+              key={order.id}
+              className={`border-none shadow-lg hover:shadow-xl transition-shadow ${
+                isQueued ? "border-2 border-amber-500" : ""
+              }`}
+            >
               <CardContent className="p-0">
-                <div className={`p-4 ${isCOD ? 'bg-gradient-to-r from-amber-50 to-yellow-50' : isQueued ? 'bg-gradient-to-r from-amber-100 to-orange-100' : 'bg-gradient-to-r from-blue-50 to-purple-50'} border-b`}>
+                <div
+                  className={`p-4 ${
+                    isCOD
+                      ? "bg-gradient-to-r from-amber-50 to-yellow-50"
+                      : isQueued
+                      ? "bg-gradient-to-r from-amber-100 to-orange-100"
+                      : "bg-gradient-to-r from-blue-50 to-purple-50"
+                  } border-b`}
+                >
                   {isQueued && (
                     <div className="mb-3 p-2 bg-amber-500 text-white rounded-lg flex items-center gap-2 text-sm font-semibold">
                       <Clock className="w-4 h-4 animate-pulse" />
                       QUEUED ORDER - Accept Now to Process!
                     </div>
                   )}
-                  
+
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h3 className="text-lg font-bold text-gray-900">
                       {`Order #${order.id}`}
@@ -358,7 +441,9 @@ ${retailer.full_name}`;
                       {order.required_vehicle_type && (
                         <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                           <NavigationIcon className="w-3 h-3 mr-1" />
-                          {order.required_vehicle_type === '2_wheeler' ? '2-Wheeler' : '4-Wheeler'}
+                          {order.required_vehicle_type === "2_wheeler"
+                            ? "2-Wheeler"
+                            : "4-Wheeler"}
                         </Badge>
                       )}
                       {isQueued && (
@@ -377,32 +462,51 @@ ${retailer.full_name}`;
                           <TrendingUp className="w-4 h-4" />
                           Your Delivery Earnings:
                         </span>
-                        <span className="text-2xl font-bold text-green-700">₹{charges.retailerEarning}</span>
+                        <span className="text-2xl font-bold text-green-700">
+                          ₹{charges.retailerEarning}
+                        </span>
                       </div>
                       <div className="text-xs text-green-700 space-y-0.5">
                         <div className="flex justify-between">
                           <span>Distance:</span>
-                          <span className="font-medium">{order.distance_km} km</span>
+                          <span className="font-medium">
+                            {order.distance_km} km
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Fuel Cost (₹{config?.fuel_cost_per_km || 5}/km):</span>
-                          <span className="font-medium">₹{charges.fuelCost}</span>
+                          <span>
+                            Fuel Cost (₹{config?.fuel_cost_per_km || 5}/km):
+                          </span>
+                          <span className="font-medium">
+                            ₹{charges.fuelCost}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span>Base Charge:</span>
-                          <span className="font-medium">₹{charges.baseCharge}</span>
+                          <span className="font-medium">
+                            ₹{charges.baseCharge}
+                          </span>
                         </div>
                         <div className="flex justify-between pt-1 border-t border-green-300 font-semibold">
                           <span>Total Delivery Charge:</span>
                           <span>₹{charges.totalDeliveryCharge}</span>
                         </div>
                         <div className="flex justify-between text-green-900 pt-1">
-                          <span>Your Share ({charges.breakdown?.retailerPercent}%):</span>
-                          <span className="font-bold text-base">₹{charges.retailerEarning}</span>
+                          <span>
+                            Your Share ({charges.breakdown?.retailerPercent}%):
+                          </span>
+                          <span className="font-bold text-base">
+                            ₹{charges.retailerEarning}
+                          </span>
                         </div>
                         <div className="flex justify-between text-blue-700 text-[10px]">
-                          <span>Delivery Boy will get ({charges.breakdown?.deliveryBoyPercent}%):</span>
-                          <span className="font-medium">₹{charges.deliveryBoyEarning}</span>
+                          <span>
+                            Delivery Boy will get (
+                            {charges.breakdown?.deliveryBoyPercent}%):
+                          </span>
+                          <span className="font-medium">
+                            ₹{charges.deliveryBoyEarning}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -411,21 +515,27 @@ ${retailer.full_name}`;
                   <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mt-3">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span>Posted {format(new Date(order.created_date), "h:mm a")}</span>
+                      <span>
+                        Posted {format(new Date(order.created_date), "h:mm a")}
+                      </span>
                     </div>
                     {order.distance_km && (
                       <>
                         <span className="text-gray-400">•</span>
                         <div className="flex items-center gap-1">
                           <NavigationIcon className="w-4 h-4" />
-                          <span className="font-medium">{order.distance_km} km away</span>
+                          <span className="font-medium">
+                            {order.distance_km} km away
+                          </span>
                         </div>
                       </>
                     )}
                     {order.sla_minutes && (
                       <>
                         <span className="text-gray-400">•</span>
-                        <span className="text-amber-600 font-medium">Deliver in {order.sla_minutes} min</span>
+                        <span className="text-amber-600 font-medium">
+                          Deliver in {order.sla_minutes} min
+                        </span>
                       </>
                     )}
                   </div>
@@ -436,9 +546,14 @@ ${retailer.full_name}`;
                     <Alert className="bg-blue-50 border-blue-200">
                       <AlertCircle className="w-4 h-4 text-blue-600" />
                       <AlertDescription className="text-blue-900 text-sm">
-                        <strong>{acceptedCount} seller{acceptedCount > 1 ? 's' : ''} already accepted.</strong>
-                        {acceptedCount === 1 && " If they fail, you'll be next in line."}
-                        {acceptedCount === 2 && " You'll be the backup if both fail."}
+                        <strong>
+                          {acceptedCount} seller{acceptedCount > 1 ? "s" : ""}{" "}
+                          already accepted.
+                        </strong>
+                        {acceptedCount === 1 &&
+                          " If they fail, you'll be next in line."}
+                        {acceptedCount === 2 &&
+                          " You'll be the backup if both fail."}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -449,19 +564,25 @@ ${retailer.full_name}`;
                         <Package className="w-4 h-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="font-semibold text-gray-900">{order.customer_name}</p>
-                        <p className="text-sm text-gray-600">{order.items?.length || 0} item(s)</p>
+                        <p className="font-semibold text-gray-900">
+                          {order.customer_name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {order.items?.length || 0} item(s)
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <MapPin className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-xs font-medium text-blue-800 mb-1">DELIVERY ADDRESS</p>
+                        <p className="text-xs font-medium text-blue-800 mb-1">
+                          DELIVERY ADDRESS
+                        </p>
                         <p className="text-sm text-gray-900 font-medium">
                           {order.drop_address}
                         </p>
-                        
+
                         {order.distance_km && (
                           <div className="mt-2 flex items-center gap-3 text-xs">
                             <span className="text-blue-700 font-medium">
@@ -469,7 +590,8 @@ ${retailer.full_name}`;
                             </span>
                             {order.sla_minutes && (
                               <span className="text-amber-700 font-medium">
-                                ⏱️ ~{Math.ceil(order.distance_km * 3)} min travel time
+                                ⏱️ ~{Math.ceil(order.distance_km * 3)} min
+                                travel time
                               </span>
                             )}
                           </div>
@@ -479,39 +601,55 @@ ${retailer.full_name}`;
                   </div>
 
                   {isCOD && (
-                  <div className="px-4">
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <IndianRupee className="w-4 h-4 text-amber-600" />
-                      <AlertDescription className="text-amber-800 text-sm">
-                        <strong>Cash on Delivery</strong> - Collect ₹{order.total_amount} in cash from customer. Keep change ready!
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                )}
+                    <div className="px-4">
+                      <Alert className="bg-amber-50 border-amber-200">
+                        <IndianRupee className="w-4 h-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800 text-sm">
+                          <strong>Cash on Delivery</strong> - Collect ₹
+                          {order.total_amount} in cash from customer. Keep
+                          change ready!
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
 
-                  {order.payment_status === 'needs_paylink' && (
+                  {order.payment_status === "needs_paylink" && (
                     <Alert className="bg-amber-50 border-amber-200">
                       <AlertCircle className="w-4 h-4 text-amber-600" />
                       <AlertDescription className="text-amber-800 text-sm">
-                        <strong>Payment Link Required</strong> - You'll have {config?.paylink_timeout_sec || 150} seconds to generate payment link after accepting
-                        {order.customer_payment_preference && order.customer_payment_preference.length > 0 && (
-                          <div className="mt-1 text-xs">
-                            Send to: {order.customer_payment_preference.join(', ').toUpperCase()}
-                          </div>
-                        )}
+                        <strong>Payment Link Required</strong> - You'll have{" "}
+                        {config?.paylink_timeout_sec || 150} seconds to generate
+                        payment link after accepting
+                        {order.customer_payment_preference &&
+                          order.customer_payment_preference.length > 0 && (
+                            <div className="mt-1 text-xs">
+                              Send to:{" "}
+                              {order.customer_payment_preference
+                                .join(", ")
+                                .toUpperCase()}
+                            </div>
+                          )}
                       </AlertDescription>
                     </Alert>
                   )}
 
                   {order.items && order.items.length > 0 && (
-                    
                     <div className="pt-3 border-t">
-                      <p className="text-xs font-medium text-gray-500 mb-2">PRODUCT DETAILS</p>
+                      <p className="text-xs font-medium text-gray-500 mb-2">
+                        PRODUCT DETAILS
+                      </p>
                       <div className="space-y-1">
                         {order.items.map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm bg-gray-50 p-2 rounded">
-                            <span className="text-gray-700 font-medium">{item.name}</span>
-                            <span className="font-bold text-gray-900">₹{item.price}</span>
+                          <div
+                            key={idx}
+                            className="flex justify-between text-sm bg-gray-50 p-2 rounded"
+                          >
+                            <span className="text-gray-700 font-medium">
+                              {item.name}
+                            </span>
+                            <span className="font-bold text-gray-900">
+                              ₹{item.price}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -524,7 +662,9 @@ ${retailer.full_name}`;
                       disabled={accepting === order.id}
                       className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-6 text-lg"
                     >
-                      {accepting === order.id ? "Accepting..." : `Accept Order - Notify Delivery Boys`}
+                      {accepting === order.id
+                        ? "Accepting..."
+                        : `Accept Order - Notify Delivery Boys`}
                     </Button>
                   </div>
                 </div>
@@ -536,37 +676,54 @@ ${retailer.full_name}`;
 
       {/* Payment Link Dialog */}
       <Dialog open={showPaylinkDialog} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">🔒 Payment Link Required</DialogTitle>
+            <DialogTitle className="text-xl font-bold">
+              🔒 Payment Link Required
+            </DialogTitle>
             <DialogDescription>
-              You must generate and submit payment link to proceed with this order
+              You must generate and submit payment link to proceed with this
+              order
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <Alert className="bg-blue-50 border-blue-200">
               <AlertCircle className="w-4 h-4 text-blue-600" />
               <AlertDescription className="text-blue-900 text-sm">
-                Generate payment link from your payment gateway and paste it here. Link will be automatically sent to customer.
+                Generate payment link from your payment gateway and paste it
+                here. Link will be automatically sent to customer.
               </AlertDescription>
             </Alert>
 
-            {pendingOrder?.customer_payment_preference && pendingOrder.customer_payment_preference.length > 0 && (
-              <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
-                <p className="text-sm font-medium text-green-900 mb-1">Will be sent to customer via:</p>
-                <div className="flex flex-wrap gap-2">
-                  {pendingOrder.customer_payment_preference.map((channel, idx) => (
-                    <Badge key={idx} className="bg-green-100 text-green-800 border-green-200">
-                      {channel.toUpperCase()}
-                    </Badge>
-                  ))}
+            {pendingOrder?.customer_payment_preference &&
+              pendingOrder.customer_payment_preference.length > 0 && (
+                <div className="bg-green-50 border border-green-200 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-green-900 mb-1">
+                    Will be sent to customer via:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {pendingOrder.customer_payment_preference.map(
+                      (channel, idx) => (
+                        <Badge
+                          key={idx}
+                          className="bg-green-100 text-green-800 border-green-200"
+                        >
+                          {channel.toUpperCase()}
+                        </Badge>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="space-y-2">
-              <Label htmlFor="paylink" className="text-sm font-semibold">Payment Link URL *</Label>
+              <Label htmlFor="paylink" className="text-sm font-semibold">
+                Payment Link URL *
+              </Label>
               <Input
                 id="paylink"
                 placeholder="https://razorpay.com/payment/..."
@@ -578,11 +735,22 @@ ${retailer.full_name}`;
 
             {pendingOrder && (
               <div className="text-sm bg-gray-50 p-3 rounded-lg space-y-1">
-                <p><strong>Customer:</strong> {pendingOrder.customer_name}</p>
-                <p><strong>Contact:</strong> {pendingOrder.customer_masked_contact}</p>
-                <p><strong>Amount:</strong> ₹{pendingOrder.total_amount}</p>
+                <p>
+                  <strong>Customer:</strong> {pendingOrder.customer_name}
+                </p>
+                <p>
+                  <strong>Contact:</strong>{" "}
+                  {pendingOrder.customer_masked_contact}
+                </p>
+                <p>
+                  <strong>Amount:</strong> ₹{pendingOrder.total_amount}
+                </p>
                 <p className="text-xs text-gray-500 mt-2">
-                  ⏱️ Timeout: {pendingOrder.paylink_timeout_sec || config?.paylink_timeout_sec || 150} seconds
+                  ⏱️ Timeout:{" "}
+                  {pendingOrder.paylink_timeout_sec ||
+                    config?.paylink_timeout_sec ||
+                    150}{" "}
+                  seconds
                 </p>
               </div>
             )}
@@ -590,14 +758,23 @@ ${retailer.full_name}`;
             <Alert className="bg-red-50 border-red-200">
               <XCircle className="w-4 h-4 text-red-600" />
               <AlertDescription className="text-red-900 text-sm">
-                <strong>Warning:</strong> Cancelling will result in {config?.cancellation_penalty_percentage || 2}% penalty (₹{pendingOrder ? (pendingOrder.total_amount * (config?.cancellation_penalty_percentage || 2) / 100).toFixed(0) : 0})
+                <strong>Warning:</strong> Cancelling will result in{" "}
+                {config?.cancellation_penalty_percentage || 2}% penalty (₹
+                {pendingOrder
+                  ? (
+                      (pendingOrder.total_amount *
+                        (config?.cancellation_penalty_percentage || 2)) /
+                      100
+                    ).toFixed(0)
+                  : 0}
+                )
               </AlertDescription>
             </Alert>
           </div>
 
           <DialogFooter className="flex gap-2">
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={() => setShowCancelDialog(true)}
               disabled={submitting}
               className="flex-1"
@@ -621,38 +798,51 @@ ${retailer.full_name}`;
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-red-600">⚠️ Are You Sure?</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-red-600">
+              ⚠️ Are You Sure?
+            </DialogTitle>
             <DialogDescription>
               This action cannot be undone and will result in a penalty
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <Alert className="bg-red-50 border-red-500 border-2">
               <XCircle className="w-5 h-5 text-red-600" />
               <AlertDescription>
-                <p className="font-bold text-red-900 text-lg mb-2">Cancellation Penalty</p>
+                <p className="font-bold text-red-900 text-lg mb-2">
+                  Cancellation Penalty
+                </p>
                 <p className="text-red-800 text-2xl font-bold mb-2">
-                  ₹{pendingOrder ? (pendingOrder.total_amount * (config?.cancellation_penalty_percentage || 2) / 100).toFixed(0) : 0}
+                  ₹
+                  {pendingOrder
+                    ? (
+                        (pendingOrder.total_amount *
+                          (config?.cancellation_penalty_percentage || 2)) /
+                        100
+                      ).toFixed(0)
+                    : 0}
                 </p>
                 <p className="text-red-700 text-sm">
-                  ({config?.cancellation_penalty_percentage || 2}% of order value: ₹{pendingOrder?.total_amount})
+                  ({config?.cancellation_penalty_percentage || 2}% of order
+                  value: ₹{pendingOrder?.total_amount})
                 </p>
               </AlertDescription>
             </Alert>
 
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-sm text-gray-700">
-                • Penalty will be deducted from your next payout<br/>
-                • Order will be reassigned to next retailer in queue<br/>
-                • This affects your acceptance rate and rating
+                • Penalty will be deducted from your next payout
+                <br />
+                • Order will be reassigned to next retailer in queue
+                <br />• This affects your acceptance rate and rating
               </p>
             </div>
           </div>
 
           <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowCancelDialog(false)}
               disabled={submitting}
               className="flex-1"
