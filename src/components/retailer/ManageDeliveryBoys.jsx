@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { retailerApi } from "@/components/utils/retailerApi";
-import {deliveryPartnerApi} from "@/components/utils/deliveryPartnerApi";
+import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,30 +28,30 @@ export default function ManageDeliveryBoys({ retailerId }) {
     loadData();
   }, []);
 
-const loadData = async () => {
-  setLoading(true);
-  try {
+  const loadData = async () => {
+    setLoading(true);
+    try {
 
-    
-    const retailerData = await retailerApi.list();
-    const deliveryBoys = await deliveryPartnerApi.getApprovedDeliveryBoys();
-    console.log("deliveryBoys",deliveryBoys);
-    setRetailer(retailerData);
-    setAllDeliveryBoys(deliveryBoys);
 
-    // Load selected delivery partners from retailer record
-    const selected = retailerData?.selected_delivery_partners || [];
-    setSelectedIds(selected);
+      const retailerData = await retailerApi.list();
+      const deliveryBoys = await deliveryPartnerApi.getApprovedDeliveryBoys();
+      console.log("deliveryBoys", deliveryBoys);
+      setRetailer(retailerData);
+      setAllDeliveryBoys(deliveryBoys);
 
-  } catch (error) {
-    console.error("Error loading data:", error);
-  }
-  setLoading(false);
-};
+      // Load selected delivery partners from retailer record
+      const selected = retailerData?.selected_delivery_partners || [];
+      setSelectedIds(selected);
+
+    } catch (error) {
+      console.error("Error loading data:", error);
+    }
+    setLoading(false);
+  };
 
 
   const handleToggle = (deliveryBoyId) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(deliveryBoyId)
         ? prev.filter(id => id !== deliveryBoyId)
         : [...prev, deliveryBoyId]
@@ -61,10 +61,10 @@ const loadData = async () => {
   const handleSelectAll = () => {
     const filtered = getFilteredDeliveryBoys();
     const allFilteredIds = filtered.map(db => db.id);
-    
+
     // If all filtered are already selected, deselect them
     const allSelected = allFilteredIds.every(id => selectedIds.includes(id));
-    
+
     if (allSelected) {
       setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
     } else {
@@ -78,7 +78,7 @@ const loadData = async () => {
       await retailerApi.selectDeliveryPartners({
         selected_delivery_partners: selectedIds
       });
-      
+
       alert("✅ Delivery partner preferences saved successfully!");
       loadData();
     } catch (error) {
@@ -90,12 +90,12 @@ const loadData = async () => {
 
   const getFilteredDeliveryBoys = () => {
     return allDeliveryBoys.filter(db => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         db.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         db.phone?.includes(searchTerm);
-      
+
       const matchesVehicle = filterVehicle === 'all' || db.vehicle_type === filterVehicle;
-      
+
       return matchesSearch && matchesVehicle;
     });
   };
@@ -126,10 +126,9 @@ const loadData = async () => {
           <Alert className="bg-blue-50 border-blue-200 mb-4">
             <AlertCircle className="w-4 h-4 text-blue-600" />
             <AlertDescription className="text-blue-900 text-sm">
-              <strong>Select delivery partners you want to work with.</strong><br/>
-              • Only selected partners will receive your order notifications<br/>
-              • Partners must also select you in their app for mutual linking<br/>
-              • You have selected <strong>{selectedIds.length}</strong> out of {allDeliveryBoys.length} active partners
+              <strong>Select delivery partners you want to work with.</strong><br />
+              • Only selected partners will receive your order notifications<br />
+              • Partners must also select you in their app for mutual linking<br />
             </AlertDescription>
           </Alert>
 
@@ -160,7 +159,7 @@ const loadData = async () => {
                 className="pl-10"
               />
             </div>
-            
+
             <div className="flex gap-2">
               <Button
                 variant={filterVehicle === 'all' ? 'default' : 'outline'}
@@ -209,13 +208,13 @@ const loadData = async () => {
             {filteredDeliveryBoys.map((db) => {
               const isSelected = selectedIds.includes(db.id);
 
-// delivery partner has selected this retailer?
-const hasSelectedRetailer = Array.isArray(db.selected_retailers)
-  ? db.selected_retailers.includes(retailerId)
-  : false;
+              // delivery partner has selected this retailer?
+              const hasSelectedRetailer = Array.isArray(db.selected_retailers)
+                ? db.selected_retailers.includes(retailerId)
+                : false;
 
-// mutual = either backend tells OR both have selected
-const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
+              // mutual = either backend tells OR both have selected
+              const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
 
 
 
@@ -223,11 +222,10 @@ const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
                 <div
                   key={db.id}
                   onClick={() => handleToggle(db.id)}
-                  className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    isSelected 
-                      ? 'border-blue-500 bg-blue-50' 
+                  className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-all ${isSelected
+                      ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
-                  }`}
+                    }`}
                 >
                   <Checkbox
                     checked={isSelected}
@@ -268,7 +266,7 @@ const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
-                         No vehicle information
+                          No vehicle information
                         </Badge>
                       )}
                     </div>
@@ -291,8 +289,8 @@ const isMutuallyLinked = db.is_mutual || (isSelected && hasSelectedRetailer);
             <Button variant="outline" onClick={loadData}>
               Reset
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={saving}
               className="bg-blue-600 hover:bg-blue-700"
             >
