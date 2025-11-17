@@ -181,7 +181,7 @@ function PagesContent() {
                             }
                         }
 
-                        return <Navigate to="/SuperAdminLogin" replace />;
+                        return <Navigate to="/portalSelector" replace />;
                         })()
                     }
                     />
