@@ -46,6 +46,7 @@ export default function SellerPortal() {
   const [showHandoffDialog, setShowHandoffDialog] = useState(false);
   const [selectedOrderForHandoff, setSelectedOrderForHandoff] = useState(null);
   const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
+  const [stats, setStats] = useState(null);
 
   const loadData = async () => {
     try {
@@ -79,7 +80,15 @@ export default function SellerPortal() {
       setOrders(allOrders?.data || []);
 
       const acceptedOrders = await OrderApi.AcceptedOrders();
+      
       setMyAcceptedOrders(acceptedOrders?.data || []);
+
+      const statsResponse = await OrderApi.getSellerStats();
+
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        setStats(statsData);
+    }
 
       setLoading(false);
     } catch (error) {
@@ -213,11 +222,7 @@ export default function SellerPortal() {
     return o.status === "pending" && !alreadyAccepted;
   });
 
-  const myActiveOrders = myAcceptedOrders.filter(
-    (o) =>
-      o.active_retailer_id === sellerProfile?.id &&
-      ["payment_pending", "en_route", "arrived"].includes(o.status)
-  );
+  const myActiveOrders = myAcceptedOrders;
 
   const myCompletedOrders = orders.filter((o) =>
     o.accepted_retailers?.some(
@@ -290,14 +295,11 @@ export default function SellerPortal() {
 
           <RetailerStats
             retailer={sellerProfile}
-            activeOrders={myActiveOrders.length}
-            completedToday={
-              myCompletedOrders.filter((o) => {
-                const today = new Date().toDateString();
-                return new Date(o.updated_date).toDateString() === today;
-              }).length
-            }
+            stats={stats}
+            activeOrders={stats?.active_orders_count ?? myActiveOrders.length}
+            completedToday={stats?.todays_orders_count ?? 0}
           />
+
         </div>
       </div>
 
