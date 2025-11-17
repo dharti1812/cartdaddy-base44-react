@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OrderApi } from "@/components/utils/orderApi";
 import { retailerApi } from "@/components/utils/retailerApi";
+import { API_BASE_URL } from "@/config";
 
 const COLORS = ["#1e3a8a", "#3b82f6", "#60a5fa", "#93c5fd", "#dbeafe"];
 
@@ -28,6 +29,7 @@ export default function AnalyticsPage() {
   const [orders, setOrders] = useState([]);
   const [retailers, setRetailers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -91,6 +93,54 @@ export default function AnalyticsPage() {
         deliveries: r.successful_deliveries || 0,
       }));
   };
+
+  const downloadReport = async (type) => {
+    setShowMenu(false);
+    const token = sessionStorage.getItem("token");
+    let endpoint = "";
+    if (type === "orders") endpoint = "/api/reports/orders/export";
+    else if (type === "retailers") endpoint = "/api/reports/retailers/export";
+    else if (type === "revenue") endpoint = "/api/reports/revenue/export";
+    else return;
+
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Export error response:", text);
+        throw new Error("Failed to download report");
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition");
+      let filename = `${type}.xlsx`;
+      if (disposition && disposition.indexOf("filename=") !== -1) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlBlob;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(urlBlob);
+    } catch (err) {
+      console.error("Download error:", err);
+      alert("Failed to download report. Check console for details.");
+    }
+  };
+
   const stats = {
     totalRevenue: orders
       .filter((o) => o.payment_status === "paid")
@@ -151,11 +201,43 @@ export default function AnalyticsPage() {
             variant="outline"
             className="bg-white text-[#075E66] border-2 border-[#F4B321] hover:bg-[#F4B321] hover:text-gray-900 font-bold"
           >
-            <Download className="w-4 h-4 mr-2" />
-            Export Reports
+            <div className="relative">
+              <Button
+                onClick={() => setShowMenu((prev) => !prev)}
+                variant="outline"
+                className="bg-white text-[#075E66] border-2 border-[#F4B321] hover:bg-[#F4B321] hover:text-gray-900 font-bold"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export Reports
+              </Button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-2 bg-white shadow-lg border rounded-md w-56 z-50">
+                  <button
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={() => downloadReport("orders")}
+                  >
+                    📦 Export Orders
+                  </button>
+
+                  <button
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={() => downloadReport("retailers")}
+                  >
+                    🛒 Export Retailers
+                  </button>
+
+                  <button
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                    onClick={() => downloadReport("revenue")}
+                  >
+                    💰 Export Revenue
+                  </button>
+                </div>
+              )}
+            </div>
           </Button>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="border-none shadow-md">
             <CardContent className="p-6">
