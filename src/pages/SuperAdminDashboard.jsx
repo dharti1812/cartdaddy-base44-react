@@ -120,7 +120,7 @@ export default function SuperAdminDashboard() {
         const customer = customerMap.get(phone);
         customer.orders.push(order);
         customer.totalOrders++;
-        customer.totalSpent += order.total_amount || 0;
+        customer.totalSpent += order.amount || 0;
       });
 
       setCustomers(Array.from(customerMap.values()));
@@ -143,7 +143,7 @@ export default function SuperAdminDashboard() {
     ).length,
     totalDeliveryPartners: deliveryPartners.length,
     activeDeliveryPartners: deliveryPartners.filter(
-      (dp) => dp?.delivery_partner?.availability_status === "online"
+      (dp) => dp?.availability_status === "online"
     ).length,
     pendingDPVerifications: deliveryPartners.filter(
       (dp) => dp.onboarding_status === "retailers_pending"
@@ -1200,7 +1200,7 @@ export default function SuperAdminDashboard() {
                                 </div>
                                 <div className="text-right">
                                   <p className="font-bold text-black">
-                                    ₹{order.total_amount}
+                                    ₹{order.amount}
                                   </p>
                                   <Badge className="text-xs mt-1">
                                     {order.status}
