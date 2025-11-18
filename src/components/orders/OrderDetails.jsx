@@ -114,7 +114,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
           },
           body: JSON.stringify({
             retailer_id: selectedRetailer,
-            assignment_status: "Arrived",
+            assignment_status: "assigned",
           }),
         }
       );
@@ -283,7 +283,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
                 Update Status
               </h3>
               <div className="space-y-2">
-                {order.status === "assigned" && (
+                {order.assignment_status === "assigned" && (
                   <Button
                     onClick={() => handleStatusChange("en_route")}
                     disabled={updating}

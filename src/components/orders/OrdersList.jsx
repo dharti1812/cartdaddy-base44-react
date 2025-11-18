@@ -74,9 +74,9 @@ export default function OrdersList({
                       <h3 className="font-semibold text-gray-900">
                         {`#${order.id}`}
                       </h3>
-                      <Badge className={getStatusBadgeClass(order.status)}>
+                      {/* <Badge className={getStatusBadgeClass(order.status)}>
                         {order.status.replace(/_/g, " ")}
-                      </Badge>
+                      </Badge> */}
                       {order.is_cod && (
                         <Badge className="bg-green-100 text-green-800">
                           COD
