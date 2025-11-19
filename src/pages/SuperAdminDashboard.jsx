@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
+import { API_BASE_URL } from "@/config";
 
 export default function SuperAdminDashboard() {
   const [orders, setOrders] = useState([]);
@@ -47,7 +48,7 @@ export default function SuperAdminDashboard() {
   const [success, setSuccess] = useState(null); // New state for success messages
   const [actionLoading, setActionLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
-
+  const [showMenu, setShowMenu] = useState(false);
   useEffect(() => {
     loadData();
     // No cleanupDuplicates call as it's not typically part of mock API usage
@@ -313,6 +314,53 @@ export default function SuperAdminDashboard() {
       dp.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const downloadReport = async (type) => {
+    setShowMenu(false);
+    const token = sessionStorage.getItem("token");
+    let endpoint = "";
+    if (type === "orders") endpoint = "/api/reports/orders/export";
+    else if (type === "retailers") endpoint = "/api/reports/retailers/export";
+    else if (type === "revenue") endpoint = "/api/reports/revenue/export";
+    else return;
+
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Export error response:", text);
+        throw new Error("Failed to download report");
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition");
+      let filename = `${type}.xlsx`;
+      if (disposition && disposition.indexOf("filename=") !== -1) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const urlBlob = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = urlBlob;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(urlBlob);
+    } catch (err) {
+      console.error("Download error:", err);
+      alert("Failed to download report. Check console for details.");
+    }
+  };
+
   const filteredCustomers = customers.filter(
     (c) =>
       !searchTerm ||
@@ -348,10 +396,38 @@ export default function SuperAdminDashboard() {
             <Badge className="bg-[#FFEB3B] text-black px-4 py-2 text-base font-bold">
               {stats.onlineAdmins}/{stats.totalAdmins} Admins Online
             </Badge>
-            <Button className="bg-[#FFEB3B] text-black hover:bg-[#FFEB3B] hover:opacity-90 font-bold">
+            <Button
+              onClick={() => setShowMenu((prev) => !prev)}
+              variant="outline"
+              className="bg-white text-[#075E66] border-2 border-[#F4B321] hover:bg-[#F4B321] hover:text-gray-900 font-bold"
+            >
               <Download className="w-4 h-4 mr-2" />
               Export Reports
             </Button>
+            {showMenu && (
+              <div className="absolute right-0 mt-8 bg-white shadow-lg border rounded-md w-56 z-50">
+                <button
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                  onClick={() => downloadReport("orders")}
+                >
+                  📦 Export Orders
+                </button>
+
+                <button
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                  onClick={() => downloadReport("retailers")}
+                >
+                  🛒 Export Retailers
+                </button>
+
+                <button
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                  onClick={() => downloadReport("revenue")}
+                >
+                  💰 Export Revenue
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
