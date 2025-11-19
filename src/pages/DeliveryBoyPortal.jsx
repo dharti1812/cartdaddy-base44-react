@@ -42,7 +42,6 @@ export default function DeliveryBoyPortal() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-
   const watchIdRef = useRef(null);
 
   useEffect(() => {
@@ -585,54 +584,52 @@ export default function DeliveryBoyPortal() {
               </TabsContent>
 
               <TabsContent value="active" className="mt-0">
+                {/* If NO active deliveries */}
+                {myActiveDeliveries.length === 0 ? (
+                  <p className="text-center text-gray-500 py-6">
+                    No active deliveries found.
+                  </p>
+                ) : (
+                  // If deliveries exist
+                  <div className="space-y-4">
+                    {myActiveDeliveries.map((order) => (
+                      <Card
+                        key={order.id}
+                        className="border-2 border-blue-500 cursor-pointer"
+                        onClick={() => setSelectedOrder(order)} // OPEN MODAL
+                      >
+                        <CardContent className="p-4">
+                          <h3 className="font-bold text-lg mb-2">
+                            {order.website_ref || `Order #${order.id}`}
+                          </h3>
 
-  {/* If NO active deliveries */}
-  {myActiveDeliveries.length === 0 ? (
-    <p className="text-center text-gray-500 py-6">
-      No active deliveries found.
-    </p>
-  ) : (
-    // If deliveries exist
-    <div className="space-y-4">
-      {myActiveDeliveries.map((order) => (
-        <Card
-          key={order.id}
-          className="border-2 border-blue-500 cursor-pointer"
-          onClick={() => setSelectedOrder(order)}   // OPEN MODAL
-        >
-          <CardContent className="p-4">
-            <h3 className="font-bold text-lg mb-2">
-              {order.website_ref || `Order #${order.id}`}
-            </h3>
+                          <p className="text-sm text-gray-600 mb-2">
+                            Customer: {order.customer_name}
+                          </p>
 
-            <p className="text-sm text-gray-600 mb-2">
-              Customer: {order.customer_name}
-            </p>
+                          <p className="text-sm text-gray-600 mb-4">
+                            📍 {order.drop_address?.street},{" "}
+                            {order.drop_address?.city}
+                          </p>
 
-            <p className="text-sm text-gray-600 mb-4">
-              📍 {order.drop_address?.street}, {order.drop_address?.city}
-            </p>
+                          <Badge className="bg-blue-500 text-white">
+                            Status: {order.delivery_status}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
-            <Badge className="bg-blue-500 text-white">
-              Status: {order.delivery_status}
-            </Badge>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )}
-
-  {/* Modal OUTSIDE list */}
-  {selectedOrder && (
-    <DeliveryStatusModal
-      order={selectedOrder}
-      onClose={() => setSelectedOrder(null)}
-      onUpdate={loadData}
-    />
-  )}
-
-</TabsContent>
-
+                {/* Modal OUTSIDE list */}
+                {selectedOrder && (
+                  <DeliveryStatusModal
+                    order={selectedOrder}
+                    onClose={() => setSelectedOrder(null)}
+                    onUpdate={loadData}
+                  />
+                )}
+              </TabsContent>
 
               <TabsContent value="retailers" className="mt-0">
                 <SelectRetailers deliveryPartnerId={partner.id} />
