@@ -80,7 +80,7 @@ export default function SellerPortal() {
       setOrders(allOrders?.data || []);
 
       const acceptedOrders = await OrderApi.AcceptedOrders();
-      
+
       setMyAcceptedOrders(acceptedOrders?.data || []);
 
       const statsResponse = await OrderApi.getSellerStats();
@@ -88,7 +88,7 @@ export default function SellerPortal() {
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData);
-    }
+      }
 
       setLoading(false);
     } catch (error) {
@@ -214,14 +214,14 @@ export default function SellerPortal() {
       </div>
     );
   }
-
+  console.log("All Orders:", orders);
   const availableOrders = orders.filter((o) => {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id
     );
     return o.status === "pending" && !alreadyAccepted;
   });
-
+  console.log("Available Orders:", availableOrders);
   const myActiveOrders = myAcceptedOrders;
 
   const myCompletedOrders = orders.filter((o) =>
@@ -299,7 +299,6 @@ export default function SellerPortal() {
             activeOrders={stats?.active_orders_count ?? myActiveOrders.length}
             completedToday={stats?.todays_orders_count ?? 0}
           />
-
         </div>
       </div>
 

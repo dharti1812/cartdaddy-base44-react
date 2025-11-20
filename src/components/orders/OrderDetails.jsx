@@ -95,14 +95,13 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
   }, []);
 
   const handleAssignRetailer = async () => {
-    
     if (!selectedRetailer) return;
 
     setUpdating(true);
 
     try {
       const token = sessionStorage.getItem("token");
-      alert("orderId: " + order.order_id + " retailerId: " + selectedRetailer);
+      //alert("orderId: " + order.order_id + " retailerId: " + selectedRetailer);
       const response = await fetch(
         `${API_BASE_URL}/api/orders/${order.order_id}/assign-retailer`,
         {

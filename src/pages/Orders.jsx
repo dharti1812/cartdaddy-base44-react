@@ -24,7 +24,6 @@ export default function OrdersPage() {
     loadData();
   }, []);
 
-  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get("order");
@@ -93,7 +92,7 @@ export default function OrdersPage() {
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="pending">Pending</TabsTrigger>
                   <TabsTrigger value="assigned">Assigned</TabsTrigger>
-                  <TabsTrigger value="en_route">En Route</TabsTrigger>
+                  <TabsTrigger value="accepted">En Route</TabsTrigger>
                   <TabsTrigger value="delivered">Delivered</TabsTrigger>
                 </TabsList>
               </Tabs>

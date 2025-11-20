@@ -36,8 +36,8 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
   const productOptions = products.flatMap((p) => {
     if (p.stocks && p.stocks.length > 0) {
       return p.stocks.map((stock) => ({
-        value: stock.id,
-        label: `${p.name} (${stock.variant})`,
+        value: stock.product_id,
+        label: stock.variant ? `${p.name} (${stock.variant})` : `${p.name}`,
         price: stock.sale_price || p.price || 0,
       }));
     }
@@ -113,9 +113,8 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
     };
     console.log("📡 CreateOrderDialog mounted — fetching data...");
     fetchData();
-  }, []); // ✅ Runs once
+  }, []);
 
-  // Calculate distance only when lat/lng change
   useEffect(() => {
     if (
       formData.pickup_address.lat &&
@@ -170,8 +169,8 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
         lng: parseFloat(shop.longitude) || 0,
       },
     }));
-    setFilteredShops([]); // hide the dropdown
-    setShopQuery(shop.name); // show selected shop in input
+    setFilteredShops([]);
+    setShopQuery(shop.name);
   };
 
   const handleRemoveItem = (index) => {
@@ -316,7 +315,6 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
         throw new Error(result.message || "Failed to create order");
       }
 
-      console.log("✅ Order created:", result);
       onSuccess();
       onClose();
     } catch (error) {
