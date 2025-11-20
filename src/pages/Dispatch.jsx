@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Order, Retailer } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navigation, Users, Package, AlertCircle, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { retailerApi } from "@/components/utils/retailerApi";
+import { OrderApi } from "@/components/utils/orderApi";
+import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 
 export default function DispatchPage() {
   const [orders, setOrders] = useState([]);
@@ -17,20 +19,27 @@ export default function DispatchPage() {
   }, []);
 
   const loadData = async () => {
-    setLoading(true);
-    const [ordersData, retailersData] = await Promise.all([
-      Order.filter({ status: 'pending_acceptance' }, "-created_date"),
-      Retailer.filter({ availability_status: 'online' })
-    ]);
-    setOrders(ordersData);
-    setRetailers(retailersData);
-    setLoading(false);
+    try {
+      setLoading(true);
+
+      const [ordersRes, retailersRes] = await Promise.all([
+        OrderApi.PendingOrders(),
+        retailerApi.onlineRetailers(),
+      ]);
+
+      setOrders(ordersRes.data || ordersRes);
+      setRetailers(retailersRes.data || retailersRes);
+    } catch (error) {
+      console.error("Load Data Error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAssign = async (orderId, retailerId) => {
     await Order.update(orderId, {
       retailer_id: retailerId,
-      status: 'assigned'
+      status: "assigned",
     });
     loadData();
   };
@@ -41,7 +50,9 @@ export default function DispatchPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white">Dispatch Center</h1>
-            <p className="text-white opacity-90 mt-1">Manual order assignment and dispatch control</p>
+            <p className="text-white opacity-90 mt-1">
+              Manual order assignment and dispatch control
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Badge className="bg-amber-100 text-amber-800 border-amber-200 border px-4 py-2">
@@ -57,7 +68,9 @@ export default function DispatchPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Pending Orders</p>
-                  <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {orders.length}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
                   <Package className="w-6 h-6 text-amber-600" />
@@ -71,7 +84,9 @@ export default function DispatchPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Online Retailers</p>
-                  <p className="text-3xl font-bold text-gray-900">{retailers.length}</p>
+                  <p className="text-3xl font-bold text-gray-900">
+                    {retailers.length}
+                  </p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                   <Users className="w-6 h-6 text-green-600" />
@@ -85,7 +100,10 @@ export default function DispatchPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Auto-Dispatch</p>
-                  <Badge variant="outline" className="mt-1 bg-gray-100 text-gray-700">
+                  <Badge
+                    variant="outline"
+                    className="mt-1 bg-gray-100 text-gray-700"
+                  >
                     Manual Mode
                   </Badge>
                 </div>
@@ -107,9 +125,9 @@ export default function DispatchPage() {
             </CardHeader>
             <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
               {loading ? (
-                Array(5).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="h-32 w-full" />
-                ))
+                Array(5)
+                  .fill(0)
+                  .map((_, i) => <Skeleton key={i} className="h-32 w-full" />)
               ) : orders.length === 0 ? (
                 <div className="text-center py-12">
                   <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -125,7 +143,9 @@ export default function DispatchPage() {
                             <h3 className="font-semibold text-gray-900">
                               {order.website_ref || `#${order.id.slice(0, 8)}`}
                             </h3>
-                            <p className="text-sm text-gray-600">{order.customer_name}</p>
+                            <p className="text-sm text-gray-600">
+                              {order.customer_name}
+                            </p>
                           </div>
                           <Badge className="bg-blue-100 text-blue-800 border-blue-200">
                             ₹{order.total_amount}
@@ -133,17 +153,24 @@ export default function DispatchPage() {
                         </div>
                         <div className="flex items-start gap-2 text-sm text-gray-600">
                           <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                          <span>{order.drop_address?.city}, {order.drop_address?.pincode}</span>
+                          <span>
+                            {order.drop_address?.city},{" "}
+                            {order.drop_address?.pincode}
+                          </span>
                         </div>
                         <div className="pt-2 border-t">
-                          <p className="text-xs text-gray-500 mb-2">Assign to retailer:</p>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Assign to retailer:
+                          </p>
                           <div className="flex flex-wrap gap-2">
                             {retailers.slice(0, 3).map((retailer) => (
                               <Button
                                 key={retailer.id}
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleAssign(order.id, retailer.id)}
+                                onClick={() =>
+                                  handleAssign(order.id, retailer.id)
+                                }
                                 className="flex-1"
                               >
                                 {retailer.full_name}
@@ -168,9 +195,9 @@ export default function DispatchPage() {
             </CardHeader>
             <CardContent className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
               {loading ? (
-                Array(5).fill(0).map((_, i) => (
-                  <Skeleton key={i} className="h-24 w-full" />
-                ))
+                Array(5)
+                  .fill(0)
+                  .map((_, i) => <Skeleton key={i} className="h-24 w-full" />)
               ) : retailers.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -186,8 +213,12 @@ export default function DispatchPage() {
                             {retailer.full_name?.[0]?.toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{retailer.full_name}</p>
-                            <p className="text-sm text-gray-600 capitalize">{retailer.vehicle_type}</p>
+                            <p className="font-semibold text-gray-900">
+                              {retailer.full_name}
+                            </p>
+                            <p className="text-sm text-gray-600 capitalize">
+                              {retailer.vehicle_type}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -196,7 +227,8 @@ export default function DispatchPage() {
                             Online
                           </Badge>
                           <p className="text-xs text-gray-500">
-                            {retailer.current_orders || 0}/{retailer.capacity_per_day} orders
+                            {retailer.current_orders || 0}/
+                            {retailer.capacity_per_day} orders
                           </p>
                         </div>
                       </div>
@@ -213,26 +245,37 @@ export default function DispatchPage() {
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
-                <CardTitle className="text-blue-900">Auto-Dispatch Information</CardTitle>
+                <CardTitle className="text-blue-900">
+                  Auto-Dispatch Information
+                </CardTitle>
                 <p className="text-sm text-blue-700 mt-1">
-                  Auto-dispatch with geofence expansion requires backend functions (not available in base44 platform). 
-                  Currently operating in manual mode where dispatchers assign orders to online retailers.
+                  Auto-dispatch with geofence expansion requires backend
+                  functions (not available in base44 platform). Currently
+                  operating in manual mode where dispatchers assign orders to
+                  online retailers.
                 </p>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-3 text-sm text-gray-600">
-              <p><strong>Manual Mode Features:</strong></p>
+              <p>
+                <strong>Manual Mode Features:</strong>
+              </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>View all pending orders requiring assignment</li>
                 <li>See all online and available retailers</li>
-                <li>Manually assign orders to retailers based on location and capacity</li>
+                <li>
+                  Manually assign orders to retailers based on location and
+                  capacity
+                </li>
                 <li>Real-time status tracking once assigned</li>
               </ul>
               <p className="mt-4 text-xs text-gray-500">
-                To enable auto-dispatch: Implement backend functions for priority tiers, geofence expansion, 
-                timeout handling, and automated retailer matching based on your technical specification.
+                To enable auto-dispatch: Implement backend functions for
+                priority tiers, geofence expansion, timeout handling, and
+                automated retailer matching based on your technical
+                specification.
               </p>
             </div>
           </CardContent>

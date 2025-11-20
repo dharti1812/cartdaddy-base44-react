@@ -98,7 +98,7 @@ export const retailerApi = {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-      }
+      },
     });
 
     if (!res.ok) throw new Error("Failed to fetch delivery partners");
@@ -113,19 +113,31 @@ export const retailerApi = {
   },
 
   selectDeliveryPartners: async (payload) => {
-    const res = await fetch(`${API_BASE_URL}/api/retailer/save-delivery-partners`, {
-      method: "POST",
+    const res = await fetch(
+      `${API_BASE_URL}/api/retailer/save-delivery-partners`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!res.ok) throw new Error("Failed to save delivery partners");
+    return await res.json();
+  },
+
+  onlineRetailers: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/retailers/online`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(payload),
     });
-
-    if (!res.ok) throw new Error("Failed to save delivery partners");
-    return await res.json();
-  }
-
-
-
+    if (!res.ok) throw new Error("Failed to fetch online retailers");
+    return res.json();
+  },
 };

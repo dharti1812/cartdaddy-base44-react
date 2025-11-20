@@ -18,12 +18,15 @@ export const OrderApi = {
   PendingAcceptanceOrders: async () => {
     const token = sessionStorage.getItem("token");
 
-    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/pending-acceptance`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const res = await fetch(
+      `${API_BASE_URL}/api/retailer/orders/pending-acceptance`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     if (!res.ok) throw new Error("Failed to fetch retailer orders");
     return res.json();
@@ -71,6 +74,14 @@ export const OrderApi = {
   getSellerStats: async () => {
     const token = sessionStorage.getItem("token");
     const res = await fetch(`${API_BASE_URL}/api/retailer/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
+  },
+
+  PendingOrders: async () => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(`${API_BASE_URL}/api/retailer/pendingorders`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.json();
