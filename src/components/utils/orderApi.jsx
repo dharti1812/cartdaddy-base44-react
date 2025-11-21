@@ -86,4 +86,18 @@ export const OrderApi = {
     });
     return res.json();
   },
+
+  CompletedOrders: async () => {
+    const token = sessionStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/completed`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch completed orders");
+    return res.json();
+  },
 };

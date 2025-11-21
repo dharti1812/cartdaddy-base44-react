@@ -46,6 +46,7 @@ export default function SellerPortal() {
   const [showHandoffDialog, setShowHandoffDialog] = useState(false);
   const [selectedOrderForHandoff, setSelectedOrderForHandoff] = useState(null);
   const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
+  const [completedOrders, setMyCompletedOrders] = useState([]);
   const [stats, setStats] = useState(null);
 
   const loadData = async () => {
@@ -83,11 +84,19 @@ export default function SellerPortal() {
 
       setMyAcceptedOrders(acceptedOrders?.data || []);
 
-      const statsResponse = await OrderApi.getSellerStats();
+      const completedOrders = await OrderApi.CompletedOrders();
+      setMyCompletedOrders(completedOrders.data || []);
 
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
+      try {
+        const statsData = await OrderApi.getSellerStats();
+        console.log("Stats:", statsData);
+
         setStats(statsData);
+        setLoading(false);
+      } catch (error) {
+        console.error("❌ Error loading portal:", error);
+        setError(error.message || "Something went wrong");
+        setLoading(false);
       }
 
       setLoading(false);
@@ -224,13 +233,21 @@ export default function SellerPortal() {
   console.log("Available Orders:", availableOrders);
   const myActiveOrders = myAcceptedOrders;
 
-  const myCompletedOrders = orders.filter((o) =>
+  const activeOrders = myAcceptedOrders.filter((o) =>
     o.accepted_retailers?.some(
       (ar) =>
         ar.retailer_id === sellerProfile?.id &&
-        ["delivered", "cancelled"].includes(ar.status)
+        !["delivered", "cancelled"].includes(ar.status)
     )
   );
+
+  // const myCompletedOrders = orders.filter((o) =>
+  //   o.accepted_retailers?.some(
+  //     (ar) =>
+  //       ar.retailer_id === sellerProfile?.id &&
+  //       ["delivered", "cancelled"].includes(ar.status)
+  //   )
+  // );
 
   return (
     <div
@@ -383,11 +400,18 @@ export default function SellerPortal() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="completed"
-                  className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                  className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Completed</span>
                   <span className="sm:hidden">Done</span>
+
+                  {completedOrders.length > 0 && (
+                    <Badge className="ml-1 sm:ml-2 bg-green-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
+                      {completedOrders.length}
+                    </Badge>
+                  )}
                 </TabsTrigger>
+
                 <TabsTrigger
                   value="delivery_boys"
                   className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
@@ -412,7 +436,7 @@ export default function SellerPortal() {
 
               <TabsContent value="active">
                 <ActiveDeliveries
-                  orders={myAcceptedOrders}
+                  orders={activeOrders}
                   retailerId={sellerProfile?.id}
                   config={sellerProfile}
                   onUpdate={loadData}
@@ -430,7 +454,7 @@ export default function SellerPortal() {
               </TabsContent>
 
               <TabsContent value="completed">
-                <CompletedOrders orders={myCompletedOrders} />
+                <CompletedOrders orders={completedOrders} />
               </TabsContent>
 
               <TabsContent value="delivery_boys" className="mt-0">

@@ -209,7 +209,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
                   <p className="font-medium text-gray-900">{item.name}</p>
                   <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
                 </div>
-                <p className="font-semibold text-gray-900">₹{item.price}</p>
+                <p className="font-semibold text-gray-900">₹{order.amount}</p>
               </div>
             ))}
           </div>

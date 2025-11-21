@@ -649,7 +649,7 @@ ${retailer.full_name}`;
                               {item.name}
                             </span>
                             <span className="font-bold text-gray-900">
-                              ₹{item.price}
+                              ₹{order.amount}
                             </span>
                           </div>
                         ))}
