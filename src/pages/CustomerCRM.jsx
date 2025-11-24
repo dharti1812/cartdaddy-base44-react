@@ -56,17 +56,8 @@ export default function CustomerCRM() {
   useEffect(() => {
     loadAdmin();
     loadCustomers();
-
-    if (
-      selectedCustomer?.user_id &&
-      selectedCustomer?.phone &&
-      selectedCustomer?.user_type
-    ) {
-      fetchTags(
-        selectedCustomer.user_id,
-        selectedCustomer.phone,
-        selectedCustomer.user_type
-      );
+    if (selectedCustomer?.user_id) {
+      fetchNotes(selectedCustomer.user_id);
     }
   }, [selectedCustomer]);
 
@@ -85,6 +76,54 @@ export default function CustomerCRM() {
     //     role: "super_admin" // For testing super_admin features
     //   });
     // }
+  };
+
+  const fetchNotes = async (customerId) => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/customers/${customerId}/notes`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      setNotes(data);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+    }
+  };
+
+  const addNote = async () => {
+    if (!newNote.trim()) return;
+
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/customers/${selectedCustomer.user_id}/notes`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            note: newNote,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      setNotes([data, ...notes]);
+      setNewNote("");
+    } catch (error) {
+      console.error("Error adding note:", error);
+    }
   };
 
   const loadCustomers = async () => {
@@ -498,27 +537,20 @@ export default function CustomerCRM() {
                   <Card className="border-none shadow-md">
                     <CardHeader className="border-b">
                       <CardTitle className="flex items-center gap-2 text-base">
-                        <MessageSquare className="w-4 h-4" />
-                        Internal Notes
+                        <MessageSquare className="w-4 h-4" /> Internal Notes
                       </CardTitle>
                     </CardHeader>
+
                     <CardContent className="p-4 space-y-3">
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="Add internal note..."
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          rows={3}
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleAddNote}
-                          className="w-full"
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          Save Note
-                        </Button>
-                      </div>
+                      <Textarea
+                        placeholder="Add internal note..."
+                        value={newNote}
+                        onChange={(e) => setNewNote(e.target.value)}
+                      />
+
+                      <Button className="w-full" onClick={addNote}>
+                        <Save className="w-4 h-4 mr-2" /> Save Note
+                      </Button>
 
                       <div className="space-y-2 max-h-64 overflow-y-auto">
                         {notes.map((note) => (
@@ -526,12 +558,10 @@ export default function CustomerCRM() {
                             key={note.id}
                             className="p-3 bg-gray-50 rounded-lg border"
                           >
-                            <div className="text-sm text-gray-900">
-                              {note.text}
-                            </div>
+                            <div className="text-sm">{note.note}</div>
                             <div className="text-xs text-gray-500 mt-1">
-                              By {note.created_by} •{" "}
-                              {new Date(note.created_at).toLocaleDateString()}
+                              {note.admin_name} •{" "}
+                              {new Date(note.created_at).toLocaleString()}
                             </div>
                           </div>
                         ))}

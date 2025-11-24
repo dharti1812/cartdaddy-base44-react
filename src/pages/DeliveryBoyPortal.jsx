@@ -41,7 +41,11 @@ export default function DeliveryBoyPortal() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-
+  const [stats, setStats] = useState({
+    active: 0,
+    today: 0,
+    available: 0,
+  });
   const watchIdRef = useRef(null);
 
   useEffect(() => {
@@ -96,11 +100,15 @@ export default function DeliveryBoyPortal() {
       setNotifications(notifyData.notifications);
       setUnreadCount(notifyData.unread_count);
 
+      const statsData = await deliveryPartnerApi.getStats(partnerData.id);
+      setStats(statsData);
+
       const allOrders = await deliveryPartnerApi.getAvailableOrders();
       const myDeliveries = await deliveryPartnerApi.getMyDeliveries(
         partnerData.id
       );
       const combinedOrders = [...allOrders, ...myDeliveries];
+      //const combinedOrders = [ ...myDeliveries];
 
       setOrders(combinedOrders);
       setLoading(false);
@@ -468,7 +476,7 @@ export default function DeliveryBoyPortal() {
                   <span className="text-xs text-gray-600">Active</span>
                 </div>
                 <p className="text-2xl font-bold text-blue-700">
-                  {myActiveDeliveries.length}
+                  {stats.active}
                 </p>
               </div>
 
@@ -478,7 +486,7 @@ export default function DeliveryBoyPortal() {
                   <span className="text-xs text-gray-600">Today</span>
                 </div>
                 <p className="text-2xl font-bold text-green-700">
-                  {completedToday}
+                  {stats.today}
                 </p>
               </div>
 
@@ -488,7 +496,7 @@ export default function DeliveryBoyPortal() {
                   <span className="text-xs text-gray-600">Available</span>
                 </div>
                 <p className="text-2xl font-bold text-purple-700">
-                  {availableOrders.length}
+                  {stats.available}
                 </p>
               </div>
             </div>

@@ -449,7 +449,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          {/* <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Select Store</h3>
             <div className="space-y-3 rounded-lg relative">
               <Input
@@ -473,11 +473,11 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                 </ul>
               )}
             </div>
-          </div>
+          </div> */}
 
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900">Delivery Addresses</h3>
-
+{/* 
             <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm font-semibold text-blue-900">
                 📍 Pickup Location (Store/Warehouse)
@@ -539,7 +539,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
                   />
                 </div>
               </div>
-            </div>
+            </div> */}
 
             <div className="space-y-3 p-4 bg-green-50 rounded-lg border border-green-200">
               <p className="text-sm font-semibold text-green-900">
@@ -603,7 +603,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
               </div>
             </div>
 
-            <div>
+            {/* <div>
               <Label htmlFor="distance">Distance (KM) - Pickup to Drop</Label>
               <Input
                 id="distance"
@@ -619,7 +619,7 @@ export default function CreateOrderDialog({ onClose, onSuccess }) {
               <p className="text-xs text-gray-500 mt-1">
                 Estimated distance from pickup to drop location
               </p>
-            </div>
+            </div> */}
           </div>
 
           <div className="space-y-4">
