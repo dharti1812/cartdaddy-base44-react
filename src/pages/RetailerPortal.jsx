@@ -74,7 +74,7 @@ export default function SellerPortal() {
         window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
-
+      //Test comment
       setSellerProfile(sellerProfile);
 
       const allOrders = await OrderApi.PendingAcceptanceOrders();
