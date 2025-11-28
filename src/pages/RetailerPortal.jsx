@@ -74,6 +74,7 @@ export default function SellerPortal() {
         window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
+      //for testing
 
       setSellerProfile(sellerProfile);
 
