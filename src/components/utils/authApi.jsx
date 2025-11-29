@@ -108,7 +108,7 @@ export const AuthApi = {
   },
 
   logout: async () => {
-    return await fetch(`${API_BASE_URL}/api/api/logout`, {
+    return await fetch(`${API_BASE_URL}/api/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
