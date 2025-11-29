@@ -510,6 +510,7 @@ export default function SellerOnboarding() {
       });
 
       const result = await res.json();
+      console.log(result);
 
       if (result.success) {
         console.log(result);
