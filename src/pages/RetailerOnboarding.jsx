@@ -105,6 +105,57 @@ export default function SellerOnboarding() {
     setStepState(s);
     localStorage.setItem("retailerOnboardingStep", s);
   };
+
+  // ----- BACK BUTTON HELPERS (move inside component) -----
+  const goBack = () => {
+    // explicit mapping because we use decimal step values
+    switch (step) {
+      case 1.5:
+        setStep(1);
+        break;
+      case 2:
+        setStep(1.5);
+        break;
+      case 2.5:
+        setStep(2);
+        break;
+      case 3:
+        setStep(2.5);
+        break;
+      case 4:
+        setStep(3);
+        break;
+      case 5:
+        setStep(4);
+        break;
+      case 5.5:
+        setStep(5);
+        break;
+      case 5.6:
+        setStep(5.5);
+        break;
+      case 6:
+        setStep(5.6);
+        break;
+      case 7:
+        setStep(6);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const BackButton = () => {
+    if (step === 1) return null;
+    return (
+      <div className="flex justify-center mt-6">
+        <Button variant="outline" className="px-8" onClick={goBack}>
+          ⬅ Back
+        </Button>
+      </div>
+    );
+  };
+
   const [data, setData] = useState({
     name: "",
     phone: "",
@@ -282,6 +333,38 @@ export default function SellerOnboarding() {
     setSuccess("✅ Mobile verified");
     setOtp("");
     setStep(2);
+
+    setLoading(false);
+  };
+
+  const resendPhoneOtp = async () => {
+    if (!data.phone) return setError("Enter mobile number first");
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/resend-otp-phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: data.phone,
+          userType: "seller",
+        }),
+      });
+
+      const res = await response.json();
+
+      if (res.success === true) {
+        setSuccess("OTP resent successfully 🎉");
+      } else {
+        setError(res.message || "Failed to resend OTP");
+      }
+    } catch (err) {
+      console.log(err);
+      setError("Something went wrong while resending OTP");
+    }
 
     setLoading(false);
   };
@@ -833,8 +916,17 @@ export default function SellerOnboarding() {
                 disabled={loading || otp.length !== 6}
                 className="w-full bg-[#F4B321] text-gray-900 font-bold"
               >
-                {loading ? "Verifying..." : "Verify"}
+                {loading ? "Verifying..." : "Verify OTP"}
               </Button>
+              <Button
+                variant="outline"
+                disabled={loading}
+                onClick={resendPhoneOtp}
+                className="w-full mt-2"
+              >
+                Resend OTP
+              </Button>
+              <BackButton />
             </div>
           )}
 
@@ -857,6 +949,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Sending..." : "Send OTP"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -879,6 +972,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying..." : "Verify"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -909,6 +1003,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying GST..." : "Verify GST"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -954,6 +1049,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying..." : "Verify & Continue"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -1012,6 +1108,8 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying PAN..." : "Verify PAN"}
               </Button>
+
+              <BackButton />
             </div>
           )}
 
@@ -1048,6 +1146,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying Aadhaar..." : "Verify Aadhaar"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -1085,6 +1184,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Verifying OTP..." : "Verify OTP"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -1305,6 +1405,7 @@ export default function SellerOnboarding() {
               >
                 {loading ? "Submitting..." : "Submit for Approval"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -1327,6 +1428,7 @@ export default function SellerOnboarding() {
                 <p>✅ KYC Documents Uploaded</p>
                 <p>✅ Shop Photos Uploaded</p>
               </div>
+              <BackButton />
             </div>
           )}
         </CardContent>
