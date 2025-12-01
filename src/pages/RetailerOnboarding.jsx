@@ -75,7 +75,6 @@ const sendAlternateOTP = async (phone, role) => {
   }
 };
 
-// Demo API for verifying OTP
 const verifyAlternateOTP = async (phone, otp) => {
   try {
     const access_token = localStorage.getItem("access_token");
@@ -100,15 +99,12 @@ export default function SellerOnboarding() {
     return savedStep ? Number(savedStep) : 1;
   });
 
-  // Wrap setStep to also save to localStorage
   const setStep = (s) => {
     setStepState(s);
     localStorage.setItem("retailerOnboardingStep", s);
   };
 
-  // ----- BACK BUTTON HELPERS (move inside component) -----
   const goBack = () => {
-    // explicit mapping because we use decimal step values
     switch (step) {
       case 1.5:
         setStep(1);
@@ -379,7 +375,7 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, phone: data.phone }), // Pass phone here
+        body: JSON.stringify({ email: data.email, phone: data.phone }),
       });
 
       const result = await response.json();
@@ -468,7 +464,6 @@ export default function SellerOnboarding() {
           "✅ GST verified - Business: " + result.trade_name_of_business
         );
 
-        // Update retailer frontend state
         setRetailer((prev) => ({
           ...prev,
           gst_number: data.gst,
@@ -478,7 +473,7 @@ export default function SellerOnboarding() {
           onboarding_status: "bank_pending",
         }));
 
-        setStep(4); // move to bank step
+        setStep(4);
       } else {
         setError(result.message || "GSTIN verification failed");
       }
@@ -513,7 +508,6 @@ export default function SellerOnboarding() {
       const result = await response.json();
 
       if (result.verified) {
-        // Update frontend state
         setRetailer((prev) => ({
           ...prev,
           bank_account: data.bank,
@@ -560,7 +554,7 @@ export default function SellerOnboarding() {
       documents: [
         ...prev.documents,
         {
-          file, // store actual File object
+          file,
           type: type,
           uploaded_at: new Date().toISOString(),
         },
@@ -584,7 +578,7 @@ export default function SellerOnboarding() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${access_token}`, // <-- add this
+          Authorization: `Bearer ${access_token}`,
         },
         body: JSON.stringify({
           pan: data.panNumber,
@@ -598,7 +592,7 @@ export default function SellerOnboarding() {
       if (result.success) {
         console.log(result);
         setSuccess("✅ PAN verified successfully");
-        setStep(5.5); // proceed to Aadhaar verification
+        setStep(5.5);
       } else {
         setError(result.message || "PAN verification failed");
       }
@@ -633,9 +627,9 @@ export default function SellerOnboarding() {
 
       if (result.success) {
         setSuccess("✅ OTP sent successfully to your registered mobile number");
-        // Store ref_id for next step
+
         setData({ ...data, refId: result.ref_id });
-        // Move to OTP verification step (step 6)
+
         setStep(5.6);
       } else {
         setError(result.message || "Failed to send OTP");
@@ -675,7 +669,7 @@ export default function SellerOnboarding() {
       console.log(result);
       if (result.success) {
         setSuccess("✅ Aadhaar verified successfully");
-        setStep(6); // Move to next process step
+        setStep(6);
       } else {
         setError(result.message || "Aadhaar verification failed");
       }
@@ -698,12 +692,11 @@ export default function SellerOnboarding() {
       const token = localStorage.getItem("access_token");
       if (!token) throw new Error("Not logged in");
 
-      // Convert file to base64
       const toBase64 = (file) =>
         new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result.split(",")[1]); // remove prefix
+          reader.onload = () => resolve(reader.result.split(",")[1]);
           reader.onerror = (error) => reject(error);
         });
 
@@ -712,7 +705,7 @@ export default function SellerOnboarding() {
       const formData = {
         image: base64File,
         filename: file.name,
-        type, // "inside" or "outside"
+        type,
         latitude: location?.lat || null,
         longitude: location?.lng || null,
         timestamp: location?.timestamp || null,
@@ -730,7 +723,6 @@ export default function SellerOnboarding() {
       const result = await res.json();
 
       if (result.result) {
-        // Optional: Get location from geolocation
         const location = await new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
             (pos) =>
@@ -748,7 +740,7 @@ export default function SellerOnboarding() {
           shopPhotos: [
             ...prev.shopPhotos,
             {
-              url: result.path, // URL returned by your Laravel API
+              url: result.path,
               type: type,
               location: location,
               manually_verified: false,
@@ -777,7 +769,6 @@ export default function SellerOnboarding() {
     const access_token = localStorage.getItem("access_token");
     setLoading(true);
     try {
-      // Call your Laravel API
       const response = await fetch(`${API_BASE_URL}/api/store-shop-details`, {
         method: "POST",
         headers: {
