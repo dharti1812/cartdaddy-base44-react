@@ -454,7 +454,7 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   const resendPhoneOtp = async () => {
-    if (!data.phone) return setError("Enter mobile number first");
+    if (!formData.phone) return setError("Enter mobile number first");
 
     setLoading(true);
     setError("");
@@ -465,8 +465,8 @@ export default function DeliveryPartnerOnboarding() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: data.phone,
-          userType: "seller",
+          phone: formData.phone,
+          userType: "D",
         }),
       });
 
