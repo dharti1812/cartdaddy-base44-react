@@ -288,7 +288,10 @@ export default function SellerPortal() {
                 } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
-                {sellerProfile?.availability_status}
+                {sellerProfile?.availability_status
+                  ? sellerProfile.availability_status.charAt(0).toUpperCase() +
+                    sellerProfile.availability_status.slice(1).toLowerCase()
+                  : ""}
               </Badge>
               <Button
                 variant="ghost"
@@ -380,7 +383,7 @@ export default function SellerPortal() {
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Available Orders</span>
-                  <span className="sm:hidden">Available</span>
+                  <span className="sm:hidden">Available Orders</span>
                   {availableOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-red-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                       {availableOrders.length}
@@ -392,7 +395,7 @@ export default function SellerPortal() {
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">On Going Orders</span>
-                  <span className="sm:hidden">Active</span>
+                  <span className="sm:hidden">Active Orders</span>
                   {myAcceptedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-blue-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                       {myAcceptedOrders.length}
@@ -403,8 +406,8 @@ export default function SellerPortal() {
                   value="completed"
                   className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
-                  <span className="hidden sm:inline">Completed</span>
-                  <span className="sm:hidden">Done</span>
+                  <span className="hidden sm:inline">Completed Orders</span>
+                  <span className="sm:hidden">Completed Orders</span>
 
                   {completedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-green-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">

@@ -237,7 +237,7 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
           </div>
         </div>
 
-        {order.status === "pending" || order.status === "UNASSIGNED"  && (
+        {(order.status === "pending" || order.status === "UNASSIGNED")  && (
           <div>
             <h3 className="font-semibold text-gray-900 mb-3">
               Assign Retailer
