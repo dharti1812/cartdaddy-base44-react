@@ -453,6 +453,38 @@ export default function DeliveryPartnerOnboarding() {
     }
   };
 
+  const resendPhoneOtp = async () => {
+    if (!data.phone) return setError("Enter mobile number first");
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/resend-otp-phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: data.phone,
+          userType: "seller",
+        }),
+      });
+
+      const res = await response.json();
+
+      if (res.success === true) {
+        setSuccess("OTP resent successfully 🎉");
+      } else {
+        setError(res.message || "Failed to resend OTP");
+      }
+    } catch (err) {
+      console.log(err);
+      setError("Something went wrong while resending OTP");
+    }
+
+    setLoading(false);
+  };
+
   // Selfie Upload
   const handleSelfieUpload = async (e) => {
     const file = e.target.files[0];
@@ -578,6 +610,43 @@ export default function DeliveryPartnerOnboarding() {
     );
   }
 
+  const goBack = () => {
+    switch (step) {
+      case 2:
+        setStep(1);
+        break;
+      case 3:
+        setStep(2);
+        break;
+      case 4:
+        setStep(3);
+        break;
+      case 5:
+        setStep(4);
+        break;
+
+      case 6:
+        setStep(5);
+        break;
+      case 7:
+        setStep(6);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const BackButton = () => {
+    if (step === 1) return null;
+    return (
+      <div className="flex justify-center mt-6">
+        <Button variant="outline" className="px-8" onClick={goBack}>
+          ⬅ Back
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4 font-sans">
       <Card className="max-w-md w-full border-4 border-[#FFEB3B] shadow-2xl">
@@ -631,6 +700,8 @@ export default function DeliveryPartnerOnboarding() {
                 <Phone className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-black">Your Details</h3>
               </div>
+
+              {/* FULL NAME */}
               <div>
                 <Label className="text-black">Full Name *</Label>
                 <Input
@@ -642,21 +713,22 @@ export default function DeliveryPartnerOnboarding() {
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
+
+              {/* ADDRESS */}
               <div>
                 <Label className="text-black">Current Address *</Label>
                 <textarea
                   value={formData.address}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: e.target.value,
-                    })
+                    setFormData({ ...formData, address: e.target.value })
                   }
                   placeholder="Your current address"
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B] w-full rounded-md p-2"
                   rows={2}
                 />
               </div>
+
+              {/* PHONE */}
               <div>
                 <Label className="text-black">Phone Number *</Label>
                 <Input
@@ -669,7 +741,9 @@ export default function DeliveryPartnerOnboarding() {
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
+
               {!otpSent ? (
+                // SEND OTP BUTTON
                 <Button
                   onClick={handleSendPhoneOTP}
                   disabled={saving}
@@ -678,6 +752,7 @@ export default function DeliveryPartnerOnboarding() {
                   {saving ? "Sending..." : "Send OTP"}
                 </Button>
               ) : (
+                // SHOW OTP FIELD + VERIFY + RESEND
                 <div className="space-y-3">
                   <Input
                     placeholder="Enter 6-digit OTP"
@@ -686,12 +761,24 @@ export default function DeliveryPartnerOnboarding() {
                     maxLength={6}
                     className="text-center text-lg border-2 border-[#075E66] focus:border-[#FFEB3B]"
                   />
+
+                  {/* VERIFY OTP */}
                   <Button
                     onClick={handleVerifyPhoneOTP}
                     disabled={saving || otp.length !== 6}
                     className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
                   >
                     {saving ? "Verifying..." : "Verify OTP"}
+                  </Button>
+
+                  {/* RESEND OTP */}
+                  <Button
+                    variant="outline"
+                    disabled={loading}
+                    onClick={resendPhoneOtp}
+                    className="w-full border-2 border-[#075E66] text-[#075E66] font-semibold"
+                  >
+                    {loading ? "Resending..." : "Resend OTP"}
                   </Button>
                 </div>
               )}
@@ -744,10 +831,11 @@ export default function DeliveryPartnerOnboarding() {
                     disabled={saving || emailOtp.length !== 6}
                     className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
                   >
-                    {saving ? "Verifying..." : "Verify OTP"}
+                    {saving ? "Verifying..." : "Verify OTP1"}
                   </Button>
                 </div>
               )}
+              <BackButton />
             </div>
           )}
 
@@ -855,6 +943,7 @@ export default function DeliveryPartnerOnboarding() {
               >
                 {saving ? "Verifying..." : "Verify Driving License"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -905,6 +994,7 @@ export default function DeliveryPartnerOnboarding() {
               >
                 {saving ? "Verifying..." : "Verify & Continue"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -961,6 +1051,7 @@ export default function DeliveryPartnerOnboarding() {
               >
                 {saving ? "Saving..." : "Continue to Selfie"}
               </Button>
+              <BackButton />
             </div>
           )}
 
@@ -1171,6 +1262,8 @@ export default function DeliveryPartnerOnboarding() {
               >
                 {uploading ? "Submitting..." : "Continue to Seller Selection"}
               </Button>
+
+              <BackButton />
             </div>
           )}
 
@@ -1188,7 +1281,7 @@ export default function DeliveryPartnerOnboarding() {
               <Button
                 onClick={async () => {
                   try {
-                    const user = JSON.parse(sessionStorage.getItem("user")); 
+                    const user = JSON.parse(sessionStorage.getItem("user"));
                     if (!user?.email) throw new Error("User email not found");
 
                     const res = await fetch(
@@ -1219,6 +1312,7 @@ export default function DeliveryPartnerOnboarding() {
               >
                 Continue to Seller Selection
               </Button>
+              <BackButton />
             </div>
           )}
         </CardContent>

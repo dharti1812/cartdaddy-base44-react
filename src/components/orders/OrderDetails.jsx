@@ -237,7 +237,8 @@ export default function OrderDetails({ order, retailers, onClose, onUpdate }) {
           </div>
         </div>
 
-        {order.status === "pending" && (
+        {/* //{order.status === "pending" && ( */}
+          {order.delivery_status === "pending" && (
           <div>
             <h3 className="font-semibold text-gray-900 mb-3">
               Assign Retailer
