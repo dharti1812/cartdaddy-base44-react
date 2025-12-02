@@ -30,7 +30,7 @@ const sendOTP = async (phone, name) => {
     const response = await fetch(`${API_BASE_URL}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name }),
+      body: JSON.stringify({ phone, name, userType: "seller" }),
     });
     const data = await response.json();
     console.log(data);
