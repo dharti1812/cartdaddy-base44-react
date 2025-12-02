@@ -60,6 +60,7 @@ const verifyOTP = async (phone_otp, phone) => {
 const sendAlternateOTP = async (phone, role) => {
   try {
     const access_token = localStorage.getItem("access_token");
+    console.log(phone, role);
     const res = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
       method: "POST",
       headers: {
@@ -69,6 +70,7 @@ const sendAlternateOTP = async (phone, role) => {
       body: JSON.stringify({ phone, role }),
     });
     const result = await res.json();
+    console.log(result, "hdar");
     return result;
   } catch (err) {
     return { success: false, message: err.message };
@@ -1307,7 +1309,11 @@ export default function SellerOnboarding() {
                             size="sm"
                             variant="outline"
                             onClick={async () => {
-                              const res = await sendAlternateOTP(phone.number);
+                              const res = await sendAlternateOTP(
+                                phone.number,
+                                phone.label
+                              );
+                              console.log(res);
                               if (res.success) {
                                 setSuccess(`OTP resent to ${phone.number}`);
                               } else {
