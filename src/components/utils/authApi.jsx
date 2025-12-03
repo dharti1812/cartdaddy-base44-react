@@ -36,7 +36,7 @@ export const AuthApi = {
     const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name, userCode, address  }),
+      body: JSON.stringify({ phone, name, userCode, address }),
     });
     if (!res.ok) return { success: false };
     return await res.json();
@@ -88,7 +88,7 @@ export const AuthApi = {
   verifyDrivingLicense: async (dlNumber, dob, vehicle_type) => {
     try {
       const token = sessionStorage.getItem("access_token");
-      console.log("🔍 Verifying DL:", dlNumber, dob, vehicle_type)  ;
+      console.log("🔍 Verifying DL:", dlNumber, dob, vehicle_type);
       const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, },
@@ -116,6 +116,34 @@ export const AuthApi = {
       },
     });
   },
- 
+
+  changePassword: async (data) => {
+    const token = sessionStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Authentication token missing.");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    console.log(response);
+
+    if (!response.ok) {
+      // Parse error body if available and throw a detailed error
+      const errorBody = await response.json();
+      const error = new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+      error.response = { data: errorBody, status: response.status };
+      throw error;
+    }
+    return await response.json();
+  }
+
 
 };

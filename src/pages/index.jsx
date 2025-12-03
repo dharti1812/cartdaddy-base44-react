@@ -70,6 +70,8 @@ import ProductGenerator from "./ProductGenerator";
 
 import ProtectedRoute from "./ProtectedRoute";
 
+import RetailerProfile from "./RetailerProfile.jsx";
+
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 
 const PAGES = {
@@ -170,21 +172,21 @@ function PagesContent() {
                     path="/"
                     element={
                         (() => {
-                        const user = JSON.parse(sessionStorage.getItem("user"));
-                        const token = sessionStorage.getItem("token");
+                            const user = JSON.parse(sessionStorage.getItem("user"));
+                            const token = sessionStorage.getItem("token");
 
-                        if (user && token) {
-                            if (user.user_type === "admin") {
-                            return <Navigate to="/Dashboard" replace />;
-                            } else {
-                            return <Navigate to="/SuperAdminLogin" replace />;
+                            if (user && token) {
+                                if (user.user_type === "admin") {
+                                    return <Navigate to="/Dashboard" replace />;
+                                } else {
+                                    return <Navigate to="/SuperAdminLogin" replace />;
+                                }
                             }
-                        }
 
-                        return <Navigate to="/portalSelector" replace />;
+                            return <Navigate to="/portalSelector" replace />;
                         })()
                     }
-                    />
+                />
 
 
                 <Route
@@ -195,8 +197,10 @@ function PagesContent() {
                         </ProtectedRoute>
                     }
                 />
-                
+
                 <Route path="/Orders" element={<Orders />} />
+
+                <Route path="/retailerprofile" element={<RetailerProfile />} />
 
                 <Route path="/Retailers" element={<Retailers />} />
 

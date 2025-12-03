@@ -13,6 +13,7 @@ import {
   LogOut,
   RefreshCw,
   Users,
+  User,
   Monitor,
   Smartphone,
 } from "lucide-react";
@@ -30,6 +31,8 @@ import CODToggle from "../components/retailer/CODToggle";
 import AssignDeliveryBoy from "../components/retailer/AssignDeliveryBoy";
 import HandoffDeliveryBoy from "../components/retailer/HandoffDeliveryBoy";
 import ManageDeliveryBoys from "../components/retailer/ManageDeliveryBoys";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import RetailerProfileSettings from "../components/retailer/RetailerProfileSettings";
 
 export default function SellerPortal() {
   const [sellerProfile, setSellerProfile] = useState(null);
@@ -48,6 +51,7 @@ export default function SellerPortal() {
   const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
   const [completedOrders, setMyCompletedOrders] = useState([]);
   const [stats, setStats] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const loadData = async () => {
     try {
@@ -252,9 +256,8 @@ export default function SellerPortal() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
-        mobileView ? "max-w-md mx-auto" : ""
-      }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
+        }`}
     >
       {/* <DeviceSessionManager
         retailerId={sellerProfile?.id}
@@ -280,17 +283,29 @@ export default function SellerPortal() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Profile Picture / Settings Trigger */}
+              <button
+                // 💡 CHANGE: Use state setter instead of window.location.href
+                onClick={() => setShowProfileModal(true)}
+                className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
+                title="View Profile Settings"
+              >
+                <img
+                  src={sellerProfile?.image_url || `https://ui-avatars.com/api/?name=${sellerProfile?.name || 'Seller'}&background=FFEB3B&color=000&bold=true`}
+                  alt={`${sellerProfile?.name} profile`}
+                  className="w-full h-full object-cover"
+                />
+              </button>
               <Badge
-                className={`${
-                  sellerProfile?.user?.availability_status === "online"
-                    ? "bg-[#FFEB3B] text-gray-900 font-bold"
-                    : "bg-gray-500 text-white font-bold"
-                } border-0 text-base sm:text-lg px-3 py-1.5`}
+                className={`${sellerProfile?.user?.availability_status === "online"
+                  ? "bg-[#FFEB3B] text-gray-900 font-bold"
+                  : "bg-gray-500 text-white font-bold"
+                  } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status
                   ? sellerProfile.availability_status.charAt(0).toUpperCase() +
-                    sellerProfile.availability_status.slice(1).toLowerCase()
+                  sellerProfile.availability_status.slice(1).toLowerCase()
                   : ""}
               </Badge>
               <Button
@@ -380,10 +395,10 @@ export default function SellerPortal() {
               <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6 h-auto bg-white border-2 border-[#F4B321]">
                 <TabsTrigger
                   value="available"
-                  className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                  className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Available Orders</span>
-                  <span className="sm:hidden">Available Orders</span>
+                  <span className="sm:hidden">Available</span>
                   {availableOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-red-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                       {availableOrders.length}
@@ -392,10 +407,10 @@ export default function SellerPortal() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="active"
-                  className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                  className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">On Going Orders</span>
-                  <span className="sm:hidden">Active Orders</span>
+                  <span className="sm:hidden">Active</span>
                   {myAcceptedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-blue-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                       {myAcceptedOrders.length}
@@ -404,10 +419,10 @@ export default function SellerPortal() {
                 </TabsTrigger>
                 <TabsTrigger
                   value="completed"
-                  className="relative text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                  className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
                   <span className="hidden sm:inline">Completed Orders</span>
-                  <span className="sm:hidden">Completed Orders</span>
+                  <span className="sm:hidden">Completed</span>
 
                   {completedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-green-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
@@ -415,15 +430,17 @@ export default function SellerPortal() {
                     </Badge>
                   )}
                 </TabsTrigger>
-
                 <TabsTrigger
                   value="delivery_boys"
-                  className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                  className="text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Delivery Partners</span>
+                  <Users className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Partners</span>
                   <span className="sm:hidden">Partners</span>
                 </TabsTrigger>
+
+
+
               </TabsList>
             </CardHeader>
 
@@ -492,6 +509,29 @@ export default function SellerPortal() {
           onHandedOff={loadData}
         />
       )}
+
+      {/* ⬇️ NEW PROFILE SETTINGS MODAL ⬇️ */}
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="sm:max-w-[800px] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="flex items-center gap-2 text-2xl text-[#075E66]">
+              <User className="w-6 h-6" />
+              Retailer Profile & Settings
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 pt-0 max-h-[85vh] overflow-y-auto">
+            <RetailerProfileSettings
+              retailerProfile={sellerProfile}
+              onUpdateProfile={() => {
+                loadData(); // Reload seller profile and stats
+                setShowProfileModal(false); // Close modal on successful update
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
   );
 }
