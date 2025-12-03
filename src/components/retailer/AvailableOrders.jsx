@@ -349,7 +349,7 @@ ${retailer.full_name}`;
     setPendingOrder(null);
     onAccept();
   };
-
+  console.log(orders);
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
