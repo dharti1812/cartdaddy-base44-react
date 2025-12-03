@@ -543,7 +543,7 @@ ${retailer.full_name}`;
                 </div>
 
                 <div className="p-4 space-y-4">
-                  {acceptedCount > 0 && (
+                  {/* {acceptedCount > 0 && (
                     <Alert className="bg-blue-50 border-blue-200">
                       <AlertCircle className="w-4 h-4 text-blue-600" />
                       <AlertDescription className="text-blue-900 text-sm">
@@ -557,7 +557,7 @@ ${retailer.full_name}`;
                           " You'll be the backup if both fail."}
                       </AlertDescription>
                     </Alert>
-                  )}
+                  )} */}
 
                   <div>
                     <div className="flex items-start gap-3 mb-3">

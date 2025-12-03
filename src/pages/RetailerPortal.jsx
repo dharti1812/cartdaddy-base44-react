@@ -228,8 +228,8 @@ export default function SellerPortal() {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id
     );
-    //return o.status === "pending" && !alreadyAccepted;
-    return !alreadyAccepted;
+    return o.status === "pending" && !alreadyAccepted;
+    //return !alreadyAccepted;
   });
   console.log("Available Orders:", availableOrders);
   const myActiveOrders = myAcceptedOrders;
