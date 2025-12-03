@@ -353,7 +353,7 @@ ${retailer.full_name}`;
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
-    if (order.status !== "pending" && order.assignemnt_status !== "assigned" && order.status !== "queued") return false;
+    if (order.status !== "pending" && order.status !== "UNASSIGNED" && order.assignemnt_status !== "assigned" && order.status !== "queued") return false;
 
     // If order is COD, only show to retailers who accept COD
     if (order.is_cod || order.payment_method === "cod") {
