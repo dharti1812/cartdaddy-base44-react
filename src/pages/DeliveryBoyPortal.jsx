@@ -555,7 +555,7 @@ export default function DeliveryBoyPortal() {
                             {order.website_ref || `#${String(order.id)}`}
                           </h3>
                           <p className="text-sm text-gray-600 mb-2">
-                            Customer: {order.name}
+                            Customer: {order.customer_name}
                           </p>
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
