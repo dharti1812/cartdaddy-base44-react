@@ -330,7 +330,7 @@ export default function DeliveryPartnerOnboarding() {
       const accessToken = sessionStorage.getItem("access_token");
       if (!accessToken) throw new Error("User not authenticated");
 
-      const response = await fetch(`${API_BASE_URL}/api/verifyacno`, {
+      const response = await fetch(`${API_BASE_URL}/api/delivery-partner/verifyacno`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
