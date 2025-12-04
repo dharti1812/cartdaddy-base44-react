@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Lock, User, Banknote, Loader2 } from "lucide-react"; // Added Loader2
 // 💡 Assuming AuthApi handles your authenticated fetch requests
 import { AuthApi } from "@/components/utils/authApi";
+import { retailerApi } from "@/components/utils/retailerApi";
 
 export default function RetailerProfileSettings({ retailerProfile, onUpdateProfile, onLogout }) {
     const [activeSettingsTab, setActiveSettingsTab] = useState("general");
@@ -17,6 +18,12 @@ export default function RetailerProfileSettings({ retailerProfile, onUpdateProfi
     const [profileData, setProfileData] = useState({
         name: retailerProfile?.name || "",
         business_name: retailerProfile?.business_name || "",
+    });
+
+    const [bankData, setBankData] = useState({
+        account_number: retailerProfile?.bank_details?.account_number || '',
+        ifsc_code: retailerProfile?.bank_details?.ifsc_code || '',
+        bank_name: retailerProfile?.bank_details?.bank_name || '',
     });
 
     // Security State
@@ -29,11 +36,45 @@ export default function RetailerProfileSettings({ retailerProfile, onUpdateProfi
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-
-    const handleProfileChange = (e) => {
+    // ⬇️ NEW HANDLER
+    const handleBankDataChange = (e) => {
         const { name, value } = e.target;
-        setProfileData(prev => ({ ...prev, [name]: value }));
+        setBankData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleUpdateBankDetails = async (e) => {
+        e.preventDefault();
+
+        // Assuming you have setBankLoading(true) here
+        // setBankLoading(true);
+        // setBankError(null);
+
+        try {
+            console.log("Saving bank details:", bankData);
+            // 💡 Use the corrected utility function
+            const response = await retailerApi.changeBank(bankData);
+
+            if (response && response.message) {
+                // setBankSuccess(true);
+                alert(response.message);
+                onUpdateProfile(); // Refresh main data and close modal
+            }
+
+        } catch (error) {
+            console.error("Bank details update failed:", error);
+
+            // Example handling for validation errors (422)
+            if (error.response && error.response.data && error.response.data.errors) {
+                // setBankError(handleValidationErrors(error.response.data.errors));
+            } else {
+                // setBankError(error.message || "Failed to update bank details.");
+            }
+
+        } finally {
+            // setBankLoading(false);
+        }
+    };
+
 
     const handlePasswordChange = (e) => {
         const { name, value } = e.target;
@@ -115,8 +156,7 @@ export default function RetailerProfileSettings({ retailerProfile, onUpdateProfi
                                     id="name"
                                     name="name"
                                     value={profileData.name}
-                                    onChange={handleProfileChange}
-                                    required
+                                    disabled
                                 />
                             </div>
                             <div className="space-y-2">
@@ -125,11 +165,10 @@ export default function RetailerProfileSettings({ retailerProfile, onUpdateProfi
                                     id="business_name"
                                     name="business_name"
                                     value={profileData.business_name}
-                                    onChange={handleProfileChange}
-                                    required
+                                    disabled
                                 />
                             </div>
-                            <Button type="submit" className="bg-[#075E66] hover:bg-[#064d54]">Save Changes</Button>
+
                         </form>
                     </TabsContent>
 
@@ -200,11 +239,62 @@ export default function RetailerProfileSettings({ retailerProfile, onUpdateProfi
                     <TabsContent value="bank">
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600">
-                                Your banking information is crucial for payout processing.
-                                (Details currently not implemented)
+                                Your banking information is crucial for payout processing. Please ensure these details are accurate.
                             </p>
-                            {/* ⚠️ TODO: Add form fields for account number, IFSC code, etc. */}
-                            <Button disabled className="bg-gray-400">Save Bank Details</Button>
+
+                            {/* ⚠️ NOTE: You must add the corresponding state management and API handler (e.g., handleUpdateBankDetails)
+           to the RetailerProfileSettings component logic (similar to how password change was implemented). */}
+
+                            <form onSubmit={handleUpdateBankDetails} className="space-y-4">
+
+
+                                {/* 2. Account Number */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="account_number">Bank Account Number</Label>
+                                    <Input
+                                        id="account_number"
+                                        name="account_number"
+                                        type="text"
+                                        // value={bankData.account_number}
+                                        onChange={handleBankDataChange}
+                                        placeholder="Enter full account number"
+                                        required
+                                    />
+                                </div>
+
+                                {/* 3. IFSC Code */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="ifsc_code">IFSC Code (11 characters)</Label>
+                                    <Input
+                                        id="ifsc_code"
+                                        name="ifsc_code"
+                                        type="text"
+                                        // value={bankData.ifsc_code}
+                                        onChange={handleBankDataChange}
+                                        placeholder="E.g., SBIN0001234"
+                                        maxLength={11}
+                                        required
+                                    />
+                                </div>
+
+                                {/* 4. Bank Name (Optional/Display) */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="bank_name">Bank Name (Optional)</Label>
+                                    <Input
+                                        id="bank_name"
+                                        name="bank_name"
+                                        type="text"
+                                        // value={bankData.bank_name}
+                                        onChange={handleBankDataChange}
+                                        placeholder="E.g., State Bank of India"
+                                    />
+                                </div>
+
+                                <Button type="submit" className="bg-[#075E66] hover:bg-[#064d54]">
+                                    <Banknote className="w-4 h-4 mr-2" />
+                                    Save Bank Details
+                                </Button>
+                            </form>
                         </div>
                     </TabsContent>
                 </Tabs>
