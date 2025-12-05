@@ -51,7 +51,7 @@ export default function AvailableOrders({
     console.log("Token:", token);
     const fetchSettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/delivery-settings`, {
+        const res = await fetch(`${API_BASE_URL}/api/retailer/delivery-settings`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
