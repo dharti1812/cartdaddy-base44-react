@@ -417,7 +417,7 @@ ${retailer.full_name}`;
       <div className="space-y-4">
         {filteredOrders.map((order) => {
           const amount = parseFloat(
-            (order.subtotal || order.total_amount || "0")
+            (order.amount || order.total_amount || "0")
               .toString()
               .replace(/,/g, "")
           );
@@ -433,7 +433,7 @@ ${retailer.full_name}`;
 
           if (!charges) {
             console.warn(
-              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.subtotal}, distance_km: ${order.distance_km}`
+              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
             );
           }
           const acceptedCount = order.accepted_retailers?.length || 0;
