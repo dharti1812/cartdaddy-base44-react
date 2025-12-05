@@ -52,7 +52,7 @@ export default function SellerPortal() {
   const [completedOrders, setMyCompletedOrders] = useState([]);
   const [stats, setStats] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
-
+  const [deliverySettings, setDeliverySettings] = useState(null);
   const loadData = async () => {
     try {
       const token = sessionStorage.getItem("token");
@@ -120,6 +120,36 @@ export default function SellerPortal() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  
+  useEffect(() => {
+    const token = sessionStorage.getItem("token");
+    console.log("Token:", token);
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/retailer/delivery-settings`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        const json = await res.json();
+        console.log(json);
+        if (json.status && json.data) {
+          console.log(json.data);
+          setDeliverySettings(json.data);
+        }
+      } catch (err) {
+        console.error("Error fetching delivery settings:", err);
+      }
+    };
+
+    fetchSettings();
   }, []);
 
   const handleLogout = async () => {

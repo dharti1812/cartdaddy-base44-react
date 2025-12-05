@@ -44,36 +44,7 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [deliverySettings, setDeliverySettings] = useState(null);
 
-  useEffect(() => {
-    const token = sessionStorage.getItem("token");
-    console.log("Token:", token);
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/retailer/delivery-settings`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        );
-        const json = await res.json();
-        console.log(json);
-        if (json.status && json.data) {
-          console.log(json.data);
-          setDeliverySettings(json.data);
-        }
-      } catch (err) {
-        console.error("Error fetching delivery settings:", err);
-      }
-    };
-
-    fetchSettings();
-  }, []);
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
