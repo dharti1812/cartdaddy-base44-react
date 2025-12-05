@@ -417,21 +417,23 @@ ${retailer.full_name}`;
       <div className="space-y-4">
         {filteredOrders.map((order) => {
           const amount = parseFloat(
-            (order.subtotal || order.total_amount || "0").replace(/,/g, "")
+            (order.subtotal || order.total_amount || "0")
+              .toString()
+              .replace(/,/g, "")
           );
-          const charges = deliverySettings
-            ? calculateDeliveryCharges(
-                parseFloat(
-                  order.subtotal || order.total_amount.replace(/,/g, "")
-                ) || 0,
-                parseFloat(order.distance_km) || 0,
-                deliverySettings
-              )
-            : null;
+
+          const charges =
+            deliverySettings && amount > 0
+              ? calculateDeliveryCharges(
+                  amount,
+                  parseFloat(order.distance_km || 0),
+                  deliverySettings
+                )
+              : null;
 
           if (!charges) {
             console.warn(
-              `⚠️ Charges is null for order ID: ${order.id}, subtotal: ${order.subtotal}, distance_km: ${order.distance_km}`
+              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.subtotal}, distance_km: ${order.distance_km}`
             );
           }
           const acceptedCount = order.accepted_retailers?.length || 0;
@@ -504,7 +506,7 @@ ${retailer.full_name}`;
                           Your Delivery Earnings:
                         </span>
                         <span className="text-2xl font-bold text-green-700">
-                          ₹{charges?.retailerEarning || 0}
+                          ₹{charges.retailerEarning ?? 0}
                         </span>
                       </div>
                       <div className="text-xs text-green-700 space-y-0.5">
