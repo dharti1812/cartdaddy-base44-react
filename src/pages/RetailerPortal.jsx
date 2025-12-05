@@ -86,6 +86,24 @@ export default function SellerPortal() {
       //Test comment
       setSellerProfile(sellerProfile);
 
+      const resSettings = await fetch(
+        `${API_BASE_URL}/api/retailer/delivery-settings`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+      const settingsData = await resSettings.json();
+      console.log("Delivery Settings API Response:", settingsData);
+
+      if (Array.isArray(settingsData) && settingsData.length > 0) {
+        setDeliverySettings(settingsData[0]);
+      } else {
+        setDeliverySettings(null);
+      }
+
       const allOrders = await OrderApi.PendingAcceptanceOrders();
       setOrders(allOrders?.data || []);
 
@@ -126,40 +144,6 @@ export default function SellerPortal() {
   useEffect(() => {
     loadData();
   }, []);
-
- useEffect(() => {
-  const token = sessionStorage.getItem("token");
-
-  const fetchSettings = async () => {
-    try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/retailer/delivery-settings`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        }
-      );
-
-      const json = await res.json();
-      console.log("Delivery Settings API Response:", json);
-
-      if (Array.isArray(json) && json.length > 0) {
-        setDeliverySettings(json[0]); 
-      } else {
-        setDeliverySettings(null);
-      }
-    } catch (err) {
-      console.error("Error fetching delivery settings:", err);
-      setDeliverySettings(null);
-    }
-  };
-
-  fetchSettings();
-}, []);
-
 
   const handleLogout = async () => {
     try {
