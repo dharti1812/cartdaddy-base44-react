@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
 import { OrderApi } from "../utils/orderApi";
+import { API_BASE_URL } from "@/config";
 
 export default function AvailableOrders({
   orders,
@@ -262,7 +263,7 @@ export default function AvailableOrders({
     } DELIVERY!
 
 Order #${order.website_ref || order.id.slice(0, 8)}
-💰 Earn: ₹${(order.total_amount * 0.1).toFixed(0)} (estimated)
+💰 Earn: ₹${(order.amount * 0.1).toFixed(0)} (estimated)
 📍 Distance: ${order.distance_km || "Unknown"} km
 ⏱️ Deliver in: ${order.sla_minutes || 60} min
 
@@ -328,8 +329,7 @@ ${retailer.full_name}`;
 
     const penalties = pendingOrder.penalties || [];
     const penaltyAmount =
-      (pendingOrder.total_amount *
-        (config?.cancellation_penalty_percentage || 2)) /
+      (pendingOrder.amount * (config?.cancellation_penalty_percentage || 2)) /
       100;
 
     penalties.push({
@@ -416,13 +416,17 @@ ${retailer.full_name}`;
     <>
       <div className="space-y-4">
         {filteredOrders.map((order) => {
+          const amount = parseFloat((order.subtotal || order.total_amount || "0").replace(/,/g, ""));
           const charges =
             deliverySettings &&
-            calculateDeliveryCharges(
-              order.subtotal || order.total_amount,
-              order.distance_km || 0,
-              deliverySettings
+           calculateDeliveryCharges(amount, order.distance_km || 0, deliverySettings);
+          if (!charges) {
+            console.warn(
+              `⚠️ Charges is null for order ID: ${order.id}, subtotal: ${
+                order.subtotal || order.amount
+              }, distance_km: ${order.distance_km}`
             );
+          }
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
@@ -576,7 +580,7 @@ ${retailer.full_name}`;
                       <>
                         <span className="text-gray-400">•</span>
                         <span className="text-amber-600 font-medium">
-                         ⏱️ ~{Math.ceil(order.distance_km * 3)} min travel time
+                          ⏱️ ~{Math.ceil(order.distance_km * 3)} min travel time
                         </span>
                       </>
                     )}
@@ -648,8 +652,8 @@ ${retailer.full_name}`;
                         <IndianRupee className="w-4 h-4 text-amber-600" />
                         <AlertDescription className="text-amber-800 text-sm">
                           <strong>Cash on Delivery</strong> - Collect ₹
-                          {order.total_amount} in cash from customer. Keep
-                          change ready!
+                          {order.amount} in cash from customer. Keep change
+                          ready!
                         </AlertDescription>
                       </Alert>
                     </div>
@@ -785,7 +789,7 @@ ${retailer.full_name}`;
                   {pendingOrder.customer_masked_contact}
                 </p>
                 <p>
-                  <strong>Amount:</strong> ₹{pendingOrder.total_amount}
+                  <strong>Amount:</strong> ₹{pendingOrder.amount}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
                   ⏱️ Timeout:{" "}
@@ -804,7 +808,7 @@ ${retailer.full_name}`;
                 {config?.cancellation_penalty_percentage || 2}% penalty (₹
                 {pendingOrder
                   ? (
-                      (pendingOrder.total_amount *
+                      (pendingOrder.amount *
                         (config?.cancellation_penalty_percentage || 2)) /
                       100
                     ).toFixed(0)
@@ -859,7 +863,7 @@ ${retailer.full_name}`;
                   ₹
                   {pendingOrder
                     ? (
-                        (pendingOrder.total_amount *
+                        (pendingOrder.amount *
                           (config?.cancellation_penalty_percentage || 2)) /
                         100
                       ).toFixed(0)
@@ -867,7 +871,7 @@ ${retailer.full_name}`;
                 </p>
                 <p className="text-red-700 text-sm">
                   ({config?.cancellation_penalty_percentage || 2}% of order
-                  value: ₹{pendingOrder?.total_amount})
+                  value: ₹{pendingOrder?.amount})
                 </p>
               </AlertDescription>
             </Alert>
