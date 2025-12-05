@@ -398,15 +398,19 @@ ${retailer.full_name}`;
               .replace(/,/g, "")
           );
 
-          const charges =
-            Array.isArray(deliverySettings) && deliverySettings.length > 0
-              ? calculateDeliveryCharges(
-                  amount,
-                  parseFloat(order.distance_km || 0),
-                  deliverySettings[0]
-                )
-              : null;
+          const charges = deliverySettings?.length
+            ? calculateDeliveryCharges(
+                amount,
+                parseFloat(order.distance_km || 0),
+                deliverySettings[0]
+              )
+            : null;
 
+          if (!charges) {
+            console.warn(
+              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
+            );
+          }
           console.log("Order ID:", order.id);
           console.log("Amount:", amount);
           console.log("Distance KM:", order.distance_km);

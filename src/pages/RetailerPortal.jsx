@@ -31,7 +31,12 @@ import CODToggle from "../components/retailer/CODToggle";
 import AssignDeliveryBoy from "../components/retailer/AssignDeliveryBoy";
 import HandoffDeliveryBoy from "../components/retailer/HandoffDeliveryBoy";
 import ManageDeliveryBoys from "../components/retailer/ManageDeliveryBoys";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import RetailerProfileSettings from "../components/retailer/RetailerProfileSettings";
 
 export default function SellerPortal() {
@@ -122,10 +127,9 @@ export default function SellerPortal() {
     loadData();
   }, []);
 
-  
   useEffect(() => {
     const token = sessionStorage.getItem("token");
-    console.log("Token:", token);
+
     const fetchSettings = async () => {
       try {
         const res = await fetch(
@@ -139,9 +143,8 @@ export default function SellerPortal() {
           }
         );
         const json = await res.json();
-        console.log(json);
         if (json.status && json.data) {
-          console.log(json.data);
+          console.log("Delivery Settings:", json.data);
           setDeliverySettings(json.data);
         }
       } catch (err) {
@@ -262,7 +265,9 @@ export default function SellerPortal() {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id
     );
-    return (o.status === "pending" || o.status === "UNASSIGNED") && !alreadyAccepted;
+    return (
+      (o.status === "pending" || o.status === "UNASSIGNED") && !alreadyAccepted
+    );
     //return !alreadyAccepted;
   });
   console.log("Available Orders:", availableOrders);
@@ -286,8 +291,9 @@ export default function SellerPortal() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
-        }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
+        mobileView ? "max-w-md mx-auto" : ""
+      }`}
     >
       {/* <DeviceSessionManager
         retailerId={sellerProfile?.id}
@@ -321,21 +327,27 @@ export default function SellerPortal() {
                 title="View Profile Settings"
               >
                 <img
-                  src={sellerProfile?.image_url || `https://ui-avatars.com/api/?name=${sellerProfile?.name || 'Seller'}&background=FFEB3B&color=000&bold=true`}
+                  src={
+                    sellerProfile?.image_url ||
+                    `https://ui-avatars.com/api/?name=${
+                      sellerProfile?.name || "Seller"
+                    }&background=FFEB3B&color=000&bold=true`
+                  }
                   alt={`${sellerProfile?.name} profile`}
                   className="w-full h-full object-cover"
                 />
               </button>
               <Badge
-                className={`${sellerProfile?.user?.availability_status === "online"
-                  ? "bg-[#FFEB3B] text-gray-900 font-bold"
-                  : "bg-gray-500 text-white font-bold"
-                  } border-0 text-base sm:text-lg px-3 py-1.5`}
+                className={`${
+                  sellerProfile?.user?.availability_status === "online"
+                    ? "bg-[#FFEB3B] text-gray-900 font-bold"
+                    : "bg-gray-500 text-white font-bold"
+                } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status
                   ? sellerProfile.availability_status.charAt(0).toUpperCase() +
-                  sellerProfile.availability_status.slice(1).toLowerCase()
+                    sellerProfile.availability_status.slice(1).toLowerCase()
                   : ""}
               </Badge>
               <Button
@@ -468,9 +480,6 @@ export default function SellerPortal() {
                   <span className="hidden sm:inline">Partners</span>
                   <span className="sm:hidden">Partners</span>
                 </TabsTrigger>
-
-
-
               </TabsList>
             </CardHeader>
 
