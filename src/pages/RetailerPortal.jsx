@@ -127,33 +127,39 @@ export default function SellerPortal() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const token = sessionStorage.getItem("token");
+ useEffect(() => {
+  const token = sessionStorage.getItem("token");
 
-    const fetchSettings = async () => {
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/retailer/delivery-settings`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json",
-            },
-          }
-        );
-        const json = await res.json();
-        if (json.status && json.data) {
-          console.log("Delivery Settings:", json.data);
-          setDeliverySettings(json.data);
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/retailer/delivery-settings`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
         }
-      } catch (err) {
-        console.error("Error fetching delivery settings:", err);
-      }
-    };
+      );
 
-    fetchSettings();
-  }, []);
+      const json = await res.json();
+      console.log("Delivery Settings API Response:", json);
+
+      if (Array.isArray(json) && json.length > 0) {
+        setDeliverySettings(json[0]); 
+      } else {
+        setDeliverySettings(null);
+      }
+    } catch (err) {
+      console.error("Error fetching delivery settings:", err);
+      setDeliverySettings(null);
+    }
+  };
+
+  fetchSettings();
+}, []);
+
 
   const handleLogout = async () => {
     try {
