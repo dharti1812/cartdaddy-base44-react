@@ -51,13 +51,16 @@ export default function AvailableOrders({
     console.log("Token:", token);
     const fetchSettings = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/retailer/delivery-settings`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
+        const res = await fetch(
+          `${API_BASE_URL}/api/retailer/delivery-settings`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
         const json = await res.json();
         if (json.status && json.data) {
           setDeliverySettings(json.data);
@@ -427,7 +430,7 @@ ${retailer.full_name}`;
               ? calculateDeliveryCharges(
                   amount,
                   parseFloat(order.distance_km || 0),
-                  deliverySettings
+                  deliverySettings[0]
                 )
               : null;
 

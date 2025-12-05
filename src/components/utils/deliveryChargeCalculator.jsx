@@ -5,19 +5,12 @@ import { deliverySettingApi } from "./deliverySettingApi";
  * Calculate delivery charges for an order
  * Returns: { delivery_charge, rider_payout, seller_net_payable }
  */
-export async function calculateDeliveryCharges(orderValue, distanceKm) {
+export async function calculateDeliveryCharges(orderValue, distanceKm, config) {
   try {
-    const configs = await deliverySettingApi.list();
-    const config = configs[0];
-    
-    if (!config) {
-      console.warn("No config found, using defaults");
-      return {
-        delivery_charge: 100,
-        rider_payout: 100,
-        seller_net_payable: orderValue - 100
-      };
-    }
+     if (!config) {
+    console.warn("No delivery config available, returning null");
+    return null; 
+  }
 
     // Calculate fuel cost
     const fuelCost = distanceKm * (config.fuel_cost_per_km || 5);
