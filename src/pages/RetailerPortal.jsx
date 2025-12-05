@@ -479,6 +479,7 @@ export default function SellerPortal() {
                 <AvailableOrders
                   orders={availableOrders}
                   retailerId={sellerProfile?.id}
+                  deliverySettings={deliverySettings}
                   config={sellerProfile}
                   onAccept={loadData}
                   retailerProfile={sellerProfile}

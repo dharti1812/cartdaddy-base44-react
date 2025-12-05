@@ -36,6 +36,7 @@ export default function AvailableOrders({
   retailerId,
   config,
   onAccept,
+  deliverySettings,
   retailerProfile,
 }) {
   const [accepting, setAccepting] = useState(null);
