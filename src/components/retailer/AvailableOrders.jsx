@@ -18,8 +18,7 @@ import {
 } from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format, utcToZonedTime } from "date-fns-tz";
-import { encryptValue } from "../../utils/encrypt";
+
 import {
   Dialog,
   DialogContent,
@@ -44,6 +43,31 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deliverySettings, setDeliverySettings] = useState(null);
+
+  useEffect(() => {
+    const token = sessionStorage.getItem("token");
+
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/delivery-settings`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        const json = await res.json();
+        if (json.status && json.data) {
+          setDeliverySettings(json.data);
+        }
+      } catch (err) {
+        console.error("Error fetching delivery settings:", err);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -392,19 +416,18 @@ ${retailer.full_name}`;
     <>
       <div className="space-y-4">
         {filteredOrders.map((order) => {
+          const charges =
+            deliverySettings &&
+            calculateDeliveryCharges(
+              order.subtotal || order.total_amount,
+              order.distance_km || 0,
+              deliverySettings
+            );
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
           const isCOD = order.is_cod || order.payment_method === "cod";
           const isQueued = order.status === "queued" || order.is_queued;
-
-          // Calculate delivery charges
-          // const charges = calculateDeliveryCharges(
-          //   order.subtotal || order.total_amount,
-          //   order.distance_km || 0,
-          //   config
-          // );
-          const charges = 0;
 
           return (
             <Card
@@ -496,7 +519,7 @@ ${retailer.full_name}`;
                         </div>
                         <div className="flex justify-between pt-1 border-t border-green-300 font-semibold">
                           <span>Total Delivery Charge:</span>
-                          <span>₹{charges.totalDeliveryCharge}</span>
+                          <span>₹{charges.delivery_charge}</span>
                         </div>
                         <div className="flex justify-between text-green-900 pt-1">
                           <span>
@@ -553,7 +576,7 @@ ${retailer.full_name}`;
                       <>
                         <span className="text-gray-400">•</span>
                         <span className="text-amber-600 font-medium">
-                          Deliver in {order.sla_minutes} min
+                         ⏱️ ~{Math.ceil(order.distance_km * 3)} min travel time
                         </span>
                       </>
                     )}
