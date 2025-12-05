@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format } from "date-fns";
+import { format, utcToZonedTime } from "date-fns-tz";
 import { encryptValue } from "../../utils/encrypt";
 import {
   Dialog,
@@ -44,6 +44,7 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -516,9 +517,9 @@ ${retailer.full_name}`;
                   <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mt-3">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      <span>
-                        Posted {format(new Date(order.created_date), "h:mm a")}
-                      </span>
+                     <span>
+  Posted {format(utcToZonedTime(new Date(order.created_date), "UTC"), "h:mm a")}
+</span>
                     </div>
                     {order.distance_km && (
                       <>
