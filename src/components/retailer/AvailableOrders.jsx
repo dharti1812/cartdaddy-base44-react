@@ -44,7 +44,6 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -354,7 +353,13 @@ ${retailer.full_name}`;
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
-    if (order.status !== "pending" && order.status !== "UNASSIGNED" && order.assignemnt_status !== "assigned" && order.status !== "queued") return false;
+    if (
+      order.status !== "pending" &&
+      order.status !== "UNASSIGNED" &&
+      order.assignemnt_status !== "assigned" &&
+      order.status !== "queued"
+    )
+      return false;
 
     // If order is COD, only show to retailers who accept COD
     if (order.is_cod || order.payment_method === "cod") {
@@ -517,9 +522,21 @@ ${retailer.full_name}`;
                   <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mt-3">
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                     <span>
-  Posted {format(utcToZonedTime(new Date(order.created_date), "UTC"), "h:mm a")}
-</span>
+                      <span>
+                        Posted{" "}
+                        {(() => {
+                          const date = new Date(order.created_date);
+                          const hours = date.getUTCHours();
+                          const minutes = date.getUTCMinutes();
+                          const ampm = hours >= 12 ? "pm" : "am";
+                          const formattedHours =
+                            hours % 12 === 0 ? 12 : hours % 12;
+                          const formattedMinutes = minutes
+                            .toString()
+                            .padStart(2, "0");
+                          return `${formattedHours}:${formattedMinutes} ${ampm}`;
+                        })()}
+                      </span>
                     </div>
                     {order.distance_km && (
                       <>
