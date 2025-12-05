@@ -350,7 +350,6 @@ ${retailer.full_name}`;
     onAccept();
   };
   console.log(orders);
-
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
@@ -398,23 +397,35 @@ ${retailer.full_name}`;
               .toString()
               .replace(/,/g, "")
           );
-          {
-            order.charges ? (
-              <>
-                <p>Delivery Charge: {order.charges.delivery_charge}</p>
-                <p>Rider Payout: {order.charges.rider_payout}</p>
-                <p>Seller Net Payable: {order.charges.seller_net_payable}</p>
-              </>
-            ) : (
-              <p>⚠️ Delivery charges not available</p>
+
+          let charges = null; 
+
+          if (!deliverySettings) {
+            console.warn("⚠️ Delivery settings not available");
+          } else {
+            charges = calculateDeliveryCharges(amount, 5, deliverySettings);
+            console.log("Charges:", charges);
+          }
+
+          // Now you can safely use it
+          console.log("Final:", charges);
+
+          if (!charges) {
+            console.warn(
+              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
             );
           }
           console.log("Order ID:", order.id);
           console.log("Amount:", amount);
-          console.log("Distance KM:", order.distance_km);
+          console.log("Distance KM:", 5);
           console.log("DeliverySettings:", deliverySettings);
-          console.log("Charges:", order.charges);
+          console.log("Charges:", charges);
 
+          if (!charges) {
+            console.warn(
+              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
+            );
+          }
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
@@ -477,9 +488,9 @@ ${retailer.full_name}`;
                   </div>
 
                   {/* Delivery Earnings - Prominent Display */}
-                  {charges?.totalDeliveryCharge > 0 && (
+                  {charges?.delivery_charge > 0 && (
                     <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
+                      {/* <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-green-800 flex items-center gap-1">
                           <TrendingUp className="w-4 h-4" />
                           Your Delivery Earnings:
@@ -487,7 +498,7 @@ ${retailer.full_name}`;
                         <span className="text-2xl font-bold text-green-700">
                           ₹{charges.retailerEarning ?? 0}
                         </span>
-                      </div>
+                      </div> */}
                       <div className="text-xs text-green-700 space-y-0.5">
                         <div className="flex justify-between">
                           <span>Distance:</span>
@@ -497,7 +508,8 @@ ${retailer.full_name}`;
                         </div>
                         <div className="flex justify-between">
                           <span>
-                            Fuel Cost (₹{config?.fuel_cost_per_km || 5}/km):
+                            Fuel Cost (₹
+                            {deliverySettings?.fuel_cost_per_km || 5}/km):
                           </span>
                           <span className="font-medium">
                             ₹{charges.fuelCost}
@@ -513,15 +525,15 @@ ${retailer.full_name}`;
                           <span>Total Delivery Charge:</span>
                           <span>₹{charges.delivery_charge}</span>
                         </div>
-                        <div className="flex justify-between text-green-900 pt-1">
+                        {/* <div className="flex justify-between text-green-900 pt-1">
                           <span>
                             Your Share ({charges.breakdown?.retailerPercent}%):
                           </span>
                           <span className="font-bold text-base">
                             ₹{charges.retailerEarning}
                           </span>
-                        </div>
-                        <div className="flex justify-between text-blue-700 text-[10px]">
+                        </div> */}
+                        {/* <div className="flex justify-between text-blue-700 text-[10px]">
                           <span>
                             Delivery Boy will get (
                             {charges.breakdown?.deliveryBoyPercent}%):
@@ -529,7 +541,7 @@ ${retailer.full_name}`;
                           <span className="font-medium">
                             ₹{charges.deliveryBoyEarning}
                           </span>
-                        </div>
+                        </div> */}
                       </div>
                     </div>
                   )}

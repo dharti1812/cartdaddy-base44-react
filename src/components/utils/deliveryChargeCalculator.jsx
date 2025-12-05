@@ -1,15 +1,14 @@
 
-export async function calculateDeliveryCharges(orderValue, distanceKm, config) {
-  
+export function calculateDeliveryCharges(orderValue, distanceKm, config) {
+
   try {
      if (!config) {
     console.warn("No delivery config available, returning null");
     return null; 
   }
-
-    // Calculate fuel cost
+  
     const fuelCost = distanceKm * (config.fuel_cost_per_km || 5);
-    
+       
     // Determine base charge based on order value
     const baseCharge = orderValue >= (config.delivery_charge_threshold || 20000)
       ? (config.base_delivery_charge_high || 125)
@@ -23,11 +22,13 @@ export async function calculateDeliveryCharges(orderValue, distanceKm, config) {
     
     // Seller receives order value minus delivery charges
     const sellerNetPayable = orderValue - deliveryCharge;
-    
+    console.log(deliveryCharge, riderPayout, orderValue);
     return {
       delivery_charge: deliveryCharge,
       rider_payout: riderPayout,
-      seller_net_payable: Math.max(0, sellerNetPayable)
+      seller_net_payable: Math.max(0, sellerNetPayable),
+       fuelCost: fuelCost,
+       baseCharge: baseCharge,
     };
     
   } catch (error) {
