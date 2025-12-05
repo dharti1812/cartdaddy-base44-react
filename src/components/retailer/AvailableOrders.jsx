@@ -46,7 +46,6 @@ export default function AvailableOrders({
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-
   const handleAccept = async (order) => {
     setAccepting(order.id);
 
@@ -400,7 +399,7 @@ ${retailer.full_name}`;
           );
 
           const charges =
-            deliverySettings && amount > 0
+            Array.isArray(deliverySettings) && deliverySettings.length > 0
               ? calculateDeliveryCharges(
                   amount,
                   parseFloat(order.distance_km || 0),
