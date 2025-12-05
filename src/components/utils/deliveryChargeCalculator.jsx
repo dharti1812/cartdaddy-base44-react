@@ -1,10 +1,4 @@
 
-import { deliverySettingApi } from "./deliverySettingApi";
-
-/**
- * Calculate delivery charges for an order
- * Returns: { delivery_charge, rider_payout, seller_net_payable }
- */
 export async function calculateDeliveryCharges(orderValue, distanceKm, config) {
   
   try {

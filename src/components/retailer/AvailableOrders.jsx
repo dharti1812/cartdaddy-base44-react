@@ -350,6 +350,7 @@ ${retailer.full_name}`;
     onAccept();
   };
   console.log(orders);
+
   // Filter orders based on COD preference and status
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
@@ -397,21 +398,15 @@ ${retailer.full_name}`;
               .toString()
               .replace(/,/g, "")
           );
-
-          if (!deliverySettings) {
-            console.warn("⚠️ Delivery settings not available");
-          } else {
-            const charges = calculateDeliveryCharges(
-              order.subtotal,
-              parseFloat(order.distance_km || 0),
-              deliverySettings
-            );
-            console.log("Charges:", charges);
-          }
-
-          if (!charges) {
-            console.warn(
-              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
+          {
+            order.charges ? (
+              <>
+                <p>Delivery Charge: {order.charges.delivery_charge}</p>
+                <p>Rider Payout: {order.charges.rider_payout}</p>
+                <p>Seller Net Payable: {order.charges.seller_net_payable}</p>
+              </>
+            ) : (
+              <p>⚠️ Delivery charges not available</p>
             );
           }
           console.log("Order ID:", order.id);
@@ -420,11 +415,6 @@ ${retailer.full_name}`;
           console.log("DeliverySettings:", deliverySettings);
           console.log("Charges:", charges);
 
-          if (!charges) {
-            console.warn(
-              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
-            );
-          }
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;

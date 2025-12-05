@@ -38,6 +38,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import RetailerProfileSettings from "../components/retailer/RetailerProfileSettings";
+import { calculateDeliveryCharges } from "@/components/utils/deliveryChargeCalculator";
 
 export default function SellerPortal() {
   const [sellerProfile, setSellerProfile] = useState(null);
@@ -86,6 +87,9 @@ export default function SellerPortal() {
       //Test comment
       setSellerProfile(sellerProfile);
 
+      const allOrders = await OrderApi.PendingAcceptanceOrders();
+      setOrders(allOrders?.data || []);
+
       const resSettings = await fetch(
         `${API_BASE_URL}/api/retailer/delivery-settings`,
         {
@@ -95,17 +99,30 @@ export default function SellerPortal() {
           },
         }
       );
+
       const settingsData = await resSettings.json();
       console.log("Delivery Settings API Response:", settingsData);
 
       if (Array.isArray(settingsData) && settingsData.length > 0) {
-        setDeliverySettings(settingsData[0]);
+        const currentDeliverySettings = settingsData[0]; 
+        setDeliverySettings(currentDeliverySettings);
+
+        const ordersWithCharges = allOrders?.data?.map((order) => {
+          const charges = currentDeliverySettings
+            ? calculateDeliveryCharges(
+                order.subtotal,
+                parseFloat(order.distance_km || 0),
+                currentDeliverySettings
+              )
+            : null;
+
+          return { ...order, charges };
+        });
+
+        setOrders(ordersWithCharges || []);
       } else {
         setDeliverySettings(null);
       }
-
-      const allOrders = await OrderApi.PendingAcceptanceOrders();
-      setOrders(allOrders?.data || []);
 
       const acceptedOrders = await OrderApi.AcceptedOrders();
 
