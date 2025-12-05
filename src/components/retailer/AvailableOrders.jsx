@@ -48,7 +48,7 @@ export default function AvailableOrders({
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
-
+    console.log("Token:", token);
     const fetchSettings = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/delivery-settings`, {
@@ -416,15 +416,22 @@ ${retailer.full_name}`;
     <>
       <div className="space-y-4">
         {filteredOrders.map((order) => {
-          const amount = parseFloat((order.subtotal || order.total_amount || "0").replace(/,/g, ""));
-          const charges =
-            deliverySettings &&
-           calculateDeliveryCharges(amount, order.distance_km || 0, deliverySettings);
+          const amount = parseFloat(
+            (order.subtotal || order.total_amount || "0").replace(/,/g, "")
+          );
+          const charges = deliverySettings
+            ? calculateDeliveryCharges(
+                parseFloat(
+                  order.subtotal || order.total_amount.replace(/,/g, "")
+                ) || 0,
+                parseFloat(order.distance_km) || 0,
+                deliverySettings
+              )
+            : null;
+
           if (!charges) {
             console.warn(
-              `⚠️ Charges is null for order ID: ${order.id}, subtotal: ${
-                order.subtotal || order.amount
-              }, distance_km: ${order.distance_km}`
+              `⚠️ Charges is null for order ID: ${order.id}, subtotal: ${order.subtotal}, distance_km: ${order.distance_km}`
             );
           }
           const acceptedCount = order.accepted_retailers?.length || 0;
@@ -489,7 +496,7 @@ ${retailer.full_name}`;
                   </div>
 
                   {/* Delivery Earnings - Prominent Display */}
-                  {charges.totalDeliveryCharge > 0 && (
+                  {charges?.totalDeliveryCharge > 0 && (
                     <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-green-800 flex items-center gap-1">
@@ -497,7 +504,7 @@ ${retailer.full_name}`;
                           Your Delivery Earnings:
                         </span>
                         <span className="text-2xl font-bold text-green-700">
-                          ₹{charges.retailerEarning}
+                          ₹{charges?.retailerEarning || 0}
                         </span>
                       </div>
                       <div className="text-xs text-green-700 space-y-0.5">
