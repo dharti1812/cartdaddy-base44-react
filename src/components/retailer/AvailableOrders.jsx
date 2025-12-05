@@ -426,6 +426,11 @@ ${retailer.full_name}`;
           );
 
           const charges =
+          console.log("Order ID:", order.id);
+console.log("Amount:", amount);
+console.log("Distance KM:", order.distance_km);
+console.log("DeliverySettings[0]:", deliverySettings?.[0]);
+
             deliverySettings && amount > 0
               ? calculateDeliveryCharges(
                   amount,

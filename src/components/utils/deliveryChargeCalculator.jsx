@@ -6,6 +6,7 @@ import { deliverySettingApi } from "./deliverySettingApi";
  * Returns: { delivery_charge, rider_payout, seller_net_payable }
  */
 export async function calculateDeliveryCharges(orderValue, distanceKm, config) {
+  console.log("Calculating delivery charges with:", { orderValue, distanceKm, config });
   try {
      if (!config) {
     console.warn("No delivery config available, returning null");
