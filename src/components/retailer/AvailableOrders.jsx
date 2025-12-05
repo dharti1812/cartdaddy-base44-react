@@ -413,7 +413,7 @@ ${retailer.full_name}`;
           console.log("Amount:", amount);
           console.log("Distance KM:", order.distance_km);
           console.log("DeliverySettings:", deliverySettings);
-          console.log("Charges:", charges);
+          console.log("Charges:", order.charges);
 
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
