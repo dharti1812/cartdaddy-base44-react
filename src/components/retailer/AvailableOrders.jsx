@@ -403,7 +403,7 @@ ${retailer.full_name}`;
           if (!deliverySettings) {
             console.warn("⚠️ Delivery settings not available");
           } else {
-            charges = calculateDeliveryCharges(amount, 5, deliverySettings);
+            charges = calculateDeliveryCharges(amount, order.distance_km, deliverySettings);
             console.log("Charges:", charges);
           }
 
