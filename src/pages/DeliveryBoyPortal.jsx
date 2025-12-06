@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Bell } from "lucide-react";
+import { Bell, NavigationIcon } from "lucide-react";
 import {
   Package,
   LogOut,
@@ -557,6 +557,15 @@ export default function DeliveryBoyPortal() {
                           <p className="text-sm text-gray-600 mb-2">
                             Customer: {order.customer_name}
                           </p>
+
+                          <p className="text-sm text-gray-600 mb-2">
+                            {" "}
+                            Distance:{" "}
+                            <span className="text-sm font-bold">
+                              {order.distance_km} km away
+                            </span>
+                          </p>
+
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
                             {order.drop_address?.city}
@@ -618,6 +627,12 @@ export default function DeliveryBoyPortal() {
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
                             {order.drop_address?.city}
+                          </p>
+                          <p className="text-sm text-gray-600 mb-4">
+                            <span>Distance:</span>
+                            <span className="font-medium">
+                              {order.distance_km} km
+                            </span>
                           </p>
 
                           <Badge className="bg-blue-500 text-white">
