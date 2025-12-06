@@ -118,10 +118,10 @@ export default function DeliveryStatusModal({
 
   try {
     const token = sessionStorage.getItem("token");
-   const res = await fetch('http://localhost:8000/api/delivery-partner/save-customer-info', {
+   const res =  await fetch(`${API_BASE_URL}/api/delivery-partner/save-customer-info`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`, // only the token header
+        Authorization: `Bearer ${token}`, 
       },
       body: formData,
     });
