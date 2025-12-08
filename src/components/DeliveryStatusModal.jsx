@@ -108,39 +108,42 @@ export default function DeliveryStatusModal({
   };
 
   const submitCustomerInfo = async () => {
-  if (!customerName || !deliveryPhoto)
-    return alert("Enter name & upload photo");
+    if (!customerName || !deliveryPhoto)
+      return alert("Enter name & upload photo");
 
-  const formData = new FormData();
-  formData.append("order_id", order.id);
-  formData.append("delivery_verified_user_info", customerName);
-  formData.append("delivery_verified_photo", deliveryPhoto);
+    const formData = new FormData();
+    formData.append("order_id", order.id);
+    formData.append("delivery_verified_user_info", customerName);
+    formData.append("delivery_verified_photo", deliveryPhoto);
 
-  try {
-    const token = sessionStorage.getItem("token");
-   const res =  await fetch(`${API_BASE_URL}/api/delivery-partner/save-customer-info`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`, 
-      },
-      body: formData,
-    });
+    try {
+      const token = sessionStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/save-customer-info`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.success) {
-      alert("Delivery Completed");
-      if (onRemove) onRemove(order.id);
-      if (onUpdate) onUpdate();
-      onClose();
-    } else {
-      alert(data.error || "Something went wrong");
+      if (data.success) {
+        alert("Delivery Completed");
+        if (onRemove) onRemove(order.id);
+        if (onUpdate) onUpdate();
+        onClose();
+      } else {
+        alert(data.error || "Something went wrong");
+      }
+    } catch (err) {
+      console.error("Error submitting customer info:", err);
+      alert("Failed to submit. Check console.");
     }
-  } catch (err) {
-    console.error("Error submitting customer info:", err);
-    alert("Failed to submit. Check console.");
-  }
-};
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -154,21 +157,9 @@ export default function DeliveryStatusModal({
           status !== "delivered" && (
             <div className="space-y-3">
               {status === "accepted" && (
-                <Button
-                  className="w-full bg-yellow-500"
-                  onClick={() => updateStatus("reached_to_seller")}
-                >
-                  Reached to Seller
-                </Button>
+                <p>Please wait until the seller confirms the order.</p>
               )}
-              {status === "reached_to_seller" && (
-                <Button
-                  className="w-full bg-blue-500"
-                  onClick={() => updateStatus("picked_up")}
-                >
-                  Picked Up
-                </Button>
-              )}
+
               {status === "picked_up" && (
                 <Button
                   className="w-full bg-purple-500"

@@ -567,10 +567,12 @@ export default function DeliveryBoyPortal() {
                             </span>
                           </p>
 
-                           <div className="mt-3">
-                                <LiveTrackingMapAvailableOrders orderId={order.id} deliveryBoyId={partner.id} />
-                            </div>
-
+                          <div className="mt-3">
+                            <LiveTrackingMapAvailableOrders
+                              orderId={order.id}
+                              deliveryBoyId={partner.id}
+                            />
+                          </div>
 
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
@@ -630,7 +632,13 @@ export default function DeliveryBoyPortal() {
                             Customer: {order.customer_name}
                           </p>
 
-                         
+                          <div className="mt-3">
+                            <LiveTrackingMapAvailableOrders
+                              orderId={order.id}
+                              deliveryBoyId={partner.id}
+                            />
+                          </div>
+
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
                             {order.drop_address?.city}

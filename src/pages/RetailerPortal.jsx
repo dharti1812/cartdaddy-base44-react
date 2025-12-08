@@ -86,7 +86,6 @@ export default function SellerPortal() {
       //Test comment
       setSellerProfile(sellerProfile);
 
-      
       const allOrders = await OrderApi.PendingAcceptanceOrders();
       setOrders(allOrders?.data || []);
 
@@ -107,9 +106,6 @@ export default function SellerPortal() {
       } else {
         setDeliverySettings(null);
       }
-
-
-     
 
       const acceptedOrders = await OrderApi.AcceptedOrders();
 

@@ -48,7 +48,14 @@ export default function ActiveDeliveries({
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [paylinkTimer, setPaylinkTimer] = useState(null);
+  const [showOtpDialog, setShowOtpDialog] = useState(false);
+  const [otp, setOtp] = useState(null);
+  const [otpSending, setOtpSending] = useState(false);
   const toNumber = (v) => Number((v || "0").toString().replace(/,/g, ""));
+  const [otpInput, setOtpInput] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
+  const [otpStatus, setOtpStatus] = useState({});
 
   // Get current delivery boy if logged in
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
@@ -211,6 +218,83 @@ export default function ActiveDeliveries({
         return "bg-gray-500 text-white";
     }
   };
+
+  const handleGenerateOtp = async (order) => {
+    const token = sessionStorage.getItem("token");
+    const orderId = order.id;
+    console.log("Generating OTP for order:", orderId);
+    setSelectedOrder(order);
+    setShowOtpDialog(true);
+    setOtp(null);
+
+    try {
+      setOtpSending(true);
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/retailer/orders/${orderId}/generate-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok) {
+        setOtp(data.otp);
+        setOtpStatus((prev) => ({ ...prev, [order.id]: "pending" }));
+      } else {
+        alert(data.message || "Failed to generate OTP");
+        setShowOtpDialog(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+      setShowOtpDialog(false);
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const handleVerifyOtp = async (orderId, enteredOtp) => {
+    const token = sessionStorage.getItem("token");
+    if (!orderId || !enteredOtp) return;
+
+    try {
+      setVerifyingOtp(true);
+      const response = await fetch(
+        `${API_BASE_URL}/api/retailer/orders/${orderId}/confirm-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ otp: enteredOtp }),
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok) {
+        alert("✅ OTP verified! Pickup confirmed.");
+        setOtpStatus((prev) => ({ ...prev, [orderId]: "verified" }));
+        setShowVerifyOtpDialog(false);
+        onUpdate(); // Refresh orders
+      } else {
+        alert(data.message || "❌ Invalid OTP");
+        setOtpStatus((prev) => ({ ...prev, [orderId]: "pending" }));
+        setShowVerifyOtpDialog(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
   console.log("🧾 Orders Data:", orders);
 
   return (
@@ -440,6 +524,38 @@ export default function ActiveDeliveries({
                               ).toLocaleString()}
                             </span>
                           )}
+
+                          {order.delivery_status === "accepted" && (
+                            <>
+                              {otpStatus[order.id] !== "verified" && (
+                                <Button
+                                  onClick={() => handleGenerateOtp(order)}
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-3 mt-3 text-right text-xs"
+                                >
+                                  Generate Pickup OTP
+                                </Button>
+                              )}
+
+                              {otpStatus[order.id] === "pending" && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setOtpInput("");
+                                    setShowVerifyOtpDialog(true);
+                                  }}
+                                  className="bg-green-500 hover:bg-green-600 text-white py-3 mt-2 text-xs"
+                                >
+                                  Verify OTP
+                                </Button>
+                              )}
+                            </>
+                          )}
+
+                          {order.delivery_status === "picked_up" && (
+                            <Badge className="bg-green-600 text-white px-3 py-1 text-xs">
+                              OTP Verified
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
@@ -590,6 +706,72 @@ export default function ActiveDeliveries({
           })
         )}
       </div>
+
+      <Dialog open={showVerifyOtpDialog} onOpenChange={setShowVerifyOtpDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verify Pickup OTP</DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4">
+            <p className="text-sm text-gray-700 mb-3">
+              Enter the OTP provided by the delivery boy:
+            </p>
+            <Input
+              type="text"
+              maxLength={4}
+              value={otpInput}
+              onChange={(e) => setOtpInput(e.target.value)}
+              placeholder="Enter 4-digit OTP"
+            />
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowVerifyOtpDialog(false)}
+              disabled={verifyingOtp}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleVerifyOtp(selectedOrder.id, otpInput)}
+              disabled={otpInput.length !== 4 || verifyingOtp}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {verifyingOtp ? "Verifying..." : "Verify OTP"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showOtpDialog} onOpenChange={setShowOtpDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pickup OTP</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-700 mb-3">
+              OTP will be sent to the delivery boy. Delivery boy must enter it
+              to confirm pickup.
+            </p>
+            {otp && (
+              <div className="text-center bg-green-50 border border-green-200 p-4 rounded-lg">
+                <p className="text-lg font-bold text-green-800">OTP: {otp}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowOtpDialog(false)}
+              disabled={otpSending}
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPaylinkDialog} onOpenChange={setShowPaylinkDialog}>
         <DialogContent>
