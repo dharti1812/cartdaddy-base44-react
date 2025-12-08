@@ -398,12 +398,16 @@ ${retailer.full_name}`;
               .replace(/,/g, "")
           );
 
-          let charges = null; 
+          let charges = null;
 
           if (!deliverySettings) {
             console.warn("⚠️ Delivery settings not available");
           } else {
-            charges = calculateDeliveryCharges(amount, order.distance_km, deliverySettings);
+            charges = calculateDeliveryCharges(
+              amount,
+              order.distance_km,
+              deliverySettings
+            );
             console.log("Charges:", charges);
           }
 

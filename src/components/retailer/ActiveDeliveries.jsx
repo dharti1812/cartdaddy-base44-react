@@ -48,6 +48,7 @@ export default function ActiveDeliveries({
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [paylinkTimer, setPaylinkTimer] = useState(null);
+  const toNumber = (v) => Number((v || "0").toString().replace(/,/g, ""));
 
   // Get current delivery boy if logged in
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
@@ -334,8 +335,8 @@ export default function ActiveDeliveries({
                               <span className="font-bold text-green-700">
                                 ₹
                                 {order.seller_net_payable ??
-                                  Number(order.amount || 0) -
-                                    Number(order.delivery_charge || 0)}
+                                  toNumber(order.amount) -
+                                    toNumber(order.delivery_charge)}
                               </span>
                             </div>
                             <p className="text-[10px] text-gray-600 mt-2 italic">
