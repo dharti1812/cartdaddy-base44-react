@@ -189,6 +189,42 @@ export default function SellerOnboarding() {
     }
   };
 
+  const handleDeletePhoto = async (photo, index) => {
+    setError("");
+    setSuccess("");
+
+    // Check if we have the necessary ID before proceeding
+    if (!photo.upload_id) {
+      // If upload_id is missing (e.g., due to old data/missing server save), delete locally anyway but show warning
+      console.warn("Missing upload ID for photo, deleting locally only.");
+      setData(prev => ({
+        ...prev,
+        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index)
+      }));
+      if (index === 0) setFirstPhotoLocation(null);
+      setError("Warning: Photo deleted locally, but server status is unknown.");
+      return;
+    }
+
+    setLoading(true); // Start loading
+
+    const deleteResult = await deletePhotoFromServer(photo.upload_id);
+
+    if (deleteResult.result || deleteResult.success) { // Check for both result: true and success: true
+      // Only delete from state if server deletion was successful
+      setData(prev => ({
+        ...prev,
+        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index)
+      }));
+      if (index === 0) setFirstPhotoLocation(null);
+      setSuccess("Photo deleted successfully from server and device.");
+    } else {
+      setError(deleteResult.message || "Failed to delete photo from server.");
+    }
+
+    setLoading(false); // Stop loading
+  };
+
   const BackButton = () => {
     if (step === 1) return null;
     return (
@@ -386,6 +422,7 @@ export default function SellerOnboarding() {
               type: captureMode,
               location: location,
               manually_verified: false,
+              upload_id: result.upload_id,
             },
           ],
         }));
@@ -998,6 +1035,29 @@ export default function SellerOnboarding() {
     }
 
     setLoading(false);
+  };
+
+  const deletePhotoFromServer = async (uploadId) => {
+    const token = localStorage.getItem("access_token");
+    if (!token) return { success: false, message: "Not authenticated" };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/image-delete`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        // Send the ID that identifies the file on the server
+        body: JSON.stringify({ upload_id: uploadId }),
+      });
+
+      const result = await res.json();
+      return result;
+    } catch (e) {
+      console.error("Delete network error:", e);
+      return { success: false, message: "Network error during deletion" };
+    }
   };
 
 
@@ -1634,22 +1694,19 @@ export default function SellerOnboarding() {
                           </div>
                         )}
                         {/* Optional: Add a button to delete the photo */}
+
                         <Button
                           variant="ghost"
                           size="icon"
                           className="absolute top-1 left-1 bg-red-500 bg-opacity-80 hover:bg-red-700 h-6 w-6"
-                          onClick={() => {
-                            setData(prev => ({
-                              ...prev,
-                              shopPhotos: prev.shopPhotos.filter((_, index) => index !== i)
-                            }));
-                            if (i === 0) {
-                              // If the first (reference) photo is deleted, reset the reference
-                              setFirstPhotoLocation(null);
-                            }
-                          }}
+                          onClick={() => handleDeletePhoto(photo, i)} // <-- NEW HANDLER
+                          disabled={loading} // Disable delete button during any server activity
                         >
-                          <Trash2 className="w-3 h-3 text-white" />
+                          {loading ? (
+                            <Loader2 className="w-3 h-3 text-white animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3 h-3 text-white" />
+                          )}
                         </Button>
                       </div>
                     ))}
