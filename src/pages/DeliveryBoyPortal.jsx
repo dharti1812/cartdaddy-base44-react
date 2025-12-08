@@ -29,6 +29,7 @@ import { AuthApi } from "@/components/utils/authApi";
 import SelectRetailers from "../components/delivery/SelectRetailers";
 import { API_BASE_URL } from "@/config";
 import DeliveryStatusModal from "@/components/DeliveryStatusModal";
+import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailableOrders";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -566,6 +567,11 @@ export default function DeliveryBoyPortal() {
                             </span>
                           </p>
 
+                           <div className="mt-3">
+                                <LiveTrackingMapAvailableOrders orderId={order.id} deliveryBoyId={partner.id} />
+                            </div>
+
+
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
                             {order.drop_address?.city}
@@ -624,6 +630,7 @@ export default function DeliveryBoyPortal() {
                             Customer: {order.customer_name}
                           </p>
 
+                         
                           <p className="text-sm text-gray-600 mb-4">
                             📍 {order.drop_address?.street},{" "}
                             {order.drop_address?.city}

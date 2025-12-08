@@ -4,8 +4,10 @@ import { API_BASE_URL } from "@/config";
 
 const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY;
 
-export default function LiveTrackingMap({ orderId }) {
-  
+export default function LiveTrackingMapAvailableOrders({
+  orderId,
+  deliveryBoyId,
+}) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null); // reference to HERE map object
   const [error, setError] = useState("");
@@ -43,7 +45,7 @@ export default function LiveTrackingMap({ orderId }) {
     const fetchAndUpdate = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`
+          `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
         );
 
         const data = res.data;
