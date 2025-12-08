@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import { Retailer, User } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Phone,
   Mail,
@@ -18,7 +14,13 @@ import {
   Plus,
   Trash2,
   FileText,
+  MapPin,
+  X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { createPageUrl } from "@/utils";
@@ -95,6 +97,50 @@ const verifyAlternateOTP = async (phone, otp) => {
   }
 };
 
+const getCurrentLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported by your browser"));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          timestamp: new Date().toISOString(),
+          accuracy: position.coords.accuracy,
+        });
+      },
+      (error) => {
+        reject(new Error(`Location error: ${error.message}`));
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  });
+};
+
+// Function to calculate distance between two coordinates (in meters) using Haversine formula
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in meters
+};
+
 export default function SellerOnboarding() {
   const [step, setStepState] = useState(() => {
     const savedStep = localStorage.getItem("retailerOnboardingStep");
@@ -166,10 +212,205 @@ export default function SellerOnboarding() {
   });
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [retailer, setRetailer] = useState(null);
+
+  // --- START: Photo Capture State and Handlers ---
+  const [firstPhotoLocation, setFirstPhotoLocation] = useState(null);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [captureMode, setCaptureMode] = useState(null); // 'outside' or 'inside'
+
+  const openCamera = async (type) => {
+    try {
+      setError("");
+      setCaptureMode(type);
+
+      // 1. Get current location first
+      const location = await getCurrentLocation();
+
+      // 2. Validate location with first photo if any photo has been captured
+      if (
+        data.shopPhotos.length > 0 &&
+        data.shopPhotos[0].location
+      ) {
+        const firstLocation = data.shopPhotos[0].location;
+        const distance = calculateDistance(
+          firstLocation.lat,
+          firstLocation.lng,
+          location.lat,
+          location.lng
+        );
+
+        const MAX_DISTANCE = 50; // Max 50 meters difference
+        if (distance > MAX_DISTANCE) {
+          setError(
+            `Photos must be taken from the same location. Distance: ${Math.round(
+              distance
+            )}m. Please move within ${MAX_DISTANCE}m of the first photo location.`
+          );
+          return;
+        }
+      }
+
+      // 3. Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment", // Use back camera on mobile
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+
+      setCameraStream(stream);
+
+      // 4. Store location for the *first* photo captured ever
+      if (data.shopPhotos.length === 0) {
+        // Use the location fetched *now* as the reference point
+        setFirstPhotoLocation(location);
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      setError(
+        err.message ||
+        "Unable to access camera. Please allow camera permissions."
+      );
+    }
+  };
+
+  // Capture photo from video stream
+  const capturePhoto = async () => {
+    if (!cameraStream) {
+      setError("Camera stream not available");
+      return;
+    }
+
+    try {
+      setIsCapturing(true); // Set capturing state for loading spinner
+      setError("");
+      setSuccess("");
+
+      const video = document.getElementById("camera-preview");
+
+      if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        throw new Error("Video not ready. Please wait a moment and try again.");
+      }
+
+      if (!video.videoWidth || !video.videoHeight) {
+        throw new Error(
+          "Invalid video dimensions. Please close and reopen camera."
+        );
+      }
+
+      // 1. Create Canvas and Draw Image
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // 2. Convert to blob
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to create image blob"));
+          },
+          "image/jpeg",
+          0.9
+        );
+      });
+
+      // 3. Convert to base64
+      const base64File = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            resolve(reader.result.split(",")[1]); // Get the base64 part
+          } else {
+            reject(new Error("Failed to read image"));
+          }
+        };
+        reader.onerror = () => reject(new Error("FileReader error"));
+        reader.readAsDataURL(blob);
+      });
+
+
+
+
+
+      // 4. Get current location (Use the stored location if available, otherwise fetch)
+      let location;
+      if (data.shopPhotos.length === 0 && firstPhotoLocation) {
+        // Use the validated location from openCamera for the very first photo
+        location = firstPhotoLocation;
+      } else {
+        // Fetch location again for subsequent photos
+        location = await getCurrentLocation();
+      }
+
+
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("Not logged in");
+
+      // 5. Prepare Payload
+      const formData = {
+        image: base64File,
+        filename: `shop_${captureMode}_${Date.now()}.jpg`,
+        type: captureMode,
+        latitude: location.lat,
+        longitude: location.lng,
+        timestamp: location.timestamp,
+      };
+
+      // 6. Upload to Server (API call)
+      const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await res.json();
+
+      if (result.result) {
+        setData((prev) => ({
+          ...prev,
+          shopPhotos: [
+            ...prev.shopPhotos,
+            {
+              url: result.path,
+              type: captureMode,
+              location: location,
+              manually_verified: false,
+            },
+          ],
+        }));
+
+        setSuccess(`✅ ${captureMode} photo captured successfully!`);
+        closeCamera();
+      } else {
+        setError(result.message || "Failed to upload photo");
+      }
+    } catch (err) {
+      console.error("Capture error:", err);
+      setError(err.message || "Error capturing photo");
+    } finally {
+      setIsCapturing(false);
+    }
+  };
+
+  // Close camera
+  const closeCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setCaptureMode(null);
+  };
 
   useEffect(() => {
     checkUser();
@@ -682,92 +923,52 @@ export default function SellerOnboarding() {
     setLoading(false);
   };
 
-  const handlePhotoUpload = async (e, type) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const renderCaptureTile = (type, label) => {
+    const isRequired = type === 'outside' || type === 'inside';
+    const photosOfType = data.shopPhotos.filter(p => p.type === type).length;
+    const isMinMet = isRequired ? photosOfType > 0 : true;
+    const isReady = !isCapturing;
 
-    setUploading(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      const token = localStorage.getItem("access_token");
-      if (!token) throw new Error("Not logged in");
-
-      const toBase64 = (file) =>
-        new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => resolve(reader.result.split(",")[1]);
-          reader.onerror = (error) => reject(error);
-        });
-
-      const base64File = await toBase64(file);
-
-      const formData = {
-        image: base64File,
-        filename: file.name,
-        type,
-        latitude: location?.lat || null,
-        longitude: location?.lng || null,
-        timestamp: location?.timestamp || null,
-      };
-
-      const res = await fetch(`${API_BASE_URL}/api/image-upload`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const result = await res.json();
-
-      if (result.result) {
-        const location = await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) =>
-              resolve({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                timestamp: new Date().toISOString(),
-              }),
-            () => resolve(null)
-          );
-        });
-
-        setData((prev) => ({
-          ...prev,
-          shopPhotos: [
-            ...prev.shopPhotos,
-            {
-              url: result.path,
-              type: type,
-              location: location,
-              manually_verified: false,
-            },
-          ],
-        }));
-
-        setSuccess("✅ Photo uploaded successfully!");
-      } else {
-        setError(result.message || "Failed to upload photo");
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Error uploading photo");
-    }
-
-    setUploading(false);
+    return (
+      <button
+        onClick={() => openCamera(type)}
+        disabled={!isReady}
+        className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all text-center h-full min-h-[120px] ${!isReady
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-dashed border-blue-300 shadow-sm hover:shadow-md'
+          }`}
+      >
+        <Camera className="w-8 h-8 mb-1" />
+        <span className="font-semibold text-sm">{label}</span>
+        <div className="text-xs mt-2">
+          {photosOfType > 0 && (
+            <Badge className="bg-green-600 text-white">✓ Taken: {photosOfType}</Badge>
+          )}
+          {isRequired && photosOfType === 0 && (
+            <Badge variant="destructive" className="bg-red-500 text-white">
+              Required
+            </Badge>
+          )}
+          {!isRequired && photosOfType === 0 && (
+            <Badge variant="outline" className="text-gray-500">Optional</Badge>
+          )}
+        </div>
+      </button>
+    );
   };
 
   const submitPhotos = async () => {
-    if (data.shopPhotos.length < 2) {
+    const hasOutside = data.shopPhotos.some(p => p.type === 'outside');
+    const hasInside = data.shopPhotos.some(p => p.type === 'inside');
+
+    if (!hasOutside || !hasInside) {
       return setError(
-        "Please upload at least 2 shop photos (outside + inside)"
+        "Please upload at least one 'Outside Shop Front' and one 'Inside Shop View' photo."
       );
     }
+    // Omitted the rest of the submitPhotos function for brevity
+    // ... [Original submitPhotos logic remains here] ...
+
     const access_token = localStorage.getItem("access_token");
     setLoading(true);
     try {
@@ -798,6 +999,8 @@ export default function SellerOnboarding() {
 
     setLoading(false);
   };
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
@@ -1188,6 +1391,9 @@ export default function SellerOnboarding() {
                 <h3 className="text-2xl font-bold">
                   Shop Photos & Mobile Numbers
                 </h3>
+                <p className="text-sm text-gray-500 mt-2">
+                  📍 Photos must be taken from the same location, this location will be used for all pickups
+                </p>
               </div>
 
               {/* Additional Mobile Numbers */}
@@ -1347,32 +1553,68 @@ export default function SellerOnboarding() {
                 )}
               </div>
 
-              {/* Shop Photos */}
+              {/* Shop Photos (Updated to use integrated logic) */}
               <div className="space-y-3">
-                <Label>Shop Photos * (Minimum 2: Outside + Inside)</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Outside View</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePhotoUpload(e, "outside")}
-                      disabled={uploading}
-                    />
+                <Label>Shop Photos *</Label>
+                <p className="text-xs text-red-600 font-semibold">
+                  ⚠️ You must capture live photos using your camera. File uploads are not allowed.
+                </p>
+
+                {!cameraStream ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {renderCaptureTile('outside', 'Outside Shop Front')}
+                    {renderCaptureTile('inside', 'Inside Shop View')}
+                    {renderCaptureTile('additional', 'Additional Proof')}
                   </div>
-                  <div>
-                    <Label className="text-xs">Inside View</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePhotoUpload(e, "inside")}
-                      disabled={uploading}
-                    />
+                ) : (
+                  <div className="space-y-3">
+                    <div className="relative bg-black rounded-lg overflow-hidden">
+                      <video
+                        id="camera-preview"
+                        autoPlay
+                        playsInline
+                        muted
+                        ref={(video) => {
+                          if (video && cameraStream) {
+                            video.srcObject = cameraStream;
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-3 py-1 rounded capitalize">
+                        Capturing: {captureMode}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={capturePhoto}
+                        disabled={isCapturing}
+                        className="flex-1 bg-green-600 text-white py-6"
+                      >
+                        {isCapturing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5 mr-2" />
+                            Capture Photo
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        onClick={closeCamera}
+                        variant="outline"
+                        disabled={isCapturing}
+                        className="px-6"
+                      >
+                        <X className="w-5 h-5" /> Cancel
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                {uploading && (
-                  <p className="text-sm text-blue-600">Uploading...</p>
                 )}
+
                 {data.shopPhotos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-3">
                     {data.shopPhotos.map((photo, i) => (
@@ -1380,27 +1622,53 @@ export default function SellerOnboarding() {
                         <img
                           src={photo.url}
                           alt={photo.type}
-                          className="w-full h-24 object-cover rounded border-2 border-green-500"
+                          className="w-full h-32 object-cover rounded border-2 border-green-500"
                         />
-                        <Badge className="absolute top-1 right-1 bg-green-600 text-white text-xs">
-                          {photo.type}
+                        <Badge className="absolute top-1 right-1 bg-green-600 text-white text-xs capitalize">
+                          ✓ {photo.type}
                         </Badge>
+                        {photo.location && (
+                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {photo.location.lat.toFixed(4)}, {photo.location.lng.toFixed(4)}
+                          </div>
+                        )}
+                        {/* Optional: Add a button to delete the photo */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-1 left-1 bg-red-500 bg-opacity-80 hover:bg-red-700 h-6 w-6"
+                          onClick={() => {
+                            setData(prev => ({
+                              ...prev,
+                              shopPhotos: prev.shopPhotos.filter((_, index) => index !== i)
+                            }));
+                            if (i === 0) {
+                              // If the first (reference) photo is deleted, reset the reference
+                              setFirstPhotoLocation(null);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 text-white" />
+                        </Button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
+
               <Button
                 onClick={submitPhotos}
                 disabled={
                   loading ||
-                  data.shopPhotos.length < 2 ||
+                  !data.shopPhotos.some(p => p.type === 'outside') || // Check minimum outside
+                  !data.shopPhotos.some(p => p.type === 'inside') ||   // Check minimum inside
                   data.alternatePhones.some((p) => p.number && !p.verified)
                 }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
-                {loading ? "Submitting..." : "Submit for Approval"}
+                {loading ? "Submitting..." : `Submit ${data.shopPhotos.length} Photos for Approval`}
               </Button>
               <BackButton />
             </div>
