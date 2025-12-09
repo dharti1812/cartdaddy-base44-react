@@ -619,7 +619,7 @@ export default function ActiveDeliveries({
                             </span>
                           )}
 
-                          {order.delivery_status === "accepted_db" && (
+                          {(order.delivery_status === "reached_to_seller" || order.delivery_status === "accepted_db") && (
                             <>
                               <Button
                                 onClick={() => {
