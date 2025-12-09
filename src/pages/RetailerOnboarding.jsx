@@ -217,7 +217,7 @@ export default function SellerOnboarding() {
         shopPhotos: prev.shopPhotos.filter((_, i) => i !== index)
       }));
       if (index === 0) setFirstPhotoLocation(null);
-      setSuccess("Photo deleted successfully from server and device.");
+      setSuccess("Photo deleted successfully");
     } else {
       setError(deleteResult.message || "Failed to delete photo from server.");
     }
@@ -1042,7 +1042,7 @@ export default function SellerOnboarding() {
     if (!token) return { success: false, message: "Not authenticated" };
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/image-delete`, {
+      const res = await fetch(`${API_BASE_URL}/api/file/delete`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
