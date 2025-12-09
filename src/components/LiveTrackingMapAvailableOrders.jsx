@@ -7,134 +7,139 @@ const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY;
 export default function LiveTrackingMapAvailableOrders({
   orderId,
   deliveryBoyId,
+  pickupLat,
+  pickupLng,
+  dropLat,
+  dropLng,
 }) {
   const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null); // reference to HERE map object
-  const [error, setError] = useState("");
-  const [eta, setEta] = useState(null); // in minutes
+  const mapInstanceRef = useRef(null);
 
+  const pickupMarkerRef = useRef(null);
   const deliveryMarkerRef = useRef(null);
-  const customerMarkerRef = useRef(null);
-  const routeLineRef = useRef(null);
+  const dropMarkerRef = useRef(null);
+  const staticRouteRef = useRef(null);
+  const liveRouteRef = useRef(null);
 
-  // Initialize map once
+  const [eta, setEta] = useState(null);
+  const [reachedShop, setReachedShop] = useState(false);
+
+  const getDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371e3;
+    const toRad = deg => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Setup map
   useEffect(() => {
     if (!mapRef.current) return;
-
-    const H = window.H; // HERE SDK loaded via script
+    const H = window.H;
     const platform = new H.service.Platform({ apikey: HERE_API_KEY });
     const defaultLayers = platform.createDefaultLayers();
 
     const map = new H.Map(mapRef.current, defaultLayers.vector.normal.map, {
-      center: { lat: 19.076, lng: 72.8777 }, // default center
-      zoom: 12,
-      pixelRatio: window.devicePixelRatio || 1,
+      center: { lat: pickupLat, lng: pickupLng },
+      zoom: 13,
     });
 
-    // Enable interactions
-    const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+    new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
     const ui = H.ui.UI.createDefault(map, defaultLayers);
-
-    mapInstanceRef.current = { map, H, platform, behavior, ui };
+    mapInstanceRef.current = { H, map, platform, ui };
+    return () => map.dispose();
   }, []);
 
-  // Fetch tracking and update map every 10 seconds
+  // Static route + markers (Pickup + Drop)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const { H, map } = mapInstanceRef.current;
+
+    axios
+      .get(
+        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
+      )
+      .then(res => {
+        const poly = res.data.routes[0].sections[0].polyline;
+        const line = H.geo.LineString.fromFlexiblePolyline(poly);
+        staticRouteRef.current = new H.map.Polyline(line, {
+          style: { strokeColor: "#7E7E7E", lineWidth: 4 },
+        });
+        map.addObject(staticRouteRef.current);
+
+        pickupMarkerRef.current = new H.map.Marker({ lat: pickupLat, lng: pickupLng });
+        dropMarkerRef.current = new H.map.Marker({ lat: dropLat, lng: dropLng });
+
+        map.addObjects([pickupMarkerRef.current, dropMarkerRef.current]);
+      });
+  }, [pickupLat, pickupLng, dropLat, dropLng]);
+
+  // Live Tracking Flow
   useEffect(() => {
     if (!orderId || !mapInstanceRef.current) return;
 
-    const fetchAndUpdate = async () => {
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
-        );
+    const fetchTracking = async () => {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
+      );
+      const d = res.data.delivery_boy;
+      if (!d) return;
 
-        const data = res.data;
-        const { delivery_boy, destination } = data;
-        const customer = destination?.customer;
+      const { H, map } = mapInstanceRef.current;
 
-        if (!delivery_boy || !customer) {
-          setError("Delivery boy or customer location not available");
-          return;
-        }
-        setError("");
+      if (deliveryMarkerRef.current) map.removeObject(deliveryMarkerRef.current);
+      if (liveRouteRef.current) map.removeObject(liveRouteRef.current);
 
-        const { H, map } = mapInstanceRef.current;
+      deliveryMarkerRef.current = new H.map.Marker({ lat: d.latitude, lng: d.longitude });
+      map.addObject(deliveryMarkerRef.current);
 
-        // Remove old markers/route
-        if (deliveryMarkerRef.current)
-          map.removeObject(deliveryMarkerRef.current);
-        if (customerMarkerRef.current)
-          map.removeObject(customerMarkerRef.current);
-        if (routeLineRef.current) map.removeObject(routeLineRef.current);
+      const distance = getDistance(d.latitude, d.longitude, pickupLat, pickupLng);
 
-        // Add markers
-        deliveryMarkerRef.current = new H.map.Marker({
-          lat: delivery_boy.latitude,
-          lng: delivery_boy.longitude,
-        });
-        map.addObject(deliveryMarkerRef.current);
+      // If delivery boy reached shop (< 60 meters) set state
+      if (distance < 60 && !reachedShop) setReachedShop(true);
 
-        customerMarkerRef.current = new H.map.Marker({
-          lat: customer.latitude,
-          lng: customer.longitude,
-        });
-        map.addObject(customerMarkerRef.current);
+      const destLat = reachedShop ? dropLat : pickupLat;
+      const destLng = reachedShop ? dropLng : pickupLng;
 
-        // Fetch route from HERE Routing API
-        const routeRes = await axios.get(
-          `https://router.hereapi.com/v8/routes?transportMode=car&origin=${delivery_boy.latitude},${delivery_boy.longitude}&destination=${customer.latitude},${customer.longitude}&return=polyline,summary&apikey=${HERE_API_KEY}`
-        );
+      const routeRes = await axios.get(
+        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${d.latitude},${d.longitude}&destination=${destLat},${destLng}&return=polyline,summary&apikey=${HERE_API_KEY}`
+      );
 
-        const section = routeRes.data.routes[0].sections[0];
+      const poly = routeRes.data.routes[0].sections[0].polyline;
+      const line = H.geo.LineString.fromFlexiblePolyline(poly);
 
-        // Draw route line
-        const lineString = H.geo.LineString.fromFlexiblePolyline(
-          section.polyline
-        );
-        routeLineRef.current = new H.map.Polyline(lineString, {
-          style: { strokeColor: "blue", lineWidth: 5 },
-        });
-        map.addObject(routeLineRef.current);
+      liveRouteRef.current = new H.map.Polyline(line, {
+        style: { strokeColor: "#0066FF", lineWidth: 5 },
+      });
+      map.addObject(liveRouteRef.current);
 
-        // Zoom map to fit route
-        map.getViewModel().setLookAtData({
-          bounds: routeLineRef.current.getBoundingBox(),
-        });
+      map.getViewModel().setLookAtData({ bounds: liveRouteRef.current.getBoundingBox() });
 
-        // Set ETA in minutes
-        const travelTimeInSeconds = section.summary?.duration;
-        if (travelTimeInSeconds) {
-          setEta(Math.ceil(travelTimeInSeconds / 60));
-        } else {
-          setEta(null);
-        }
-      } catch (err) {
-        console.error(err);
-        setError("Unable to fetch tracking data");
-      }
+      const sec = routeRes.data.routes[0].sections[0].summary.duration;
+      setEta(Math.ceil(sec / 60));
     };
 
-    // Fetch immediately
-    fetchAndUpdate();
-
-    // Refresh every 10 seconds
-    const interval = setInterval(fetchAndUpdate, 10000);
+    fetchTracking();
+    const interval = setInterval(fetchTracking, 8000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, reachedShop]);
 
   return (
     <div className="mt-3">
-      {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+      
       {eta && (
-        <div className="text-sm text-gray-700 mb-2">
-          ⏱ Estimated Time to Customer: <strong>{eta} min</strong>
+        <div className="text-sm mb-2 text-gray-700">
+          ⏱ ETA: <b>{eta} min</b>
         </div>
       )}
-      <div
-        ref={mapRef}
-        style={{ width: "100%", height: "400px" }}
-        className="rounded-lg border border-gray-300"
-      ></div>
+      <div ref={mapRef} style={{ width: "100%", height: "380px" }} className="rounded-xl border" />
     </div>
   );
 }

@@ -42,6 +42,7 @@ export default function DeliveryBoyPortal() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [directions, setDirections] = useState([]);
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
@@ -549,58 +550,132 @@ export default function DeliveryBoyPortal() {
                     {availableOrders.map((order) => (
                       <Card
                         key={order.id}
-                        className="border-2 border-green-500"
+                        className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
                       >
-                        <CardContent className="p-4">
-                          <h3 className="font-bold text-lg mb-2">
-                            {order.website_ref || `#${String(order.id)}`}
-                          </h3>
-                          <p className="text-sm text-gray-600 mb-2">
-                            Customer: {order.customer_name}
-                          </p>
-
-                          <p className="text-sm text-gray-600 mb-2">
-                            {" "}
-                            Distance:{" "}
-                            <span className="text-sm font-bold">
-                              {order.distance_km} km away
+                        <CardContent className="p-4 space-y-4">
+                          {/* Header */}
+                          <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-gray-900">
+                              {order.website_ref ||
+                                `Order #${String(order.id)}`}
+                            </h3>
+                            <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full capitalize">
+                              {order.payment_status}
                             </span>
-                          </p>
+                          </div>
 
-                          <div className="mt-3">
+                          {/* Product Section */}
+                          <div className="border rounded-lg p-3 bg-white shadow-sm">
+                            <p className="font-semibold text-gray-800 mb-1">
+                              📦 Product Details
+                            </p>
+                            {order.items?.map((item, index) => (
+                              <div
+                                key={index}
+                                className="text-sm text-gray-700 leading-5"
+                              >
+                                <p className="font-semibold">{item.name}</p>
+                                <p>
+                                  Qty: {item.quantity} | Price: ₹{item.price}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Pickup → Delivery UI block */}
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            {/* PICKUP */}
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-blue-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                P
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">
+                                  Pickup Location
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  <span className="font-semibold">
+                                    Retailer:
+                                  </span>{" "}
+                                  {order.retailer?.retailer_name} 
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  {order.pickup_address?.street},{" "}
+                                  {order.pickup_address?.city}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Route line */}
+                            <div className="h-7 border-l-2 border-dashed border-gray-400 ml-[13px] my-1"></div>
+
+                            {/* DELIVERY */}
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                D
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">
+                                  Delivery Location
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  {order.drop_address?.street},{" "}
+                                  {order.drop_address?.city} —{" "}
+                                  {order.drop_address?.pincode}
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  <span className="font-semibold">
+                                    Customer:
+                                  </span>{" "}
+                                  {order.customer_name} ({order.customer_phone})
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Map */}
+                          <div className="rounded-lg overflow-hidden border shadow-sm">
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
+                               pickupLat={order.pickup_address.latitude}
+                              pickupLng={order.pickup_address.longitude}
+                              dropLat={order.drop_address.latitude}
+                              dropLng={order.drop_address.longitude}
                             />
                           </div>
 
-                          <p className="text-sm text-gray-600 mb-4">
-                            📍 {order.drop_address?.street},{" "}
-                            {order.drop_address?.city}
-                          </p>
+                          {/* Distance + Amount */}
                           <div className="flex justify-between items-center">
-                            <span className="text-lg font-bold">
+                            <span className="text-sm text-gray-700">
+                              Distance:{" "}
+                              <span className="font-bold">
+                                {order.distance_km} km away
+                              </span>
+                            </span>
+                            <span className="text-2xl font-bold text-gray-900">
                               ₹{order.amount}
                             </span>
-                            <Button
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              onClick={async () => {
-                                try {
-                                  const response =
-                                    await deliveryPartnerApi.acceptOrder(
-                                      order.id,
-                                      partner.id
-                                    );
-                                  console.log(response.message);
-                                  loadData();
-                                } catch (error) {
-                                  console.log(error.message);
-                                }
-                              }}
-                            >
-                              Accept Order
-                            </Button>
                           </div>
+
+                          {/* Accept */}
+                          <Button
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg"
+                            onClick={async () => {
+                              try {
+                                const response =
+                                  await deliveryPartnerApi.acceptOrder(
+                                    order.id,
+                                    partner.id
+                                  );
+                                loadData();
+                              } catch (error) {
+                                console.log(error.message);
+                              }
+                            }}
+                          >
+                            Accept Delivery
+                          </Button>
                         </CardContent>
                       </Card>
                     ))}
@@ -620,22 +695,67 @@ export default function DeliveryBoyPortal() {
                     {myActiveDeliveries.map((order) => (
                       <Card
                         key={order.id}
-                        className="border-2 border-blue-500 cursor-pointer"
-                        onClick={() => setSelectedOrder(order)} // OPEN MODAL
+                        className="border-2 border-blue-500"
+                       
                       >
                         <CardContent className="p-4">
                           <h3 className="font-bold text-lg mb-2">
                             {order.website_ref || `Order #${order.id}`}
                           </h3>
 
-                          <p className="text-sm text-gray-600 mb-2">
-                            Customer: {order.customer_name}
-                          </p>
+                          <div className="border rounded-lg p-3 bg-white shadow-sm">
+                            <p className="font-semibold text-gray-800 mb-1">
+                              📦 Product Details
+                            </p>
+                            {order.items?.map((item, index) => (
+                              <div
+                                key={index}
+                                className="text-sm text-gray-700 leading-5"
+                              >
+                                <p className="font-semibold">{item.name}</p>
+                                <p>
+                                  Qty: {item.quantity} | Price: ₹{item.price}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                           <div className="bg-gray-50 rounded-xl p-4">
+                           
+
+                            {/* DELIVERY */}
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                D
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">
+                                  Delivery Location
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  {order.drop_address?.street},{" "}
+                                  {order.drop_address?.city} —{" "}
+                                  {order.drop_address?.pincode}
+                                </p>
+                                <p className="text-gray-700 text-sm">
+                                  <span className="font-semibold">
+                                    Customer:
+                                  </span>{" "}
+                                  {order.customer_name} ({order.customer_phone})
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
 
                           <div className="mt-3">
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
+                               pickupLat={order.pickup_address.latitude}
+                              pickupLng={order.pickup_address.longitude}
+                              dropLat={order.drop_address.latitude}
+                              dropLng={order.drop_address.longitude}
                             />
                           </div>
 
@@ -650,8 +770,8 @@ export default function DeliveryBoyPortal() {
                             </span>
                           </p>
 
-                          <Badge className="bg-blue-500 text-white">
-                            Status: {order.delivery_status}
+                          <Badge className="bg-blue-500 text-white cursor-pointer"  onClick={() => setSelectedOrder(order)} >
+                            Status: {order.delivery_status === "accepted_db" ? 'Accepted' : order.delivery_status}
                           </Badge>
                         </CardContent>
                       </Card>

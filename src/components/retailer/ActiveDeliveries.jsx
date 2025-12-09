@@ -1,3 +1,4 @@
+// (same imports as your file)
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,8 @@ export default function ActiveDeliveries({
   const [otpSending, setOtpSending] = useState(false);
   const toNumber = (v) => Number((v || "0").toString().replace(/,/g, ""));
   const [otpInput, setOtpInput] = useState("");
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resending, setResending] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
@@ -63,6 +66,9 @@ export default function ActiveDeliveries({
     (db) => db.device_id === currentDeviceId && db.is_active
   );
 
+  /* -------------------------
+     Paylink timer logic (unchanged)
+     ------------------------- */
   useEffect(() => {
     orders.forEach((order) => {
       if (
@@ -87,6 +93,21 @@ export default function ActiveDeliveries({
       }
     });
   }, [orders, retailerId, config]);
+
+  // Resend OTP countdown effect — MUST be at component level
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const timer = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendTimer]);
 
   const handleGeneratePaylink = (order) => {
     setSelectedOrder(order);
@@ -143,12 +164,54 @@ export default function ActiveDeliveries({
     onUpdate();
   };
 
+  // ===== RESEND OTP (fixed)
+  // Always uses currently selectedOrder (set when opening verify dialog)
+  const handleResendOtp = async () => {
+    if (!selectedOrder) {
+      alert("No order selected to resend OTP");
+      return;
+    }
+
+    setResending(true);
+    try {
+      const token = sessionStorage.getItem("token");
+      const orderId = selectedOrder.id;
+      const response = await fetch(
+        `${API_BASE_URL}/api/retailer/orders/${orderId}/generate-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok) {
+        // backend may return the otp for debug/retailer display; update local state
+        if (data.otp) {
+          setOtp(data.otp);
+        }
+        // mark status pending
+        setOtpStatus((prev) => ({ ...prev, [orderId]: "pending" }));
+        // start countdown
+        setResendTimer(30);
+      } else {
+        alert(data.message || "Failed to resend OTP");
+      }
+    } catch (err) {
+      console.error("Resend OTP Error:", err);
+      alert("Failed to resend OTP. Check console.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleCancelOrder = async (order) => {
     if (
       !window.confirm(
-        `Are you sure? You'll be charged ${
-          config?.cancellation_penalty_percentage || 2
-        }% (₹${(
+        `Are you sure? You'll be charged $${config?.cancellation_penalty_percentage || 2}% (₹${(
           (order.total_amount *
             (config?.cancellation_penalty_percentage || 2)) /
           100
@@ -219,10 +282,10 @@ export default function ActiveDeliveries({
     }
   };
 
+  // ===== Generate OTP (retailer trigger) - unchanged
   const handleGenerateOtp = async (order) => {
     const token = sessionStorage.getItem("token");
     const orderId = order.id;
-    console.log("Generating OTP for order:", orderId);
     setSelectedOrder(order);
     setShowOtpDialog(true);
     setOtp(null);
@@ -245,6 +308,8 @@ export default function ActiveDeliveries({
       if (response.ok) {
         setOtp(data.otp);
         setOtpStatus((prev) => ({ ...prev, [order.id]: "pending" }));
+        // start resend timer so retailer cannot spam immediately
+        setResendTimer(30);
       } else {
         alert(data.message || "Failed to generate OTP");
         setShowOtpDialog(false);
@@ -258,6 +323,7 @@ export default function ActiveDeliveries({
     }
   };
 
+  // ===== Verify OTP (fixed: removed stray useEffect)
   const handleVerifyOtp = async (orderId, enteredOtp) => {
     const token = sessionStorage.getItem("token");
     if (!orderId || !enteredOtp) return;
@@ -285,7 +351,8 @@ export default function ActiveDeliveries({
       } else {
         alert(data.message || "❌ Invalid OTP");
         setOtpStatus((prev) => ({ ...prev, [orderId]: "pending" }));
-        setShowVerifyOtpDialog(false);
+        // keep dialog open so user can retry if you prefer:
+        // setShowVerifyOtpDialog(false);
       }
     } catch (err) {
       console.error(err);
@@ -340,6 +407,7 @@ export default function ActiveDeliveries({
                 }`}
               >
                 <CardContent className="p-4">
+                  {/* ---------- header & badges ---------- */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -366,6 +434,31 @@ export default function ActiveDeliveries({
                         )}
                       </div>
 
+                      {/* product details */}
+                      {order.items && order.items.length > 0 && (
+                        <div className="pt-3 border-t mt-3 mb-3">
+                          <p className="text-xs font-medium text-gray-500 mb-2">
+                            PRODUCT DETAILS
+                          </p>
+                          <div className="space-y-1">
+                            {order.items.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex justify-between text-sm bg-gray-50 p-2 rounded"
+                              >
+                                <span className="text-gray-700 font-medium">
+                                  {item.name}
+                                </span>
+                                <span className="font-bold text-gray-900">
+                                  ₹{item.price}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* customer + address + distance */}
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2 text-gray-700">
                           <UserIcon className="w-4 h-4" />
@@ -390,7 +483,7 @@ export default function ActiveDeliveries({
                           </div>
                         )}
 
-                        {/* NEW: Settlement Information */}
+                        {/* Settlement info */}
                         <div className="mt-3 p-3 bg-white border-2 border-amber-300 rounded-lg">
                           <p className="text-xs font-bold text-amber-900 mb-2">
                             💰 Settlement Information
@@ -419,8 +512,7 @@ export default function ActiveDeliveries({
                               <span className="font-bold text-green-700">
                                 ₹
                                 {order.seller_net_payable ??
-                                  toNumber(order.amount) -
-                                    toNumber(order.delivery_charge)}
+                                  toNumber(order.amount) - toNumber(order.delivery_charge)}
                               </span>
                             </div>
                             <p className="text-[10px] text-gray-600 mt-2 italic">
@@ -433,6 +525,7 @@ export default function ActiveDeliveries({
                     </div>
                   </div>
 
+                  {/* location tracker banner */}
                   {isMyDelivery && (
                     <div className="mt-3">
                       <Alert className="bg-blue-50 border-blue-500">
@@ -505,8 +598,9 @@ export default function ActiveDeliveries({
                       )}
                     </div>
                   </div>
+
                   {/* DELIVERY BOY WHO ACCEPTED ORDER */}
-                  {order.assign_delivery_boy_id && (
+                  {order.assign_delivery_boy_id && order.delivery_status !== "pendig" && order.delivery_status !== "accepted" && (
                     <div className="mt-4 bg-green-50 border-2 border-green-400 rounded-xl p-4 w-full shadow-sm">
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-green-200 pb-2 mb-3">
@@ -525,29 +619,18 @@ export default function ActiveDeliveries({
                             </span>
                           )}
 
-                          {order.delivery_status === "accepted" && (
+                          {order.delivery_status === "reached_to_seller" && (
                             <>
-                              {otpStatus[order.id] !== "verified" && (
-                                <Button
-                                  onClick={() => handleGenerateOtp(order)}
-                                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-3 mt-3 text-right text-xs"
-                                >
-                                  Generate Pickup OTP
-                                </Button>
-                              )}
-
-                              {otpStatus[order.id] === "pending" && (
-                                <Button
-                                  onClick={() => {
-                                    setSelectedOrder(order);
-                                    setOtpInput("");
-                                    setShowVerifyOtpDialog(true);
-                                  }}
-                                  className="bg-green-500 hover:bg-green-600 text-white py-3 mt-2 text-xs"
-                                >
-                                  Verify OTP
-                                </Button>
-                              )}
+                              <Button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setOtpInput("");
+                                  setShowVerifyOtpDialog(true);
+                                }}
+                                className="bg-green-500 hover:bg-green-600 text-white py-3 mt-2 text-xs"
+                              >
+                                Verify OTP
+                              </Button>
                             </>
                           )}
 
@@ -595,7 +678,7 @@ export default function ActiveDeliveries({
                         onClick={() => handleGeneratePaylink(order)}
                         className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white py-6 mt-3"
                       >
-                        <LinkIcon className="w-5 h-5 mr-2" />
+                        <LinkIcon className="w-4 h-4 mr-2" />
                         Generate Payment Link ({paylinkTimer}s remaining)
                       </Button>
                     )}
@@ -620,29 +703,6 @@ export default function ActiveDeliveries({
                         </Button>
                       </div>
                     )}
-
-                  {order.items && order.items.length > 0 && (
-                    <div className="pt-3 border-t mt-3">
-                      <p className="text-xs font-medium text-gray-500 mb-2">
-                        PRODUCT DETAILS
-                      </p>
-                      <div className="space-y-1">
-                        {order.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between text-sm bg-gray-50 p-2 rounded"
-                          >
-                            <span className="text-gray-700 font-medium">
-                              {item.name}
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              ₹{item.price}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {myAcceptance?.status === "active" && (
                     <Button
@@ -707,6 +767,7 @@ export default function ActiveDeliveries({
         )}
       </div>
 
+      {/* VERIFY OTP DIALOG */}
       <Dialog open={showVerifyOtpDialog} onOpenChange={setShowVerifyOtpDialog}>
         <DialogContent>
           <DialogHeader>
@@ -717,6 +778,7 @@ export default function ActiveDeliveries({
             <p className="text-sm text-gray-700 mb-3">
               Enter the OTP provided by the delivery boy:
             </p>
+
             <Input
               type="text"
               maxLength={4}
@@ -724,6 +786,21 @@ export default function ActiveDeliveries({
               onChange={(e) => setOtpInput(e.target.value)}
               placeholder="Enter 4-digit OTP"
             />
+
+            {/* 🔥 Resend OTP UI */}
+            <div className="flex justify-end mt-2">
+              {resendTimer > 0 ? (
+                <p className="text-xs text-gray-500">Resend OTP in {resendTimer}s</p>
+              ) : (
+                <button
+                  onClick={handleResendOtp}
+                  disabled={resending}
+                  className="text-blue-600 text-sm underline disabled:text-gray-400"
+                >
+                  {resending ? "Resending..." : "Resend OTP"}
+                </button>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="flex gap-2">
@@ -734,8 +811,9 @@ export default function ActiveDeliveries({
             >
               Cancel
             </Button>
+
             <Button
-              onClick={() => handleVerifyOtp(selectedOrder.id, otpInput)}
+              onClick={() => handleVerifyOtp(selectedOrder?.id, otpInput)}
               disabled={otpInput.length !== 4 || verifyingOtp}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
@@ -745,6 +823,7 @@ export default function ActiveDeliveries({
         </DialogContent>
       </Dialog>
 
+      {/* OTP DISPLAY DIALOG */}
       <Dialog open={showOtpDialog} onOpenChange={setShowOtpDialog}>
         <DialogContent>
           <DialogHeader>
@@ -773,6 +852,7 @@ export default function ActiveDeliveries({
         </DialogContent>
       </Dialog>
 
+      {/* PAYLINK DIALOG (unchanged) */}
       <Dialog open={showPaylinkDialog} onOpenChange={setShowPaylinkDialog}>
         <DialogContent>
           <DialogHeader>

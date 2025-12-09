@@ -1,75 +1,148 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { API_BASE_URL } from "@/config";
+import { set } from "date-fns";
 
-export default function DeliveryStatusModal({
-  order,
-  onClose,
-  onUpdate,
-  onRemove,
-}) {
+export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
   const [status, setStatus] = useState(order.delivery_status);
   const [otp, setOtp] = useState("");
-  const [sellerOtp, setSellerOtp] = useState(false);
   const [customerOtp, setCustomerOtp] = useState(false);
-  const [loading, setLoading] = useState(false);
-
   const [showCustomerInfo, setShowCustomerInfo] = useState(false);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhoto, setCustomerPhoto] = useState(null);
   const [deliveryPhoto, setDeliveryPhoto] = useState(null);
+  const [canResend, setCanResend] = useState(true);
+  const [otpTimer, setOtpTimer] = useState(30);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+  const showOtpInput = status === "reached_to_customer" && !showCustomerInfo;
+  const showCustomerForm = status === "otp_verified" || showCustomerInfo;
+
   useEffect(() => {
-    if (status === "reached_to_seller") setSellerOtp(true);
-    if (status === "out_for_delivery") setCustomerOtp(true);
-  }, [status]);
+    setStatus(order.delivery_status);
+  }, [order]);
+
+  const startOtpTimer = () => {
+    setOtpTimer(30);
+    setCanResend(false);
+
+    const interval = setInterval(() => {
+      setOtpTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setCanResend(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   const updateStatus = async (newStatus) => {
-    setLoading(true);
     try {
       const token = sessionStorage.getItem("token");
-      await fetch(`${API_BASE_URL}/api/delivery-partner/update-status`, {
+      const res = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/update-status`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ order_id: order.id, status: newStatus }),
+        }
+      );
+
+      const data = await res.json();
+
+      setStatus(newStatus);
+
+      if (newStatus === "out_for_delivery") {
+        setStatus("in_transit");
+        setCustomerOtp(false);
+        await sendOtp("customer");
+      } else if (newStatus === "reached_to_customer") {
+        setCustomerOtp(true); // show OTP modal
+      }
+
+      //Only close modal if not OTP verification
+      if (newStatus !== "reached_to_customer" && newStatus !== "otp_verified") {
+        onUpdate && onUpdate(newStatus); // update parent
+        onClose(); // close modal
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      alert("Camera access denied");
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = document.getElementById("live-preview");
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const photoBase64 = canvas.toDataURL("image/jpeg", 0.9);
+    setDeliveryPhoto(photoBase64);
+    closeCamera();
+  };
+
+  const closeCamera = () => {
+    if (cameraStream) cameraStream.getTracks().forEach((t) => t.stop());
+    setCameraStream(null);
+    setIsCameraOpen(false);
+  };
+
+  const sendOtp = async (type) => {
+    try {
+      const token = sessionStorage.getItem("token");
+      await fetch(`${API_BASE_URL}/api/delivery-partner/send-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ order_id: order.id, status: newStatus }),
+        body: JSON.stringify({ order_id: order.id, type }),
       });
 
-      setStatus(newStatus);
+      // Start countdown only after clicking Resend
+      setOtpTimer(30);
+      setCanResend(false); // disable resend until countdown ends
 
-      if (newStatus === "reached_to_seller") {
-        setSellerOtp(true);
-        await sendOtp("seller");
-      } else if (newStatus === "out_for_delivery") {
-        setCustomerOtp(true);
-        await sendOtp("customer");
-      }
+      const interval = setInterval(() => {
+        setOtpTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setCanResend(true); // allow resend again
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-      if (onRemove) onRemove(order.id);
-      if (onUpdate) onUpdate();
-      onClose();
+      setCustomerOtp(true); // ensure OTP input is shown
     } catch (err) {
-      console.error(err);
+      console.error("Error sending OTP:", err);
     }
-    setLoading(false);
-  };
-
-  const sendOtp = async (type) => {
-    const token = sessionStorage.getItem("token");
-    await fetch(`${API_BASE_URL}/api/delivery-partner/send-otp`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ order_id: order.id, type }),
-    });
   };
 
   const verifyOtp = async () => {
-    if (!otp) return alert("Enter OTP");
-    setLoading(true);
+    if (otp.length !== 6) return alert("Enter valid OTP");
+
     try {
       const token = sessionStorage.getItem("token");
       const res = await fetch(
@@ -80,68 +153,58 @@ export default function DeliveryStatusModal({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            order_id: order.id,
-            otp,
-            type: sellerOtp ? "seller" : "customer",
-          }),
+          body: JSON.stringify({ order_id: order.id, otp }),
         }
       );
-      const data = await res.json();
 
+      const data = await res.json();
       if (data.success) {
-        if (sellerOtp) {
-          setSellerOtp(false);
-          setStatus("picked_up");
-        } else if (customerOtp) {
-          setCustomerOtp(false);
-          setShowCustomerInfo(true); // show customer info step
-        }
+        setCustomerOtp(false); // hide OTP input
+        setStatus("otp_verified"); // set status to OTP verified
+        setShowCustomerInfo(true); // show customer info form
+        //onUpdate && onUpdate("otp_verified"); // update parent with OTP verified
       } else {
-        alert(data.message);
+        alert(data.error || "Invalid OTP");
       }
     } catch (err) {
       console.error(err);
     }
-    setOtp("");
-    setLoading(false);
   };
 
-  const submitCustomerInfo = async () => {
+   const submitCustomerInfo = async () => {
     if (!customerName || !deliveryPhoto)
-      return alert("Enter name & upload photo");
-
-    const formData = new FormData();
-    formData.append("order_id", order.id);
-    formData.append("delivery_verified_user_info", customerName);
-    formData.append("delivery_verified_photo", deliveryPhoto);
+      return alert("Customer name & photo required");
 
     try {
       const token = sessionStorage.getItem("token");
+
       const res = await fetch(
         `${API_BASE_URL}/api/delivery-partner/save-customer-info`,
         {
           method: "POST",
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: formData,
+          body: JSON.stringify({
+            order_id: order.id,
+            delivery_verified_user_info: customerName,
+            delivery_verified_photo: deliveryPhoto, // 📌 Base64 photo
+          }),
         }
       );
 
       const data = await res.json();
 
       if (data.success) {
-        alert("Delivery Completed");
-        if (onRemove) onRemove(order.id);
-        if (onUpdate) onUpdate();
+        setStatus("delivered");
+        onUpdate && onUpdate("delivered");
         onClose();
       } else {
-        alert(data.error || "Something went wrong");
+        alert("Something went wrong");
       }
     } catch (err) {
-      console.error("Error submitting customer info:", err);
-      alert("Failed to submit. Check console.");
+      console.error(err);
     }
   };
 
@@ -151,43 +214,67 @@ export default function DeliveryStatusModal({
         <h2 className="text-xl font-bold mb-4">Update Delivery Status</h2>
         <p className="mb-4 font-semibold">Order #{order.id}</p>
 
-        {!sellerOtp &&
-          !customerOtp &&
-          !showCustomerInfo &&
-          status !== "delivered" && (
-            <div className="space-y-3">
-              {status === "accepted" && (
-                <p>Please wait until the seller confirms the order.</p>
-              )}
+        {/* Status Buttons */}
+        {!customerOtp && !showCustomerInfo && status !== "delivered" && (
+          <div className="space-y-3">
+            {status === "picked_up" && (
+              <Button
+                className="w-full bg-purple-500"
+                onClick={() => updateStatus("out_for_delivery")}
+              >
+                Out for Delivery
+              </Button>
+            )}
 
-              {status === "picked_up" && (
-                <Button
-                  className="w-full bg-purple-500"
-                  onClick={() => updateStatus("out_for_delivery")}
-                >
-                  Out for Delivery
-                </Button>
-              )}
-            </div>
-          )}
+            {status === "out_for_delivery" && (
+              <Button
+                className="w-full bg-purple-500"
+                onClick={() => updateStatus("reached_to_customer")}
+              >
+                Reached to Customer
+              </Button>
+            )}
 
-        {(sellerOtp || customerOtp) && !showCustomerInfo && (
-          <div className="mt-4 space-y-4">
-            <input
-              type="number"
-              className="border w-full p-2 rounded-lg mb-4"
-              placeholder={`Enter ${sellerOtp ? "Seller" : "Customer"} OTP`}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-
-            <Button className="w-full bg-green-600" onClick={verifyOtp}>
-              Verify OTP
-            </Button>
+            {status === "accepted" && (
+              <p>Waiting until seller accepts the order</p>
+            )}
           </div>
         )}
 
-        {showCustomerInfo && (
+        {/* OTP Verification */}
+        {showOtpInput && (
+          <div className="space-y-3">
+            <p className="font-semibold">Enter OTP sent to customer</p>
+            <input
+              type="text"
+              className="border w-full p-2 rounded-lg text-center tracking-widest text-lg"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="6-digit OTP"
+            />
+            <Button className="w-full bg-green-600" onClick={verifyOtp}>
+              Verify OTP
+            </Button>
+
+            {!canResend && otpTimer > 0 && (
+              <p className="text-sm text-gray-600">Resend OTP in {otpTimer}s</p>
+            )}
+
+            {canResend && (
+              <Button
+                className="w-full text-blue-600"
+                variant="outline"
+                onClick={() => sendOtp("customer")}
+              >
+                🔁 Resend OTP
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Customer info after OTP verification */}
+        {showCustomerForm && status !== "delivered" && (
           <div className="mt-4 space-y-3">
             <input
               type="text"
@@ -196,27 +283,21 @@ export default function DeliveryStatusModal({
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
             />
-
             <label className="block mb-1 font-semibold">
               Click Live Delivery Photo
             </label>
-            <label className="cursor-pointer">
-              <div className="bg-blue-600 text-white px-4 py-2 rounded text-center">
+
+           
+            {!deliveryPhoto && (
+              <Button className="w-full bg-blue-600" onClick={openCamera}>
                 Open Camera
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => setDeliveryPhoto(e.target.files[0])}
-                style={{ display: "none" }}
-              />
-            </label>
+              </Button>
+            )}
 
             {deliveryPhoto && (
               <img
-                src={URL.createObjectURL(deliveryPhoto)}
-                className="mt-2 w-32 h-32 object-cover rounded border"
+                src={deliveryPhoto}
+                className="mt-2 w-32 h-32 rounded border mx-auto"
               />
             )}
 
@@ -226,6 +307,29 @@ export default function DeliveryStatusModal({
             >
               Submit & Complete Delivery
             </Button>
+            {isCameraOpen && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+                <div className="bg-white p-4 rounded-xl">
+                  <video
+                    id="live-preview"
+                    autoPlay
+                    className="w-80 rounded"
+                    ref={(video) => video && (video.srcObject = cameraStream)}
+                  />
+                  <div className="flex gap-3 mt-3">
+                    <Button
+                      className="bg-green-600 flex-1"
+                      onClick={capturePhoto}
+                    >
+                      Capture
+                    </Button>
+                    <Button className="bg-red-600 flex-1" onClick={closeCamera}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
