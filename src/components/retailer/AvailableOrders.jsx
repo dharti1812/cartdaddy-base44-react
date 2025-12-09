@@ -491,6 +491,30 @@ ${retailer.full_name}`;
                     </div>
                   </div>
 
+                  
+                  {order.items && order.items.length > 0 && (
+                    <div className="pt-3 border-t">
+                      <p className="text-xs font-medium text-gray-500 mb-2">
+                        PRODUCT DETAILS
+                      </p>
+                      <div className="space-y-1">
+                        {order.items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="flex justify-between text-sm bg-gray-50 p-2 rounded"
+                          >
+                            <span className="text-gray-700 font-medium">
+                              {item.name}
+                            </span>
+                            <span className="font-bold text-gray-900">
+                              ₹{order.amount}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Delivery Earnings - Prominent Display */}
                   {charges?.delivery_charge > 0 && (
                     <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
@@ -683,28 +707,6 @@ ${retailer.full_name}`;
                     </Alert>
                   )}
 
-                  {order.items && order.items.length > 0 && (
-                    <div className="pt-3 border-t">
-                      <p className="text-xs font-medium text-gray-500 mb-2">
-                        PRODUCT DETAILS
-                      </p>
-                      <div className="space-y-1">
-                        {order.items.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between text-sm bg-gray-50 p-2 rounded"
-                          >
-                            <span className="text-gray-700 font-medium">
-                              {item.name}
-                            </span>
-                            <span className="font-bold text-gray-900">
-                              ₹{order.amount}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button

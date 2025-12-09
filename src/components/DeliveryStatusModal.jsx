@@ -65,10 +65,14 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
         setCustomerOtp(true); // show OTP modal
       }
 
-      //Only close modal if not OTP verification
+      else if (newStatus === "reached_to_seller") {
+        setCustomerOtp(false);
+        await sendOtp("seller");
+      }
+
       if (newStatus !== "reached_to_customer" && newStatus !== "otp_verified") {
-        onUpdate && onUpdate(newStatus); // update parent
-        onClose(); // close modal
+        onUpdate && onUpdate(newStatus);
+        onClose();
       }
     } catch (err) {
       console.error(err);
@@ -189,7 +193,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
           body: JSON.stringify({
             order_id: order.id,
             delivery_verified_user_info: customerName,
-            delivery_verified_photo: deliveryPhoto, // 📌 Base64 photo
+            delivery_verified_photo: deliveryPhoto, 
           }),
         }
       );
@@ -235,7 +239,16 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
               </Button>
             )}
 
-            {status === "accepted" && (
+              {status === "accepted_db" && (
+              <Button
+                className="w-full bg-purple-500"
+                onClick={() => updateStatus("reached_to_seller")}
+              >
+                Reached to Seller
+              </Button>
+            )}
+
+            {status === "reached_to_seller" && (
               <p>Waiting until seller accepts the order</p>
             )}
           </div>

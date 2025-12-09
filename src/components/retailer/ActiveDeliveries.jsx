@@ -619,7 +619,7 @@ export default function ActiveDeliveries({
                             </span>
                           )}
 
-                          {order.delivery_status === "reached_to_seller" && (
+                          {order.delivery_status === "accepted_db" && (
                             <>
                               <Button
                                 onClick={() => {
@@ -781,10 +781,10 @@ export default function ActiveDeliveries({
 
             <Input
               type="text"
-              maxLength={4}
+              maxLength={6}
               value={otpInput}
               onChange={(e) => setOtpInput(e.target.value)}
-              placeholder="Enter 4-digit OTP"
+              placeholder="Enter 6-digit OTP"
             />
 
             {/* 🔥 Resend OTP UI */}
@@ -814,7 +814,7 @@ export default function ActiveDeliveries({
 
             <Button
               onClick={() => handleVerifyOtp(selectedOrder?.id, otpInput)}
-              disabled={otpInput.length !== 4 || verifyingOtp}
+              disabled={otpInput.length !== 6 || verifyingOtp}
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {verifyingOtp ? "Verifying..." : "Verify OTP"}
