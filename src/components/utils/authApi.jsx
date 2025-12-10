@@ -143,7 +143,33 @@ export const AuthApi = {
       throw error;
     }
     return await response.json();
-  }
+  },
 
+  verifyVehicle: async ({ dlNumber, dob, vehicle_type, vehicle_rc_number }) => {
+    try {
+      const token = sessionStorage.getItem("access_token");
+      console.log("🔍 Verifying Vehicle:", dlNumber, dob, vehicle_type, vehicle_rc_number);
+
+      const res = await fetch(`${API_BASE_URL}/api/verify-vehicle`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          dl_number: dlNumber,
+          dob,
+          vehicle_type,
+          vehicle_rc_number: vehicle_rc_number,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to verify Driving License or Vehicle Number");
+      return await res.json();
+    } catch (err) {
+      console.error("❌ verifyVehicle error:", err);
+      return { success: false, message: err.message };
+    }
+  },
 
 };

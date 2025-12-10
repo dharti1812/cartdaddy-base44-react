@@ -70,6 +70,7 @@ export default function DeliveryPartnerOnboarding() {
     dob: "",
     vehicle_type: "2_wheeler",
     vehicle_number: "",
+    vehicle_rc_number: "",
     account_number: "",
     ifsc: "",
     account_holder_name: "",
@@ -133,6 +134,7 @@ export default function DeliveryPartnerOnboarding() {
         dob: myPartner.dob || "",
         vehicle_type: myPartner.vehicle_type || "2_wheeler",
         vehicle_number: myPartner.vehicle_number || "",
+        vehichle_rc_number: myPartner.vehicle_rc_number || "",
         account_number: myPartner.bank_account?.account_number || "",
         ifsc: myPartner.bank_account?.ifsc || "",
         account_holder_name: myPartner.bank_account?.account_holder_name || "",
@@ -310,6 +312,60 @@ export default function DeliveryPartnerOnboarding() {
     setSaving(false);
   };
 
+  const handleVerifyVehicle = async () => {
+    setError("");
+    setSuccess("");
+
+    // --- Validation ---
+    if (!formData.driving_license || formData.driving_license.length < 10) {
+      setError("Please enter a valid Driving License number");
+      return;
+    }
+    if (!formData.dob) {
+      setError("Please enter your Date of Birth");
+      return;
+    }
+    if (!formData.vehicle_type) {
+      setError("Please select vehicle type");
+      return;
+    }
+    if (!formData.vehicle_rc_number || formData.vehicle_rc_number.length < 5) {
+      setError("Please enter a valid Vehicle RC number");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const result = await AuthApi.verifyVehicle({
+        dlNumber: formData.driving_license,
+        dob: formData.dob,
+        vehicle_type: formData.vehicle_type,
+        vehicle_rc_number: formData.vehicle_rc_number,
+      });
+
+      if (result.success) {
+        const vehicleNumberFromRC =
+          result.rc_data?.vehicle_details?.vehicle_number || "";
+
+        setFormData({
+          ...formData,
+          vehicle_number: vehicleNumberFromRC,
+        });
+
+        setSuccess("✅ Vehicle Verified Successfully!");
+        setStep(4);
+      } else {
+        setError(`❌ ${result.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong while verifying vehicle");
+    }
+
+    setSaving(false);
+  };
+
   // Bank Verification
   const handleVerifyBank = async () => {
     if (!formData.account_number || !formData.ifsc) {
@@ -330,17 +386,20 @@ export default function DeliveryPartnerOnboarding() {
       const accessToken = sessionStorage.getItem("access_token");
       if (!accessToken) throw new Error("User not authenticated");
 
-      const response = await fetch(`${API_BASE_URL}/api/delivery-partner/verifyacno`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          acno: formData.account_number,
-          ifsc: formData.ifsc,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/verifyacno`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            acno: formData.account_number,
+            ifsc: formData.ifsc,
+          }),
+        }
+      );
       console.log(response);
       // check HTTP status first
       if (!response.ok) {
@@ -831,7 +890,7 @@ export default function DeliveryPartnerOnboarding() {
                     disabled={saving || emailOtp.length !== 6}
                     className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
                   >
-                    {saving ? "Verifying..." : "Verify OTP1"}
+                    {saving ? "Verifying..." : "Verify OTP"}
                   </Button>
                 </div>
               )}
@@ -923,21 +982,21 @@ export default function DeliveryPartnerOnboarding() {
                 </div>
               </div>
               <div>
-                <Label className="text-black">Vehicle Number *</Label>
+                <Label className="text-black">Vehicle Number</Label>
                 <Input
-                  value={formData.vehicle_number}
+                  value={formData.vehicle_rc_number}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      vehicle_number: e.target.value.toUpperCase(),
+                      vehicle_rc_number: e.target.value.toUpperCase(),
                     })
                   }
-                  placeholder="MH12XX1234"
+                  placeholder="Enter RC Number"
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
               <Button
-                onClick={handleVerifyDL}
+                onClick={handleVerifyVehicle}
                 disabled={saving}
                 className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
               >
