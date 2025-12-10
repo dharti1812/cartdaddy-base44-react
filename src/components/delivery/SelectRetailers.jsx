@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { retailerApi } from "@/components/utils/retailerApi";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { API_BASE_URL } from "../../config";
+
 /**
  * SelectRetailers Component
  * Allows delivery boy to select which retailers they want to work with
@@ -55,7 +56,16 @@ export default function SelectRetailers({ deliveryPartnerId }) {
     setLoading(false);
   };
 
+  // helpers for deterministic add/remove
+  const selectId = (id) => setSelectedIds(prev => Array.from(new Set([...prev, id])));
+  const deselectId = (id) => setSelectedIds(prev => prev.filter(x => x !== id));
+  const setSelected = (id, checked) => {
+    if (checked) selectId(id);
+    else deselectId(id);
+  };
+
   const handleToggle = (retailerId) => {
+    // keep toggle for row clicks
     setSelectedIds((prev) =>
       prev.includes(retailerId)
         ? prev.filter((id) => id !== retailerId)
@@ -213,7 +223,10 @@ export default function SelectRetailers({ deliveryPartnerId }) {
                 >
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => handleToggle(retailer.id)}
+                    // prevent the row's onClick from also firing
+                    onClick={(e) => e.stopPropagation()}
+                    // use checked boolean to deterministically set selection
+                    onCheckedChange={(checked) => setSelected(retailer.id, !!checked)}
                     className="flex-shrink-0"
                   />
 

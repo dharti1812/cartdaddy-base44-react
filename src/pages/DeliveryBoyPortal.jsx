@@ -553,7 +553,7 @@ export default function DeliveryBoyPortal() {
             <CardHeader className="border-b">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="available">
-                  Available Orders
+                  Available Deliveries
                   {availableOrders.length > 0 && (
                     <Badge className="ml-2 bg-red-500">
                       {availableOrders.length}
