@@ -60,6 +60,9 @@ export default function DeliveryPartnerOnboarding() {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [otpStored, setOtpStored] = useState("");
 
+  const [cameraStream, setCameraStream] = useState(null);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     full_name: "",
     address: "",
@@ -254,6 +257,70 @@ export default function DeliveryPartnerOnboarding() {
     setSaving(false);
   };
 
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }, // front camera for selfie
+      });
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      alert("Camera access denied");
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    // Try to get location first
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+
+        // Now capture the selfie
+        const video = document.getElementById("selfie-video");
+        if (!video) {
+          alert("Camera not started yet!");
+          return;
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const photoBase64 = canvas.toDataURL("image/jpeg", 0.9);
+
+        setFormData({
+          ...formData,
+          selfie_url: photoBase64,
+          latitude,
+          longitude,
+        });
+
+        closeCamera();
+      },
+      (error) => {
+        console.error(error);
+        alert(
+          "Location access is required to take a selfie. Please enable location in your browser settings."
+        );
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  const closeCamera = () => {
+    if (cameraStream) cameraStream.getTracks().forEach((t) => t.stop());
+    setCameraStream(null);
+    setIsCameraOpen(false);
+  };
+
   const handleVerifyEmailOTP = async () => {
     setSaving(true);
     const result = await AuthApi.verifyOTPtoEmail(
@@ -276,47 +343,10 @@ export default function DeliveryPartnerOnboarding() {
     setSaving(false);
   };
 
-  // DL Verification
-  const handleVerifyDL = async () => {
-    setError("");
-
-    if (!formData.driving_license || formData.driving_license.length < 10) {
-      setError("Please enter a valid driving license number");
-      return;
-    }
-    if (!formData.dob) {
-      setError("Please enter your Date of Birth");
-      return;
-    }
-
-    if (!formData.vehicle_type) {
-      setError("Please select vehicle type");
-      return;
-    }
-
-    setSaving(true);
-
-    const result = await AuthApi.verifyDrivingLicense(
-      formData.driving_license,
-      formData.dob,
-      formData.vehicle_type
-    );
-
-    if (result.success) {
-      setSuccess("✅ Driving License verified successfully!");
-      setStep(4);
-    } else {
-      setError(`❌ ${result.message}`);
-    }
-
-    setSaving(false);
-  };
-
   const handleVerifyVehicle = async () => {
     setError("");
     setSuccess("");
 
-    // --- Validation ---
     if (!formData.driving_license || formData.driving_license.length < 10) {
       setError("Please enter a valid Driving License number");
       return;
@@ -559,7 +589,6 @@ export default function DeliveryPartnerOnboarding() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ image: base64Image, filename: file.name }),
         });
@@ -584,7 +613,43 @@ export default function DeliveryPartnerOnboarding() {
   const submitSelfie = async () => {
     if (!formData.selfie_url) return alert("Upload selfie first");
 
-    setStep(step + 1);
+    try {
+      setUploading(true);
+
+      const response = await fetch(`${API_BASE_URL}/api/selfie-upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          image: formData.selfie_url,
+          filename: "selfie.png",
+          type: "db_selfie",
+          selfie_location: formData.latitude + "," + formData.longitude,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.result) {
+        alert("Upload failed: " + result.message);
+        return;
+      }
+
+      setFormData({
+        ...formData,
+        selfie_url: result.path,
+        selfie_id: result.selfie_url,
+      });
+
+      setStep(step + 1); // Move to next step
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong!");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleAddPhone = () => {
@@ -1282,16 +1347,17 @@ export default function DeliveryPartnerOnboarding() {
                 <p className="text-xs text-gray-500 mb-2">
                   Take a clear selfie with your face visible
                 </p>
-                {!formData.selfie_url ? (
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    onChange={handleSelfieUpload}
-                    disabled={uploading}
-                    className="border-2 border-[#075E66]"
-                  />
-                ) : (
+                {!formData.selfie_url && !isCameraOpen ? (
+                  <div className="space-y-2">
+                    <Button
+                      type="button"
+                      className="w-full bg-blue-600 text-white"
+                      onClick={openCamera}
+                    >
+                      Open Camera
+                    </Button>
+                  </div>
+                ) : formData.selfie_url ? (
                   <div className="relative">
                     <img
                       src={formData.selfie_url}
@@ -1302,7 +1368,50 @@ export default function DeliveryPartnerOnboarding() {
                       ✅ Uploaded
                     </Badge>
                   </div>
+                ) : null}
+
+                {formData.selfie_url && (
+                  <Button
+                    type="button"
+                    className="w-full bg-yellow-500 mt-2"
+                    onClick={() =>
+                      setFormData({ ...formData, selfie_url: null })
+                    }
+                  >
+                    Retake / Change Selfie
+                  </Button>
                 )}
+
+                {/* Camera Modal */}
+                {isCameraOpen && (
+                  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                    <div className="bg-white p-4 rounded-xl">
+                      <video
+                        id="selfie-video"
+                        autoPlay
+                        className="w-80 rounded"
+                        ref={(video) =>
+                          video && (video.srcObject = cameraStream)
+                        }
+                      />
+                      <div className="flex gap-3 mt-3">
+                        <Button
+                          className="bg-green-600 flex-1"
+                          onClick={capturePhoto}
+                        >
+                          Capture
+                        </Button>
+                        <Button
+                          className="bg-red-600 flex-1"
+                          onClick={closeCamera}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {uploading && (
                   <p className="text-sm text-blue-600 mt-1">Uploading...</p>
                 )}
