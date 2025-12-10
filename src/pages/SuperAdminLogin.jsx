@@ -14,6 +14,32 @@ export default function SuperAdminLogin() {
   const [error, setError] = useState("");
 
   const handleLogin = async () => {
+    const locationGranted = await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sessionStorage.setItem("lat", position.coords.latitude);
+          sessionStorage.setItem("lng", position.coords.longitude);
+          resolve(true);
+        },
+        () => {
+          setError("⚠️ Please allow location access to continue.");
+          resolve(false);
+        }
+      );
+    });
+
+    if (!locationGranted) {
+      return;
+    }
+
+    const lat = sessionStorage.getItem("lat");
+    const lng = sessionStorage.getItem("lng");
+
+    if (!lat || !lng) {
+      setError("⚠️ Location access required.");
+      return;
+    }
+
     if (!identifier || !password) {
       setError("Please enter both email and password");
       return;
@@ -23,7 +49,7 @@ export default function SuperAdminLogin() {
     setError("");
 
     try {
-      const userType = 'admin';
+      const userType = "admin";
       const loginResponse = await AuthApi.login(identifier, password, userType);
 
       const token = loginResponse.access_token;
@@ -46,14 +72,12 @@ export default function SuperAdminLogin() {
 
       // Step 3: Redirect
       window.location.href = createPageUrl("Dashboard");
-
     } catch (err) {
       console.error("❌ Login error:", err);
       setError("Login failed: " + err.message);
     } finally {
       setLoading(false);
     }
-
   };
 
   return (

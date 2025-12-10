@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,33 @@ export default function DeliveryPartnerLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-   const handleLogin = async () => {
+  const handleLogin = async () => {
+    const locationGranted = await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sessionStorage.setItem("lat", position.coords.latitude);
+          sessionStorage.setItem("lng", position.coords.longitude);
+          resolve(true);
+        },
+        () => {
+          setError("⚠️ Please allow location access to continue.");
+          resolve(false);
+        }
+      );
+    });
+
+    if (!locationGranted) {
+      return;
+    }
+
+    const lat = sessionStorage.getItem("lat");
+    const lng = sessionStorage.getItem("lng");
+
+    if (!lat || !lng) {
+      setError("⚠️ Location access required.");
+      return;
+    }
+
     if (!identifier || !password) {
       setError("Please enter both email and password");
       return;
@@ -24,7 +50,7 @@ export default function DeliveryPartnerLogin() {
     setError("");
 
     try {
-      const userType = 'delivery_boy';
+      const userType = "delivery_boy";
       const loginResponse = await AuthApi.login(identifier, password, userType);
 
       const token = loginResponse.access_token;
@@ -33,28 +59,23 @@ export default function DeliveryPartnerLogin() {
       sessionStorage.setItem("token", token);
       sessionStorage.setItem("user", JSON.stringify(user));
 
-      // Step 1: Validate Token
       const tokenValidation = await AuthApi.validateToken(token);
       if (!tokenValidation.valid) {
         throw new Error("Invalid or tampered token");
       }
 
-      // Step 2: Check Role
       const roleCheck = await AuthApi.checkRole(token);
       if (!roleCheck.authorized) {
         throw new Error("Unauthorized access");
       }
 
-      // Step 3: Redirect
       window.location.href = createPageUrl("DeliveryBoyPortal");
-
     } catch (err) {
       console.error("❌ Login error:", err);
       setError("Login failed: " + err.message);
     } finally {
       setLoading(false);
     }
-
   };
 
   return (
@@ -105,7 +126,11 @@ export default function DeliveryPartnerLogin() {
           <p className="text-center text-xs text-gray-500 mt-4">
             Don’t have an account?{" "}
             <button
-              onClick={() => window.location.href = createPageUrl("DeliveryPartnerOnboarding")}
+              onClick={() =>
+                (window.location.href = createPageUrl(
+                  "DeliveryPartnerOnboarding"
+                ))
+              }
               className="text-yellow-400 underline"
             >
               Sign Up

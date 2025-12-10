@@ -40,46 +40,70 @@ export default function SellerLogin() {
   };
 
   const handleLogin = async () => {
+    const locationGranted = await new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sessionStorage.setItem("lat", position.coords.latitude);
+          sessionStorage.setItem("lng", position.coords.longitude);
+          resolve(true);
+        },
+        () => {
+          setError("⚠️ Please allow location access to continue.");
+          resolve(false);
+        }
+      );
+    });
+
+    if (!locationGranted) {
+      return;
+    }
+
+    const lat = sessionStorage.getItem("lat");
+    const lng = sessionStorage.getItem("lng");
+
+    if (!lat || !lng) {
+      setError("⚠️ Location access required.");
+      return;
+    }
     if (!identifier || !password) {
-          setError("Please enter both email and password");
-          return;
-        }
-    
-        setLoading(true);
-        setError("");
-    
-        try {
-          const userType = 'seller';
-          const loginResponse = await AuthApi.login(identifier, password, userType);
-         
-          const token = loginResponse.access_token;
-          const user = loginResponse.user;
-    
-          sessionStorage.setItem("token", token);
-          sessionStorage.setItem("user", JSON.stringify(user));
-    
-          // Step 1: Validate Token
-          const tokenValidation = await AuthApi.validateToken(token);
-          if (!tokenValidation.valid) {
-            throw new Error("Invalid or tampered token");
-          }
-    
-          // Step 2: Check Role
-          const roleCheck = await AuthApi.checkRole(token);
-          if (!roleCheck.authorized) {
-            throw new Error("Unauthorized access");
-          }
-          console.log("✅ Login successful, redirecting...");
-          // Step 3: Redirect
-          
-          window.location.href = createPageUrl("RetailerPortal");
-    
-        } catch (err) {
-          console.error("❌ Login error:", err);
-          setError("Login failed: " + err.message);
-        } finally {
-          setLoading(false);
-        }
+      setError("Please enter both email and password");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const userType = "seller";
+      const loginResponse = await AuthApi.login(identifier, password, userType);
+
+      const token = loginResponse.access_token;
+      const user = loginResponse.user;
+
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("user", JSON.stringify(user));
+
+      // Step 1: Validate Token
+      const tokenValidation = await AuthApi.validateToken(token);
+      if (!tokenValidation.valid) {
+        throw new Error("Invalid or tampered token");
+      }
+
+      // Step 2: Check Role
+      const roleCheck = await AuthApi.checkRole(token);
+      if (!roleCheck.authorized) {
+        throw new Error("Unauthorized access");
+      }
+      console.log("✅ Login successful, redirecting...");
+      // Step 3: Redirect
+
+      window.location.href = createPageUrl("RetailerPortal");
+    } catch (err) {
+      console.error("❌ Login error:", err);
+      setError("Login failed: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (checkingSession) {
@@ -116,7 +140,9 @@ export default function SellerLogin() {
         <CardContent className="p-8 bg-white">
           {error && (
             <Alert variant="destructive" className="mb-4 border-2">
-              <AlertDescription className="text-black">{error}</AlertDescription>
+              <AlertDescription className="text-black">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -174,7 +200,9 @@ export default function SellerLogin() {
             </p>
             <Button
               variant="outline"
-              onClick={() => (window.location.href = createPageUrl("RetailerOnboarding"))}
+              onClick={() =>
+                (window.location.href = createPageUrl("RetailerOnboarding"))
+              }
               className="w-full border-2 border-[#075E66] text-[#075E66] hover:bg-[#075E66] hover:text-white font-bold"
             >
               Sign Up as Seller

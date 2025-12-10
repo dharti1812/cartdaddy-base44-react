@@ -43,6 +43,7 @@ export default function DeliveryBoyPortal() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [directions, setDirections] = useState([]);
+  const [locationEnabled, setLocationEnabled] = useState(true);
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
@@ -199,21 +200,20 @@ export default function DeliveryBoyPortal() {
     if (!partner) return;
 
     if (!("geolocation" in navigator)) {
-      console.warn("Geolocation is not supported by this browser.");
+      alert("Geolocation is not supported by your device.");
       return;
     }
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        console.log("Sending live location:", latitude, longitude);
+        setLocationEnabled(true); // ✅ location working
 
+        // send location to server
         try {
           await fetch(`${API_BASE_URL}/api/delivery-partner/live-location`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               delivery_partner_id: partner.id,
               latitude,
@@ -225,7 +225,17 @@ export default function DeliveryBoyPortal() {
           console.error("Error sending live location:", error);
         }
       },
-      (err) => console.error("Geolocation error:", err),
+
+      // ❌ ERROR CALLBACK: location disabled
+      (err) => {
+        if (err.code === 1) {
+          // permission denied
+          setLocationEnabled(false);
+        } else {
+          console.error("Geolocation error:", err);
+        }
+      },
+
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
 
@@ -235,7 +245,6 @@ export default function DeliveryBoyPortal() {
     };
   }, [partner]);
 
-  // ERROR STATE
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
@@ -301,6 +310,29 @@ export default function DeliveryBoyPortal() {
     );
   }
 
+  if (!locationEnabled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-Black mb-2">
+              Location Disabled
+            </h2>
+            <p className="text-black mb-4">
+              Please enable location services to use the delivery portal.
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-[#FFEB3B] text-black"
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   // LOADING STATE
   if (loading) {
     return (
@@ -607,7 +639,7 @@ export default function DeliveryBoyPortal() {
                                   <span className="font-semibold">
                                     Retailer:
                                   </span>{" "}
-                                  {order.retailer?.retailer_name} 
+                                  {order.retailer?.retailer_name}
                                 </p>
                                 <p className="text-gray-700 text-sm">
                                   {order.pickup_address?.street},{" "}
@@ -644,18 +676,22 @@ export default function DeliveryBoyPortal() {
                           </div>
 
                           {/* Map */}
-                          
+
                           <div className="rounded-lg overflow-hidden border shadow-sm">
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
-                              pickupLat={order?.pickup_address?.latitude ?? null}
-                              pickupLng={order?.pickup_address?.longitude ?? null}
+                              pickupLat={
+                                order?.pickup_address?.latitude ?? null
+                              }
+                              pickupLng={
+                                order?.pickup_address?.longitude ?? null
+                              }
                               dropLat={order?.drop_address?.latitude ?? null}
                               dropLng={order?.drop_address?.longitude ?? null}
                             />
                           </div>
-                            
+
                           {/* Distance + Amount */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-700">
@@ -704,11 +740,7 @@ export default function DeliveryBoyPortal() {
                   // If deliveries exist
                   <div className="space-y-4">
                     {myActiveDeliveries.map((order) => (
-                      <Card
-                        key={order.id}
-                        className="border-2 border-blue-500"
-                       
-                      >
+                      <Card key={order.id} className="border-2 border-blue-500">
                         <CardContent className="p-4">
                           <h3 className="font-bold text-lg mb-2">
                             {order.website_ref || `Order #${order.id}`}
@@ -731,9 +763,7 @@ export default function DeliveryBoyPortal() {
                             ))}
                           </div>
 
-                           <div className="bg-gray-50 rounded-xl p-4">
-                           
-
+                          <div className="bg-gray-50 rounded-xl p-4">
                             {/* DELIVERY */}
                             <div className="flex items-start gap-3">
                               <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
@@ -758,13 +788,16 @@ export default function DeliveryBoyPortal() {
                             </div>
                           </div>
 
-
                           <div className="mt-3">
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
-                              pickupLat={order?.pickup_address?.latitude ?? null}
-                              pickupLng={order?.pickup_address?.longitude ?? null}
+                              pickupLat={
+                                order?.pickup_address?.latitude ?? null
+                              }
+                              pickupLng={
+                                order?.pickup_address?.longitude ?? null
+                              }
                               dropLat={order?.drop_address?.latitude ?? null}
                               dropLng={order?.drop_address?.longitude ?? null}
                             />
@@ -781,8 +814,14 @@ export default function DeliveryBoyPortal() {
                             </span>
                           </p>
 
-                          <Badge className="bg-blue-500 text-white cursor-pointer"  onClick={() => setSelectedOrder(order)} >
-                            Status: {order.delivery_status === "accepted_db" ? 'Accepted' : order.delivery_status}
+                          <Badge
+                            className="bg-blue-500 text-white cursor-pointer"
+                            onClick={() => setSelectedOrder(order)}
+                          >
+                            Status:{" "}
+                            {order.delivery_status === "accepted_db"
+                              ? "Accepted"
+                              : order.delivery_status}
                           </Badge>
                         </CardContent>
                       </Card>
