@@ -35,35 +35,6 @@ import {
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { API_BASE_URL } from "@/config";
 
-function useLocationChecker() {
-  const [locationEnabled, setLocationEnabled] = useState(true);
-
-  useEffect(() => {
-    let watchId;
-
-    if ("geolocation" in navigator) {
-      watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setLocationEnabled(true);
-        },
-        (error) => {
-          if (error.code === error.PERMISSION_DENIED) {
-            setLocationEnabled(false);
-          }
-        },
-        { enableHighAccuracy: true, maximumAge: 10000 }
-      );
-    } else {
-      setLocationEnabled(false);
-    }
-
-    return () => {
-      if (watchId) navigator.geolocation.clearWatch(watchId);
-    };
-  }, []);
-
-  return locationEnabled;
-}
 
 export default function SuperAdminDashboard() {
   const [orders, setOrders] = useState([]);
@@ -79,7 +50,7 @@ export default function SuperAdminDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const locationEnabled = useLocationChecker();
+
   useEffect(() => {
     loadData();
     // No cleanupDuplicates call as it's not typically part of mock API usage
@@ -406,30 +377,6 @@ export default function SuperAdminDashboard() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFEB3B] mx-auto mb-4"></div>
           <p className="text-white text-xl">Loading Super Admin Panel...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!locationEnabled) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-Black mb-2">
-              Location Disabled
-            </h2>
-            <p className="text-black mb-4">
-              Please enable location services to use the Super Admin portal.
-            </p>
-            <Button
-              onClick={() => window.location.reload()}
-              className="bg-[#FFEB3B] text-black"
-            >
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
