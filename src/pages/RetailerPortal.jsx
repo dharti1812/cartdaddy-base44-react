@@ -110,6 +110,7 @@ export default function SellerPortal() {
       }
 
       const sellerProfile = await res.json();
+      
       console.log("🚀 Loaded seller profile:", sellerProfile);
 
       if (!sellerProfile.id) {

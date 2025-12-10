@@ -32,7 +32,7 @@ export const OrderApi = {
     return res.json();
   },
 
-  acceptCOD: async (data) => {
+  acceptCOD: async (retailerId, payload) => {
     const token = sessionStorage.getItem("token");
 
     const res = await fetch(`${API_BASE_URL}/api/retailer/accept-cod`, {
@@ -41,12 +41,16 @@ export const OrderApi = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        retailer_id: retailerId,
+        ...payload,
+      }),
     });
 
     if (!res.ok) throw new Error("Failed to update COD preference");
     return res.json();
   },
+
 
   acceptOrder: async (data) => {
     const token = sessionStorage.getItem("token");
