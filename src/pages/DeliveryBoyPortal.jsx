@@ -51,6 +51,16 @@ export default function DeliveryBoyPortal() {
   const watchIdRef = useRef(null);
 
   useEffect(() => {
+    const token = sessionStorage.getItem("token");
+    const user = sessionStorage.getItem("user");
+
+    if (!token || !user) {
+      window.location.href = createPageUrl("DeliveryBoyLogin");
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -634,17 +644,18 @@ export default function DeliveryBoyPortal() {
                           </div>
 
                           {/* Map */}
+                          
                           <div className="rounded-lg overflow-hidden border shadow-sm">
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
-                               pickupLat={order.pickup_address.latitude}
-                              pickupLng={order.pickup_address.longitude}
-                              dropLat={order.drop_address.latitude}
-                              dropLng={order.drop_address.longitude}
+                              pickupLat={order?.pickup_address?.latitude ?? null}
+                              pickupLng={order?.pickup_address?.longitude ?? null}
+                              dropLat={order?.drop_address?.latitude ?? null}
+                              dropLng={order?.drop_address?.longitude ?? null}
                             />
                           </div>
-
+                            
                           {/* Distance + Amount */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-700">
@@ -752,10 +763,10 @@ export default function DeliveryBoyPortal() {
                             <LiveTrackingMapAvailableOrders
                               orderId={order.id}
                               deliveryBoyId={partner.id}
-                               pickupLat={order.pickup_address.latitude}
-                              pickupLng={order.pickup_address.longitude}
-                              dropLat={order.drop_address.latitude}
-                              dropLng={order.drop_address.longitude}
+                              pickupLat={order?.pickup_address?.latitude ?? null}
+                              pickupLng={order?.pickup_address?.longitude ?? null}
+                              dropLat={order?.drop_address?.latitude ?? null}
+                              dropLng={order?.drop_address?.longitude ?? null}
                             />
                           </div>
 

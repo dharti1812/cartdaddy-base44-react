@@ -58,28 +58,29 @@ export default function LiveTrackingMapAvailableOrders({
   }, []);
 
   // Static route + markers (Pickup + Drop)
-  useEffect(() => {
-    if (!mapInstanceRef.current) return;
-    const { H, map } = mapInstanceRef.current;
+useEffect(() => {
+  if (!mapInstanceRef.current || staticRouteRef.current) return;
+  const { H, map } = mapInstanceRef.current;
 
-    axios
-      .get(
-        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
-      )
-      .then(res => {
-        const poly = res.data.routes[0].sections[0].polyline;
-        const line = H.geo.LineString.fromFlexiblePolyline(poly);
-        staticRouteRef.current = new H.map.Polyline(line, {
-          style: { strokeColor: "#7E7E7E", lineWidth: 4 },
-        });
-        map.addObject(staticRouteRef.current);
-
-        pickupMarkerRef.current = new H.map.Marker({ lat: pickupLat, lng: pickupLng });
-        dropMarkerRef.current = new H.map.Marker({ lat: dropLat, lng: dropLng });
-
-        map.addObjects([pickupMarkerRef.current, dropMarkerRef.current]);
+  axios
+    .get(
+      `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
+    )
+    .then(res => {
+      const poly = res.data.routes[0].sections[0].polyline;
+      const line = H.geo.LineString.fromFlexiblePolyline(poly);
+      staticRouteRef.current = new H.map.Polyline(line, {
+        style: { strokeColor: "#7E7E7E", lineWidth: 4 },
       });
-  }, [pickupLat, pickupLng, dropLat, dropLng]);
+
+      map.addObject(staticRouteRef.current);
+
+      pickupMarkerRef.current = new H.map.Marker({ lat: pickupLat, lng: pickupLng });
+      dropMarkerRef.current = new H.map.Marker({ lat: dropLat, lng: dropLng });
+      map.addObjects([pickupMarkerRef.current, dropMarkerRef.current]);
+    });
+}, [pickupLat, pickupLng, dropLat, dropLng]);
+
 
   // Live Tracking Flow
   useEffect(() => {

@@ -1067,6 +1067,15 @@ export default function SuperAdminDashboard() {
                           {selectedDetail.data.gst_number || "N/A"}
                         </p>
                       </div>
+
+                      <div>
+                        <p className="text-sm text-gray-500">Account Number</p>
+                        <p className="font-semibold text-black">
+                          {selectedDetail?.data?.account_number ||
+                            "N/A"}
+                        </p>
+                      </div>
+
                       <div>
                         <p className="text-sm text-gray-500">Status</p>
                         <Badge
