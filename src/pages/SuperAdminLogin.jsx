@@ -28,18 +28,6 @@ export default function SuperAdminLogin() {
       );
     });
 
-    if (!locationGranted) {
-      return;
-    }
-
-    const lat = sessionStorage.getItem("lat");
-    const lng = sessionStorage.getItem("lng");
-
-    if (!lat || !lng) {
-      setError("⚠️ Location access required.");
-      return;
-    }
-
     if (!identifier || !password) {
       setError("Please enter both email and password");
       return;
