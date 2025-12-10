@@ -567,12 +567,12 @@ export default function VerificationDetailsDialog({
                     {data?.selfie_file?.file_name && (
                       <div className="relative">
                         <a
-                          href={`${API_BASE_URL}/${data?.selfie_file?.file_name}`}
+                          href={`${API_BASE_URL}/public/${data?.selfie_file?.file_name}`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <img
-                            src={`${API_BASE_URL}/${data?.selfie_file?.file_name}`}
+                            src={`${API_BASE_URL}/public/${data?.selfie_file?.file_name}`}
                             alt="Selfie"
                             className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                           />
@@ -590,25 +590,25 @@ export default function VerificationDetailsDialog({
                       if (kyc.dl_front) {
                         docs.push({
                           type: "dl_front",
-                          url: `${API_BASE_URL}/${kyc.dl_front.file_name}`,
+                          url: `${API_BASE_URL}/public/${kyc.dl_front.file_name}`,
                         });
                       }
                       if (kyc.pan) {
                         docs.push({
                           type: "pan",
-                          url: `${API_BASE_URL}/${kyc.pan.file_name}`,
+                          url: `${API_BASE_URL}/public/${kyc.pan.file_name}`,
                         });
                       }
                       if (kyc.aadhar_front) {
                         docs.push({
                           type: "aadhar_front",
-                          url: `${API_BASE_URL}/${kyc.aadhar_front.file_name}`,
+                          url: `${API_BASE_URL}/public/${kyc.aadhar_front.file_name}`,
                         });
                       }
                       if (kyc.vehicle_rc) {
                         docs.push({
                           type: "vehicle_rc",
-                          url: `${API_BASE_URL}/${kyc.vehicle_rc.file_name}`,
+                          url: `${API_BASE_URL}/public/${kyc.vehicle_rc.file_name}`,
                         });
                       }
 
