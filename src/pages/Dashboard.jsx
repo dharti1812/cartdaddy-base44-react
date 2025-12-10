@@ -14,15 +14,45 @@ import SLAMonitor from "../components/sla/SLAMonitor";
 import { AuthApi } from "@/components/utils/authApi";
 import { OrderApi } from "@/components/utils/orderApi";
 import { retailerApi } from "@/components/utils/retailerApi";
+function useLocationChecker() {
+  const [locationEnabled, setLocationEnabled] = useState(true);
 
+  useEffect(() => {
+    let watchId;
+
+    if ("geolocation" in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setLocationEnabled(true);
+        },
+        (error) => {
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationEnabled(false);
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 10000 }
+      );
+    } else {
+      setLocationEnabled(false);
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
+
+  return locationEnabled;
+}
 export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [retailers, setRetailers] = useState([]);
   const [loading, setLoading] = useState(true);
-
+const locationEnabled = useLocationChecker();
   useEffect(() => {
     loadData();
   }, []);
+
+
 
   const loadData = async () => {
     setLoading(true);
@@ -98,6 +128,30 @@ export default function Dashboard() {
       console.error("Navigation error:", err);
     }
   };
+
+   if (!locationEnabled) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
+          <Card className="max-w-md w-full">
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-Black mb-2">
+                Location Disabled
+              </h2>
+              <p className="text-black mb-4">
+                Please enable location services to use the Super Admin portal.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="bg-[#FFEB3B] text-black"
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
 
   return (
     <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
