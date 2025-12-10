@@ -335,6 +335,7 @@ export default function DeliveryPartnerOnboarding() {
       setSuccess("✅ Email verified successfully!");
       setStep(3);
       if (result.access_token) {
+        localStorage.setItem("access_token", result.access_token);
         sessionStorage.setItem("access_token", result.access_token);
       }
     } else {
@@ -413,7 +414,7 @@ export default function DeliveryPartnerOnboarding() {
     setSuccess("");
 
     try {
-      const accessToken = sessionStorage.getItem("access_token");
+      const accessToken = localStorage.getItem("access_token");
       if (!accessToken) throw new Error("User not authenticated");
 
       const response = await fetch(
@@ -488,7 +489,7 @@ export default function DeliveryPartnerOnboarding() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${sessionStorage.getItem("access_token")}`,
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
             },
             body: JSON.stringify({
               image: base64Image,
@@ -583,12 +584,13 @@ export default function DeliveryPartnerOnboarding() {
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const accessToken = sessionStorage.getItem("access_token");
+        const accessToken = localStorage.getItem("access_token");
         const base64Image = reader.result.split(",")[1];
         const res = await fetch(`${API_BASE_URL}/api/selfie-upload`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({ image: base64Image, filename: file.name }),
         });
@@ -596,6 +598,7 @@ export default function DeliveryPartnerOnboarding() {
 
         if (data.result) {
           setFormData((prev) => ({ ...prev, selfie_url: data.path }));
+          localStorage.setItem("user", JSON.stringify(data.user));
           sessionStorage.setItem("user", JSON.stringify(data.user));
         } else {
           alert(data.message || "Selfie upload failed");
@@ -611,6 +614,7 @@ export default function DeliveryPartnerOnboarding() {
   };
 
   const submitSelfie = async () => {
+    const accessToken = localStorage.getItem("access_token");
     if (!formData.selfie_url) return alert("Upload selfie first");
 
     try {
@@ -621,6 +625,7 @@ export default function DeliveryPartnerOnboarding() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           image: formData.selfie_url,
@@ -675,7 +680,7 @@ export default function DeliveryPartnerOnboarding() {
 
   const sendAlternateOTP = async (phone) => {
     try {
-      const accessToken = sessionStorage.getItem("access_token");
+      const accessToken = localStorage.getItem("access_token");
       console.log(accessToken);
       const response = await fetch(
         `${API_BASE_URL}/api/send-otp/additional-phone`,
@@ -703,7 +708,7 @@ export default function DeliveryPartnerOnboarding() {
 
   const verifyAlternateOTP = async (phone, otp) => {
     try {
-      const access_token = sessionStorage.getItem("access_token");
+      const access_token = localStorage.getItem("access_token");
       console.log(access_token);
       const res = await fetch(
         `${API_BASE_URL}/api/verify-otp/additional-phone`,
@@ -1428,7 +1433,7 @@ export default function DeliveryPartnerOnboarding() {
                 }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
-                {uploading ? "Submitting..." : "Continue to Seller Selection"}
+                {uploading ? "Submitting..." : "Continue to Complete"}
               </Button>
 
               <BackButton />
@@ -1443,43 +1448,8 @@ export default function DeliveryPartnerOnboarding() {
                 Basic Verification Complete!
               </h2>
               <p className="text-gray-600 mb-6">
-                Now select sellers you want to work with
+                The sign up process is complete and you will be notified once it is approved. 
               </p>
-
-              <Button
-                onClick={async () => {
-                  try {
-                    const user = JSON.parse(sessionStorage.getItem("user"));
-                    if (!user?.email) throw new Error("User email not found");
-
-                    const res = await fetch(
-                      `${API_BASE_URL}/api/send-login-credentials`,
-                      {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${sessionStorage.getItem(
-                            "access_token"
-                          )}`,
-                        },
-                        body: JSON.stringify({
-                          email: user.email,
-                        }),
-                      }
-                    );
-
-                    if (!res.ok) throw new Error("Failed to send email");
-                    console.log("✅ Email sent successfully to", user.email);
-                    window.location.href = createPageUrl("DeliveryBoyPortal");
-                  } catch (err) {
-                    console.error("❌ Error sending email:", err);
-                    alert("Failed to send login email. Please try again.");
-                  }
-                }}
-                className="bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold border-2 border-[#075E66]"
-              >
-                Continue to Seller Selection
-              </Button>
               <BackButton />
             </div>
           )}
