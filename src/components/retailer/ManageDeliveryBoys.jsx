@@ -100,6 +100,13 @@ export default function ManageDeliveryBoys({ retailerId }) {
     });
   };
 
+  const selectId = (id) => setSelectedIds(prev => Array.from(new Set([...prev, id])));
+  const deselectId = (id) => setSelectedIds(prev => prev.filter(x => x !== id));
+  const setSelected = (id, checked) => {
+    if (checked) selectId(id);
+    else deselectId(id);
+  };
+
   const filteredDeliveryBoys = getFilteredDeliveryBoys();
   const twoWheelerCount = allDeliveryBoys.filter(db => db.vehicle_type === '2_wheeler').length;
   const fourWheelerCount = allDeliveryBoys.filter(db => db.vehicle_type === '4_wheeler').length;
@@ -229,7 +236,10 @@ export default function ManageDeliveryBoys({ retailerId }) {
                 >
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => handleToggle(db.id)}
+                    // stop click bubbling so parent row won't also toggle
+                    onClick={(e) => e.stopPropagation()}
+                    // use checked value directly — more reliable than toggling
+                    onCheckedChange={(checked) => setSelected(db.id, !!checked)}
                     className="flex-shrink-0"
                   />
 

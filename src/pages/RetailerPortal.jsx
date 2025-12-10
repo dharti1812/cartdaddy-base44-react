@@ -110,7 +110,7 @@ export default function SellerPortal() {
       }
 
       const sellerProfile = await res.json();
-      
+
       console.log("🚀 Loaded seller profile:", sellerProfile);
 
       if (!sellerProfile.id) {
@@ -318,7 +318,7 @@ export default function SellerPortal() {
     );
     //return !alreadyAccepted;
   });
-  console.log("Available Orders:", availableOrders);
+  
   const myActiveOrders = myAcceptedOrders;
 
   const activeOrders = myAcceptedOrders.filter((o) =>
@@ -487,7 +487,7 @@ export default function SellerPortal() {
                   value="available"
                   className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
                 >
-                  <span className="hidden sm:inline">Available Orders</span>
+                  <span className="hidden sm:inline">Available Deliveries</span>
                   <span className="sm:hidden">Available</span>
                   {availableOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-red-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
