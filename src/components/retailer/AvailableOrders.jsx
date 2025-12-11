@@ -279,32 +279,53 @@ ${retailer.full_name}`;
     cash_on_delivery: {
       label: "Cash on Delivery",
       icon: BadgeIndianRupee,
+      className: "bg-green-50 text-green-700 border border-green-200",
+      iconClass: "text-green-600"
+    },
+    needs_paylink: {
+      label: "Payment Link Required",
+      icon: LinkIcon,
+      className: "bg-orange-50 text-orange-700 border border-orange-200",
+      iconClass: "text-orange-600"
     },
     prepaid: {
       label: "Prepaid",
       icon: Wallet,
+      className: "bg-blue-50 text-blue-700 border border-blue-200",
+      iconClass: "text-blue-600"
     },
     upi: {
       label: "UPI",
       icon: Smartphone,
+      className: "bg-purple-50 text-purple-700 border border-purple-200",
+      iconClass: "text-purple-600"
     },
     card: {
       label: "Card Payment",
       icon: CreditCard,
+      className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+      iconClass: "text-indigo-600"
     },
     phonepe: {
       label: "PhonePe",
       icon: Smartphone,
+      className: "bg-violet-50 text-violet-700 border border-violet-200",
+      iconClass: "text-violet-600"
     },
     google_pay: {
       label: "Google Pay",
       icon: Smartphone,
+      className: "bg-red-50 text-red-700 border border-red-200",
+      iconClass: "text-red-600"
     },
     paytm: {
       label: "Paytm",
       icon: Smartphone,
+      className: "bg-cyan-50 text-cyan-700 border border-cyan-200",
+      iconClass: "text-cyan-600"
     },
   };
+
 
 
   const handleSubmitPaylink = async () => {
@@ -652,15 +673,20 @@ ${retailer.full_name}`;
                     {paymentInfo[order.payment_type] && (
                       <>
                         <span className="text-gray-400">•</span>
-                        <div className="flex items-center gap-1 font-medium">
+
+                        <div
+                          className={`flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${paymentInfo[order.payment_type].className}`}
+                        >
                           {React.createElement(paymentInfo[order.payment_type].icon, {
                             size: 16,
-                            className: "w-4 h-4",
+                            className: paymentInfo[order.payment_type].iconClass,
                           })}
+
                           <span>{paymentInfo[order.payment_type].label}</span>
                         </div>
                       </>
                     )}
+
 
                   </div>
 
