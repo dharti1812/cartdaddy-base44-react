@@ -5,7 +5,6 @@ import { API_BASE_URL } from "@/config";
 const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY;
 
 export default function LiveTrackingMap({ orderId }) {
-  
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null); // reference to HERE map object
   const [error, setError] = useState("");
@@ -30,10 +29,10 @@ export default function LiveTrackingMap({ orderId }) {
     });
 
     // Enable interactions
-    const behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-    const ui = H.ui.UI.createDefault(map, defaultLayers);
+    new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+    H.ui.UI.createDefault(map, defaultLayers);
 
-    mapInstanceRef.current = { map, H, platform, behavior, ui };
+    mapInstanceRef.current = { map, H, platform };
   }, []);
 
   // Fetch tracking and update map every 10 seconds
@@ -59,23 +58,32 @@ export default function LiveTrackingMap({ orderId }) {
         const { H, map } = mapInstanceRef.current;
 
         // Remove old markers/route
-        if (deliveryMarkerRef.current)
-          map.removeObject(deliveryMarkerRef.current);
-        if (customerMarkerRef.current)
-          map.removeObject(customerMarkerRef.current);
+        if (deliveryMarkerRef.current) map.removeObject(deliveryMarkerRef.current);
+        if (customerMarkerRef.current) map.removeObject(customerMarkerRef.current);
         if (routeLineRef.current) map.removeObject(routeLineRef.current);
 
-        // Add markers
-        deliveryMarkerRef.current = new H.map.Marker({
-          lat: delivery_boy.latitude,
-          lng: delivery_boy.longitude,
-        });
+        // Green marker for shop/delivery boy
+        const shopIcon = new H.map.Icon(
+          `<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="green" stroke="white" stroke-width="2"/>
+          </svg>`
+        );
+        deliveryMarkerRef.current = new H.map.Marker(
+          { lat: delivery_boy.latitude, lng: delivery_boy.longitude },
+          { icon: shopIcon }
+        );
         map.addObject(deliveryMarkerRef.current);
 
-        customerMarkerRef.current = new H.map.Marker({
-          lat: customer.latitude,
-          lng: customer.longitude,
-        });
+        // Red marker for customer
+        const customerIcon = new H.map.Icon(
+          `<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="red" stroke="white" stroke-width="2"/>
+          </svg>`
+        );
+        customerMarkerRef.current = new H.map.Marker(
+          { lat: customer.latitude, lng: customer.longitude },
+          { icon: customerIcon }
+        );
         map.addObject(customerMarkerRef.current);
 
         // Fetch route from HERE Routing API
@@ -86,9 +94,7 @@ export default function LiveTrackingMap({ orderId }) {
         const section = routeRes.data.routes[0].sections[0];
 
         // Draw route line
-        const lineString = H.geo.LineString.fromFlexiblePolyline(
-          section.polyline
-        );
+        const lineString = H.geo.LineString.fromFlexiblePolyline(section.polyline);
         routeLineRef.current = new H.map.Polyline(lineString, {
           style: { strokeColor: "blue", lineWidth: 5 },
         });

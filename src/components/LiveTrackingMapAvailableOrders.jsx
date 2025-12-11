@@ -16,32 +16,98 @@ export default function LiveTrackingMapAvailableOrders({
   const mapInstanceRef = useRef(null);
 
   const pickupMarkerRef = useRef(null);
-  const deliveryMarkerRef = useRef(null);
   const dropMarkerRef = useRef(null);
+  const deliveryMarkerRef = useRef(null);
+
   const staticRouteRef = useRef(null);
   const liveRouteRef = useRef(null);
 
   const [eta, setEta] = useState(null);
   const [reachedShop, setReachedShop] = useState(false);
 
+  // -----------------------------
+  // Distance Calculation
+  // -----------------------------
   const getDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371e3;
-    const toRad = deg => (deg * Math.PI) / 180;
+    const toRad = (deg) => (deg * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(lat1)) *
         Math.cos(toRad(lat2)) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // Setup map
+  // -----------------------------
+  // SVG ICONS
+  // -----------------------------
+  const pickupIcon = `
+    <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="13" fill="#28a745" stroke="white" stroke-width="3"/>
+    </svg>
+  `;
+
+  const dropIcon = `
+    <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="15" cy="15" r="13" fill="#dc3545" stroke="white" stroke-width="3"/>
+    </svg>
+  `;
+
+  const riderIcon = `
+    <svg width="38" height="38" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" fill="#007bff" stroke="white" stroke-width="4"/>
+      <path d="M20 40 L28 24 H36 L44 40 Z" fill="white"/>
+      <circle cx="26" cy="44" r="4" fill="white"/>
+      <circle cx="38" cy="44" r="4" fill="white"/>
+    </svg>
+  `;
+
+  // -----------------------------
+  // Reverse Geocode Helper
+  // -----------------------------
+  const reverseGeocode = async (lat, lng) => {
+    const { platform } = mapInstanceRef.current;
+    const geocoder = platform.getGeocodingService();
+
+    return new Promise((resolve) => {
+      geocoder.reverseGeocode(
+        { at: `${lat},${lng}` },
+        (result) => {
+          if (result.items && result.items.length) {
+            resolve(result.items[0].address.label);
+          } else {
+            resolve("Address not found");
+          }
+        },
+        () => resolve("Address not found")
+      );
+    });
+  };
+
+  const attachAddressBubble = async (marker) => {
+    const { map, H } = mapInstanceRef.current;
+    const address = await reverseGeocode(marker.getGeometry().lat, marker.getGeometry().lng);
+
+    const bubble = new H.ui.InfoBubble(marker.getGeometry(), {
+      content: address,
+    });
+
+    map.getUi().addBubble(bubble);
+
+    // Hover to show/hide
+    marker.addEventListener("pointerenter", () => bubble.open());
+    marker.addEventListener("pointerleave", () => bubble.close());
+  };
+
+  // -----------------------------
+  // Map Setup
+  // -----------------------------
   useEffect(() => {
     if (!mapRef.current) return;
+
     const H = window.H;
     const platform = new H.service.Platform({ apikey: HERE_API_KEY });
     const defaultLayers = platform.createDefaultLayers();
@@ -53,36 +119,60 @@ export default function LiveTrackingMapAvailableOrders({
 
     new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
     const ui = H.ui.UI.createDefault(map, defaultLayers);
+
     mapInstanceRef.current = { H, map, platform, ui };
     return () => map.dispose();
   }, []);
 
-  // Static route + markers (Pickup + Drop)
-useEffect(() => {
-  if (!mapInstanceRef.current || staticRouteRef.current) return;
-  const { H, map } = mapInstanceRef.current;
+  // -----------------------------
+  // Static Route + Pickup / Drop Markers
+  // -----------------------------
+  useEffect(() => {
+    if (!mapInstanceRef.current || staticRouteRef.current) return;
+    const { H, map } = mapInstanceRef.current;
 
-  axios
-    .get(
-      `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
-    )
-    .then(res => {
-      const poly = res.data.routes[0].sections[0].polyline;
-      const line = H.geo.LineString.fromFlexiblePolyline(poly);
-      staticRouteRef.current = new H.map.Polyline(line, {
-        style: { strokeColor: "#7E7E7E", lineWidth: 4 },
+    const pickupSvg = new H.map.Icon(
+      `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(pickupIcon)}`
+    );
+    const dropSvg = new H.map.Icon(
+      `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(dropIcon)}`
+    );
+
+    axios
+      .get(
+        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
+      )
+      .then(async (res) => {
+        const poly = res.data.routes[0].sections[0].polyline;
+        const line = H.geo.LineString.fromFlexiblePolyline(poly);
+
+        staticRouteRef.current = new H.map.Polyline(line, {
+          style: { strokeColor: "#7E7E7E", lineWidth: 4 },
+        });
+
+        map.addObject(staticRouteRef.current);
+
+        // Pickup marker
+        pickupMarkerRef.current = new H.map.Marker(
+          { lat: pickupLat, lng: pickupLng },
+          { icon: pickupSvg }
+        );
+        map.addObject(pickupMarkerRef.current);
+        attachAddressBubble(pickupMarkerRef.current);
+
+        // Drop marker
+        dropMarkerRef.current = new H.map.Marker(
+          { lat: dropLat, lng: dropLng },
+          { icon: dropSvg }
+        );
+        map.addObject(dropMarkerRef.current);
+        attachAddressBubble(dropMarkerRef.current);
       });
+  }, [pickupLat, pickupLng, dropLat, dropLng]);
 
-      map.addObject(staticRouteRef.current);
-
-      pickupMarkerRef.current = new H.map.Marker({ lat: pickupLat, lng: pickupLng });
-      dropMarkerRef.current = new H.map.Marker({ lat: dropLat, lng: dropLng });
-      map.addObjects([pickupMarkerRef.current, dropMarkerRef.current]);
-    });
-}, [pickupLat, pickupLng, dropLat, dropLng]);
-
-
-  // Live Tracking Flow
+  // -----------------------------
+  // Live Tracking + Navigation
+  // -----------------------------
   useEffect(() => {
     if (!orderId || !mapInstanceRef.current) return;
 
@@ -90,6 +180,7 @@ useEffect(() => {
       const res = await axios.get(
         `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
       );
+
       const d = res.data.delivery_boy;
       if (!d) return;
 
@@ -98,12 +189,18 @@ useEffect(() => {
       if (deliveryMarkerRef.current) map.removeObject(deliveryMarkerRef.current);
       if (liveRouteRef.current) map.removeObject(liveRouteRef.current);
 
-      deliveryMarkerRef.current = new H.map.Marker({ lat: d.latitude, lng: d.longitude });
+      const riderSvg = new H.map.Icon(
+        `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(riderIcon)}`
+      );
+
+      deliveryMarkerRef.current = new H.map.Marker(
+        { lat: d.latitude, lng: d.longitude },
+        { icon: riderSvg }
+      );
       map.addObject(deliveryMarkerRef.current);
+      attachAddressBubble(deliveryMarkerRef.current);
 
       const distance = getDistance(d.latitude, d.longitude, pickupLat, pickupLng);
-
-      // If delivery boy reached shop (< 60 meters) set state
       if (distance < 60 && !reachedShop) setReachedShop(true);
 
       const destLat = reachedShop ? dropLat : pickupLat;
@@ -121,26 +218,31 @@ useEffect(() => {
       });
       map.addObject(liveRouteRef.current);
 
-      map.getViewModel().setLookAtData({ bounds: liveRouteRef.current.getBoundingBox() });
+      map.getViewModel().setLookAtData({
+        bounds: liveRouteRef.current.getBoundingBox(),
+      });
 
       const sec = routeRes.data.routes[0].sections[0].summary.duration;
       setEta(Math.ceil(sec / 60));
     };
 
     fetchTracking();
-    const interval = setInterval(fetchTracking, 8000);
+    const interval = setInterval(fetchTracking, 7000);
     return () => clearInterval(interval);
   }, [orderId, reachedShop]);
 
   return (
     <div className="mt-3">
-      
       {eta && (
         <div className="text-sm mb-2 text-gray-700">
           ⏱ ETA: <b>{eta} min</b>
         </div>
       )}
-      <div ref={mapRef} style={{ width: "100%", height: "380px" }} className="rounded-xl border" />
+      <div
+        ref={mapRef}
+        style={{ width: "100%", height: "380px" }}
+        className="rounded-xl border"
+      />
     </div>
   );
 }

@@ -759,6 +759,14 @@ export default function DeliveryBoyPortal() {
                                 <p>
                                   Qty: {item.quantity} | Price: ₹{item.price}
                                 </p>
+                                {item.pickup_otp !== null && (
+                                  <div className="mt-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold w-max shadow-sm">
+                                    Pickup OTP:{" "}
+                                    <span className="ml-1 text-lg">
+                                      {item.pickup_otp}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
