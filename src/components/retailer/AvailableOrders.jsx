@@ -99,14 +99,12 @@ export default function AvailableOrders({
       updateData.active_retailer_id = retailerId;
     }
 
-    console.log("updateData", updateData);
-
     const apiData = {
       orderId: order.code || order.id,
       retailerId: retailerId,
     };
-    console.log("apiData", apiData);
-    //await //OrderApi.acceptOrder(apiData);
+    
+    await OrderApi.acceptOrder(apiData);
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     // await Retailer.update(retailerId, {
