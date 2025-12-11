@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Wallet, Smartphone, CreditCard, Landmark, BadgeIndianRupee } from "lucide-react";
 import {
   MapPin,
   Package,
@@ -11,10 +12,8 @@ import {
   Clock,
   Navigation as NavigationIcon,
   AlertCircle,
-  Users,
   Link as LinkIcon,
   XCircle,
-  TrendingUp,
 } from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -49,8 +48,11 @@ export default function AvailableOrders({
   const handleAccept = async (order) => {
     setAccepting(order.id);
 
-    const acceptedRetailers = order.accepted_retailers || [];
-    const position = acceptedRetailers.length + 1;
+    const acceptedRetailers = Array.isArray(order.accepted_retailers)
+    ? order.accepted_retailers
+    : [];
+
+    const position = acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
     // Get device info for tracking
     const deviceId = localStorage.getItem("cart_daddy_device_id") || "unknown";
@@ -104,7 +106,7 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
     console.log("apiData", apiData);
-    await OrderApi.acceptOrder(apiData);
+    //await //OrderApi.acceptOrder(apiData);
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     // await Retailer.update(retailerId, {
@@ -130,7 +132,8 @@ export default function AvailableOrders({
     setAccepting(null);
 
     // If payment link needed and this retailer is active, show dialog immediately
-    if (position === 1 && order.payment_status === "needs_paylink") {
+    alert("Order accepted successfully!", position);
+    if (position === 1 && order.payment_type === "needs_paylink") {
       setPendingOrder({ ...order, ...updateData });
       setShowPaylinkDialog(true);
     } else {
@@ -274,6 +277,38 @@ ${retailer.full_name}`;
       console.error(`Error notifying delivery boy ${deliveryBoy.name}:`, error);
     }
   };
+
+  const paymentInfo = {
+    cash_on_delivery: {
+      label: "Cash on Delivery",
+      icon: BadgeIndianRupee,
+    },
+    prepaid: {
+      label: "Prepaid",
+      icon: Wallet,
+    },
+    upi: {
+      label: "UPI",
+      icon: Smartphone,
+    },
+    card: {
+      label: "Card Payment",
+      icon: CreditCard,
+    },
+    phonepe: {
+      label: "PhonePe",
+      icon: Smartphone,
+    },
+    google_pay: {
+      label: "Google Pay",
+      icon: Smartphone,
+    },
+    paytm: {
+      label: "Paytm",
+      icon: Smartphone,
+    },
+  };
+
 
   const handleSubmitPaylink = async () => {
     if (!paylinkUrl || !pendingOrder) return;
@@ -549,6 +584,8 @@ ${retailer.full_name}`;
                             ₹{charges.baseCharge}
                           </span>
                         </div>
+                        
+
                         <div className="flex justify-between pt-1 border-t border-green-300 font-semibold">
                           <span>Total Delivery Charge:</span>
                           <span>₹{charges.delivery_charge}</span>
@@ -575,6 +612,8 @@ ${retailer.full_name}`;
                   )}
 
                   <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mt-3">
+
+                    {/* Posted Time */}
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       <span>
@@ -584,26 +623,25 @@ ${retailer.full_name}`;
                           const hours = date.getUTCHours();
                           const minutes = date.getUTCMinutes();
                           const ampm = hours >= 12 ? "pm" : "am";
-                          const formattedHours =
-                            hours % 12 === 0 ? 12 : hours % 12;
-                          const formattedMinutes = minutes
-                            .toString()
-                            .padStart(2, "0");
+                          const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+                          const formattedMinutes = minutes.toString().padStart(2, "0");
                           return `${formattedHours}:${formattedMinutes} ${ampm}`;
                         })()}
                       </span>
                     </div>
+
+                    {/* Distance */}
                     {order.distance_km && (
                       <>
                         <span className="text-gray-400">•</span>
                         <div className="flex items-center gap-1">
                           <NavigationIcon className="w-4 h-4" />
-                          <span className="font-medium">
-                            {order.distance_km} km away
-                          </span>
+                          <span className="font-medium">{order.distance_km} km away</span>
                         </div>
                       </>
                     )}
+
+                    {/* SLA */}
                     {order.sla_minutes && (
                       <>
                         <span className="text-gray-400">•</span>
@@ -612,7 +650,23 @@ ${retailer.full_name}`;
                         </span>
                       </>
                     )}
+
+                    {/* Payment Method */}
+                    {paymentInfo[order.payment_type] && (
+                      <>
+                        <span className="text-gray-400">•</span>
+                        <div className="flex items-center gap-1 font-medium">
+                          {React.createElement(paymentInfo[order.payment_type].icon, {
+                            size: 16,
+                            className: "w-4 h-4",
+                          })}
+                          <span>{paymentInfo[order.payment_type].label}</span>
+                        </div>
+                      </>
+                    )}
+
                   </div>
+
                 </div>
 
                 <div className="p-4 space-y-4">
@@ -687,7 +741,7 @@ ${retailer.full_name}`;
                     </div>
                   )}
 
-                  {order.payment_status === "needs_paylink" && (
+                  {order.payment_type === "needs_paylink" && (
                     <Alert className="bg-amber-50 border-amber-200">
                       <AlertCircle className="w-4 h-4 text-amber-600" />
                       <AlertDescription className="text-amber-800 text-sm">
@@ -792,11 +846,16 @@ ${retailer.full_name}`;
                 </p>
                 <p>
                   <strong>Contact:</strong>{" "}
-                  {pendingOrder.customer_masked_contact}
+                  {pendingOrder.customer_phone || "N/A"}
                 </p>
                 <p>
-                  <strong>Amount:</strong> ₹{pendingOrder.amount}
+                  <strong>Amount:</strong> ₹
+                  {new Intl.NumberFormat("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  }).format(Number(pendingOrder.amount))}
                 </p>
+
                 <p className="text-xs text-gray-500 mt-2">
                   ⏱️ Timeout:{" "}
                   {pendingOrder.paylink_timeout_sec ||
