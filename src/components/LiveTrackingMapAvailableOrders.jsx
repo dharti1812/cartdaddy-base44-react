@@ -68,39 +68,28 @@ export default function LiveTrackingMapAvailableOrders({
   // -----------------------------
   // Reverse Geocode Helper
   // -----------------------------
-  const reverseGeocode = async (lat, lng) => {
-    const { platform } = mapInstanceRef.current;
-    const geocoder = platform.getGeocodingService();
+ let lastReverseCall = 0;
 
-    return new Promise((resolve) => {
-      geocoder.reverseGeocode(
-        { at: `${lat},${lng}` },
-        (result) => {
-          if (result.items && result.items.length) {
-            resolve(result.items[0].address.label);
-          } else {
-            resolve("Address not found");
-          }
-        },
-        () => resolve("Address not found")
-      );
-    });
-  };
+const reverseGeocode = async (lat, lng) => {
+  const now = Date.now();
+  if (now - lastReverseCall < 5000) return "";
+  lastReverseCall = now;
 
-  const attachAddressBubble = async (marker) => {
-    const { map, H } = mapInstanceRef.current;
-    const address = await reverseGeocode(marker.getGeometry().lat, marker.getGeometry().lng);
+  try {
+    const url = `https://geocode.search.hereapi.com/v1/revgeocode?at=${lat},${lng}&lang=en-US&apiKey=${HERE_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
 
-    const bubble = new H.ui.InfoBubble(marker.getGeometry(), {
-      content: address,
-    });
+    if (data.items?.length) return data.items[0].address.label;
+    return "Address not found";
+  } catch {
+    return "Address not found";
+  }
+};
 
-    map.getUi().addBubble(bubble);
 
-    // Hover to show/hide
-    marker.addEventListener("pointerenter", () => bubble.open());
-    marker.addEventListener("pointerleave", () => bubble.close());
-  };
+
+   const attachAddressBubble = () => {};
 
   // -----------------------------
   // Map Setup

@@ -21,6 +21,12 @@ import {
   TrendingUp,
   CheckCircle,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
@@ -30,6 +36,9 @@ import SelectRetailers from "../components/delivery/SelectRetailers";
 import { API_BASE_URL } from "@/config";
 import DeliveryStatusModal from "@/components/DeliveryStatusModal";
 import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailableOrders";
+import DeliveryBoyProfileSettings from "@/components/DeliveryBoyProfileSettings";
+
+
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -44,6 +53,7 @@ export default function DeliveryBoyPortal() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [directions, setDirections] = useState([]);
   const [locationEnabled, setLocationEnabled] = useState(true);
+    const [showProfileModal, setShowProfileModal] = useState(false);
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
@@ -108,6 +118,7 @@ export default function DeliveryBoyPortal() {
       let partnerData = myPartners[0];
 
       setPartner(partnerData);
+      console.log("✅ Delivery Partner Data:", partnerData);
 
       const notifyData = await deliveryPartnerApi.getNotifications(token);
       setNotifications(notifyData.notifications);
@@ -293,6 +304,8 @@ export default function DeliveryBoyPortal() {
                   )}
                 </div>
 
+               
+
                 {/* Logout Button */}
                 <Button
                   onClick={handleLogout}
@@ -446,7 +459,29 @@ export default function DeliveryBoyPortal() {
                 </div>
 
                 <div className="flex items-center gap-4">
+                
+              <button
+                // 💡 CHANGE: Use state setter instead of window.location.href
+                onClick={() => setShowProfileModal(true)}
+                className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 background-[#FFEB3B] border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
+                title="View Profile Settings"
+              >
+              <img
+                  src={
+                    `https://ui-avatars.com/api/?name=${
+                      partner.name 
+                    }&background=FFEB3B&color=000&bold=true`
+                  }
+                  alt={`${partner.name} profile`}
+                  className="w-full h-full object-cover"
+                />
+             
+               
+              </button>
                   <div className="relative">
+                  
+   
+      
                     <div
                       className="cursor-pointer"
                       onClick={() => {
@@ -489,6 +524,9 @@ export default function DeliveryBoyPortal() {
                       </div>
                     )}
                   </div>
+
+
+        
 
                   {/* 🚪 Logout Button */}
                   <Button
@@ -854,6 +892,31 @@ export default function DeliveryBoyPortal() {
           </Tabs>
         </Card>
       </div>
+
+      {/* ⬇️ NEW PROFILE SETTINGS MODAL ⬇️ */}
+      <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
+        <DialogContent className="sm:max-w-[800px] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="flex items-center gap-2 text-2xl text-[#075E66]">
+
+              Delivery Boy Profile & Settings
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 pt-0 max-h-[85vh] overflow-y-auto">
+            <DeliveryBoyProfileSettings
+             dBProfile={partner}
+              onUpdateProfile={() => {
+                loadData(); // Reload seller profile and stats
+                setShowProfileModal(false); // Close modal on successful update
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
+
+    
   );
 }

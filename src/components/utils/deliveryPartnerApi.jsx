@@ -178,4 +178,37 @@ export const deliveryPartnerApi = {
     if (!res.ok) throw new Error("Failed to load stats");
     return res.json();
   },
+
+  changeBank: async (payload) => {
+    const token = sessionStorage.getItem("token");
+
+    // 1. Throw error if no token
+    if (!token) {
+      throw new Error("Authentication token missing.");
+    }
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/delivery-partner/change-bank`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    // 2. Handle non-2xx responses
+    if (!res.ok) {
+      const errorBody = await res.json();
+      const error = new Error(errorBody.message || `HTTP error! Status: ${res.status}`);
+      error.response = { data: errorBody, status: res.status };
+      throw error;
+    }
+
+    // 3. CRITICAL FIX: Return the JSON response
+    return await res.json();
+  },
 };
