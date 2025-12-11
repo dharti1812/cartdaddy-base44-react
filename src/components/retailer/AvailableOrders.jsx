@@ -130,8 +130,7 @@ export default function AvailableOrders({
     setAccepting(null);
 
     // If payment link needed and this retailer is active, show dialog immediately
-    alert("Order accepted successfully!", position);
-    if (position === 1 && order.payment_type === "needs_paylink") {
+    if (order.payment_type === "needs_paylink") {
       setPendingOrder({ ...order, ...updateData });
       setShowPaylinkDialog(true);
     } else {
