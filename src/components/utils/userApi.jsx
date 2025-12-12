@@ -30,4 +30,21 @@ export const UserApi = {
     if (!res.ok) throw new Error("Failed to fetch user info");
     return res.json();
   },
+
+  status: async (phone, userType) => {
+  const res = await fetch(`${API_BASE_URL}/api/user-onboarding-status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      phone: phone,
+      user_type: userType,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to fetch user status");
+  return res.json();
+}
+
 };

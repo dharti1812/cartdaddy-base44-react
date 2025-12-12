@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { createPageUrl } from "@/utils";
 import { API_BASE_URL } from "../../src/config";
+import { UserApi } from "@/components/utils/userApi";
 
 const sendOTP = async (phone, name) => {
   console.log(`Sending OTP to ${name} at ${phone}`);
@@ -128,10 +129,10 @@ const getCurrentLocation = () => {
 // Function to calculate distance between two coordinates (in meters) using Haversine formula
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; // Earth's radius in meters
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
     Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
@@ -142,15 +143,7 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
 };
 
 export default function SellerOnboarding() {
-  const [step, setStepState] = useState(() => {
-    const savedStep = localStorage.getItem("retailerOnboardingStep");
-    return savedStep ? Number(savedStep) : 1;
-  });
-
-  const setStep = (s) => {
-    setStepState(s);
-    localStorage.setItem("retailerOnboardingStep", s);
-  };
+  const [step, setStep] = useState(1);
 
   const goBack = () => {
     switch (step) {
@@ -197,9 +190,9 @@ export default function SellerOnboarding() {
     if (!photo.upload_id) {
       // If upload_id is missing (e.g., due to old data/missing server save), delete locally anyway but show warning
       console.warn("Missing upload ID for photo, deleting locally only.");
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index)
+        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index),
       }));
       if (index === 0) setFirstPhotoLocation(null);
       setError("Warning: Photo deleted locally, but server status is unknown.");
@@ -210,11 +203,12 @@ export default function SellerOnboarding() {
 
     const deleteResult = await deletePhotoFromServer(photo.upload_id);
 
-    if (deleteResult.result || deleteResult.success) { // Check for both result: true and success: true
+    if (deleteResult.result || deleteResult.success) {
+      // Check for both result: true and success: true
       // Only delete from state if server deletion was successful
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index)
+        shopPhotos: prev.shopPhotos.filter((_, i) => i !== index),
       }));
       if (index === 0) setFirstPhotoLocation(null);
       setSuccess("Photo deleted successfully");
@@ -267,10 +261,7 @@ export default function SellerOnboarding() {
       const location = await getCurrentLocation();
 
       // 2. Validate location with first photo if any photo has been captured
-      if (
-        data.shopPhotos.length > 0 &&
-        data.shopPhotos[0].location
-      ) {
+      if (data.shopPhotos.length > 0 && data.shopPhotos[0].location) {
         const firstLocation = data.shopPhotos[0].location;
         const distance = calculateDistance(
           firstLocation.lat,
@@ -310,7 +301,7 @@ export default function SellerOnboarding() {
       console.error("Camera error:", err);
       setError(
         err.message ||
-        "Unable to access camera. Please allow camera permissions."
+          "Unable to access camera. Please allow camera permissions."
       );
     }
   };
@@ -372,10 +363,6 @@ export default function SellerOnboarding() {
         reader.readAsDataURL(blob);
       });
 
-
-
-
-
       // 4. Get current location (Use the stored location if available, otherwise fetch)
       let location;
       if (data.shopPhotos.length === 0 && firstPhotoLocation) {
@@ -385,7 +372,6 @@ export default function SellerOnboarding() {
         // Fetch location again for subsequent photos
         location = await getCurrentLocation();
       }
-
 
       const token = localStorage.getItem("access_token");
       if (!token) throw new Error("Not logged in");
@@ -449,91 +435,6 @@ export default function SellerOnboarding() {
     setCaptureMode(null);
   };
 
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      const user = await User.me();
-      console.log("Current User:", user);
-      const allRetailers = await Retailer.list();
-      console.log(allRetailers);
-      const myRetailers = allRetailers.filter((r) => r.user_id === user.id);
-
-      let currentRetailer = null;
-
-      if (myRetailers.length > 1) {
-        const sorted = myRetailers.sort((a, b) => {
-          if (
-            a.onboarding_status === "approved" &&
-            b.onboarding_status !== "approved"
-          )
-            return -1;
-          if (
-            b.onboarding_status === "approved" &&
-            a.onboarding_status !== "approved"
-          )
-            return 1;
-          return new Date(b.created_date) - new Date(a.created_date);
-        });
-        const keepAccount = sorted[0];
-        const deleteAccounts = sorted.slice(1);
-        for (const dup of deleteAccounts) {
-          await Retailer.delete(dup.id);
-        }
-        currentRetailer = keepAccount;
-        setRetailer(keepAccount);
-      } else if (myRetailers.length === 1) {
-        currentRetailer = myRetailers[0];
-        setRetailer(myRetailers[0]);
-      }
-
-      if (currentRetailer?.onboarding_status === "approved") {
-        window.location.href = createPageUrl("RetailerPortal");
-      } else if (currentRetailer) {
-        setData((prev) => ({
-          ...prev,
-          name: currentRetailer.full_name || prev.name,
-          phone: currentRetailer.phone || prev.phone,
-          email: currentRetailer.email || prev.email,
-          gst: currentRetailer.gst_number || prev.gst,
-          businessName: currentRetailer.business_name || prev.businessName,
-          alternatePhones:
-            currentRetailer.alternate_phones || prev.alternatePhones,
-          bank: currentRetailer.bank_account || prev.bank,
-          shopPhotos: currentRetailer.shop_photos || prev.shopPhotos,
-          documents: currentRetailer.documents || prev.documents,
-        }));
-        let nextStep = 1;
-
-        if (!currentRetailer.phone_verified) {
-          nextStep = 1; // Phone step
-        } else if (!currentRetailer.email_verified) {
-          nextStep = 2; // Email step
-        } else if (!currentRetailer.gst_verified) {
-          nextStep = 3; // GST step
-        } else if (!currentRetailer.bank_verified) {
-          nextStep = 4; // Bank step
-        } else if (
-          !currentRetailer.documents?.some((d) => d.type === "pan") ||
-          !currentRetailer.documents?.some((d) => d.type === "aadhaar")
-        ) {
-          nextStep = 5; // KYC documents step
-        } else if ((currentRetailer.shop_photos?.length || 0) < 2) {
-          nextStep = 6; // Shop photos step
-        } else {
-          nextStep = 7; // Under review
-        }
-
-        setStep(nextStep);
-      }
-    } catch (e) {
-      console.error("Error checking user or retailer:", e);
-      setStep(1);
-    }
-  };
-
   const handleLogout = async () => {
     await User.logout();
     localStorage.removeItem("retailerOnboardingStep");
@@ -579,36 +480,23 @@ export default function SellerOnboarding() {
     setLoading(true);
 
     const result = await verifyOTP(otp, data.phone);
-
+  
     if (!result.success) {
       setError(result.message || "Wrong OTP");
       setLoading(false);
       return;
     }
-
-    const user = await User.me();
-
-    let r;
-    if (retailer) {
-      r = await Retailer.update(retailer.id, {
-        phone_verified: true,
-        onboarding_status: "email_pending",
-        full_name: data.name,
-      });
+    if (result.access_token) {
+      localStorage.setItem("access_token", result.access_token);
     } else {
-      r = await Retailer.create({
-        user_id: user.id,
-        full_name: data.name,
-        phone: data.phone,
-        phone_verified: true,
-        onboarding_status: "email_pending",
-      });
+      console.warn("Token missing or invalid");
     }
-
-    setRetailer(r);
     setSuccess("✅ Mobile verified");
     setOtp("");
-    setStep(2);
+    const nextStep = await UserApi.status(data.phone, "seller");
+    setStep(nextStep.data.email_verified == 1 ? nextStep.data.current_step : 2);
+
+    
 
     setLoading(false);
   };
@@ -691,19 +579,10 @@ export default function SellerOnboarding() {
         return;
       }
 
-      await Retailer.update(retailer.id, {
-        email: data.email,
-        email_verified: true,
-        onboarding_status: "gst_pending",
-      });
-
       setSuccess("✅ Email verified");
       setOtp("");
-      setStep(3);
-      console.log(result);
-      if (result.access_token) {
-        localStorage.setItem("access_token", result.access_token);
-      }
+      const nextStep = await UserApi.status(data.phone, "seller");
+      setStep(nextStep.data.current_step);
     } catch (err) {
       setError(err.message);
     }
@@ -744,16 +623,9 @@ export default function SellerOnboarding() {
           "✅ GST verified - Business: " + result.trade_name_of_business
         );
 
-        setRetailer((prev) => ({
-          ...prev,
-          gst_number: data.gst,
-          business_name: result.trade_name_of_business,
-          gst_verified: true,
-          gst_verification_data: result,
-          onboarding_status: "bank_pending",
-        }));
-
-        setStep(4);
+        const nextStep = await UserApi.status(result.phone, "seller");
+        console.log(nextStep.data.current_step);
+        setStep(nextStep.data.current_step);
       } else {
         setError(result.message || "GSTIN verification failed");
       }
@@ -786,20 +658,9 @@ export default function SellerOnboarding() {
       });
 
       const result = await response.json();
-
-      if (result.verified) {
-        setRetailer((prev) => ({
-          ...prev,
-          bank_account: data.bank,
-          bank_verified: true,
-          onboarding_status: "docs_pending",
-        }));
-
-        setSuccess("✅ Bank verified successfully");
-        setStep(5);
-      } else {
-        setError(result.message || "Invalid bank details");
-      }
+      setSuccess("✅ Bank verified successfully");
+      const nextStep = await UserApi.status(result.phone, "seller");
+      setStep(nextStep.data.current_step);
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -852,7 +713,8 @@ export default function SellerOnboarding() {
     setSuccess("");
 
     const access_token = localStorage.getItem("access_token");
-
+    console.log('dharti');
+    console.log(access_token);
     try {
       const res = await fetch(`${API_BASE_URL}/api/verify-pan`, {
         method: "POST",
@@ -872,7 +734,9 @@ export default function SellerOnboarding() {
       if (result.success) {
         console.log(result);
         setSuccess("✅ PAN verified successfully");
-        setStep(5.5);
+        const nextStep = await UserApi.status(result.phone, "seller");
+        setStep(nextStep.data.current_step);
+        
       } else {
         setError(result.message || "PAN verification failed");
       }
@@ -922,7 +786,6 @@ export default function SellerOnboarding() {
   };
 
   const verifyAadhaarOTP = async () => {
-    console.log(data);
     if (!data.aadhaarOTP || !data.refId)
       return setError("Please enter the OTP received on your mobile");
 
@@ -949,7 +812,8 @@ export default function SellerOnboarding() {
       console.log(result);
       if (result.success) {
         setSuccess("✅ Aadhaar verified successfully");
-        setStep(6);
+        const nextStep = await UserApi.status(result.phone, "seller");
+        setStep(nextStep.data.current_step);
       } else {
         setError(result.message || "Aadhaar verification failed");
       }
@@ -961,8 +825,8 @@ export default function SellerOnboarding() {
   };
 
   const renderCaptureTile = (type, label) => {
-    const isRequired = type === 'outside' || type === 'inside';
-    const photosOfType = data.shopPhotos.filter(p => p.type === type).length;
+    const isRequired = type === "outside" || type === "inside";
+    const photosOfType = data.shopPhotos.filter((p) => p.type === type).length;
     const isMinMet = isRequired ? photosOfType > 0 : true;
     const isReady = !isCapturing;
 
@@ -970,16 +834,19 @@ export default function SellerOnboarding() {
       <button
         onClick={() => openCamera(type)}
         disabled={!isReady}
-        className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all text-center h-full min-h-[120px] ${!isReady
-          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-dashed border-blue-300 shadow-sm hover:shadow-md'
-          }`}
+        className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all text-center h-full min-h-[120px] ${
+          !isReady
+            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+            : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-2 border-dashed border-blue-300 shadow-sm hover:shadow-md"
+        }`}
       >
         <Camera className="w-8 h-8 mb-1" />
         <span className="font-semibold text-sm">{label}</span>
         <div className="text-xs mt-2">
           {photosOfType > 0 && (
-            <Badge className="bg-green-600 text-white">✓ Taken: {photosOfType}</Badge>
+            <Badge className="bg-green-600 text-white">
+              ✓ Taken: {photosOfType}
+            </Badge>
           )}
           {isRequired && photosOfType === 0 && (
             <Badge variant="destructive" className="bg-red-500 text-white">
@@ -987,7 +854,9 @@ export default function SellerOnboarding() {
             </Badge>
           )}
           {!isRequired && photosOfType === 0 && (
-            <Badge variant="outline" className="text-gray-500">Optional</Badge>
+            <Badge variant="outline" className="text-gray-500">
+              Optional
+            </Badge>
           )}
         </div>
       </button>
@@ -995,8 +864,8 @@ export default function SellerOnboarding() {
   };
 
   const submitPhotos = async () => {
-    const hasOutside = data.shopPhotos.some(p => p.type === 'outside');
-    const hasInside = data.shopPhotos.some(p => p.type === 'inside');
+    const hasOutside = data.shopPhotos.some((p) => p.type === "outside");
+    const hasInside = data.shopPhotos.some((p) => p.type === "inside");
 
     if (!hasOutside || !hasInside) {
       return setError(
@@ -1025,7 +894,8 @@ export default function SellerOnboarding() {
 
       if (result.success) {
         setSuccess("✅ Application submitted for approval!");
-        setStep(7);
+        const nextStep = await UserApi.status(result.phone, "seller");
+        setStep(nextStep.data.current_step);
       } else {
         setError(result.message || "Failed to submit application");
       }
@@ -1059,8 +929,6 @@ export default function SellerOnboarding() {
       return { success: false, message: "Network error during deletion" };
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
@@ -1452,7 +1320,8 @@ export default function SellerOnboarding() {
                   Shop Photos & Mobile Numbers
                 </h3>
                 <p className="text-sm text-gray-500 mt-2">
-                  📍 Photos must be taken from the same location, this location will be used for all pickups
+                  📍 Photos must be taken from the same location, this location
+                  will be used for all pickups
                 </p>
               </div>
 
@@ -1617,14 +1486,15 @@ export default function SellerOnboarding() {
               <div className="space-y-3">
                 <Label>Shop Photos *</Label>
                 <p className="text-xs text-red-600 font-semibold">
-                  ⚠️ You must capture live photos using your camera. File uploads are not allowed.
+                  ⚠️ You must capture live photos using your camera. File
+                  uploads are not allowed.
                 </p>
 
                 {!cameraStream ? (
                   <div className="grid grid-cols-3 gap-3">
-                    {renderCaptureTile('outside', 'Outside Shop Front')}
-                    {renderCaptureTile('inside', 'Inside Shop View')}
-                    {renderCaptureTile('additional', 'Additional Proof')}
+                    {renderCaptureTile("outside", "Outside Shop Front")}
+                    {renderCaptureTile("inside", "Inside Shop View")}
+                    {renderCaptureTile("additional", "Additional Proof")}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1690,7 +1560,8 @@ export default function SellerOnboarding() {
                         {photo.location && (
                           <div className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {photo.location.lat.toFixed(4)}, {photo.location.lng.toFixed(4)}
+                            {photo.location.lat.toFixed(4)},{" "}
+                            {photo.location.lng.toFixed(4)}
                           </div>
                         )}
                         {/* Optional: Add a button to delete the photo */}
@@ -1714,18 +1585,19 @@ export default function SellerOnboarding() {
                 )}
               </div>
 
-
               <Button
                 onClick={submitPhotos}
                 disabled={
                   loading ||
-                  !data.shopPhotos.some(p => p.type === 'outside') || // Check minimum outside
-                  !data.shopPhotos.some(p => p.type === 'inside') ||   // Check minimum inside
+                  !data.shopPhotos.some((p) => p.type === "outside") || // Check minimum outside
+                  !data.shopPhotos.some((p) => p.type === "inside") || // Check minimum inside
                   data.alternatePhones.some((p) => p.number && !p.verified)
                 }
                 className="w-full bg-[#F4B321] text-gray-900 font-bold py-6"
               >
-                {loading ? "Submitting..." : `Submit ${data.shopPhotos.length} Photos for Approval`}
+                {loading
+                  ? "Submitting..."
+                  : `Submit ${data.shopPhotos.length} Photos for Approval`}
               </Button>
               <BackButton />
             </div>
