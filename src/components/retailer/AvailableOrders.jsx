@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
 import { OrderApi } from "../utils/orderApi";
-import { API_BASE_URL } from "@/config";
+import toast from "react-hot-toast";
 
 export default function AvailableOrders({
   orders,
@@ -104,7 +104,7 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
     
-    await OrderApi.acceptOrder(apiData);
+    // await OrderApi.acceptOrder(apiData);
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     // await Retailer.update(retailerId, {
@@ -326,30 +326,45 @@ ${retailer.full_name}`;
     },
   };
 
-
-
   const handleSubmitPaylink = async () => {
     if (!paylinkUrl || !pendingOrder) return;
 
     setSubmitting(true);
-    await Order.update(pendingOrder.id, {
-      paylink_url: paylinkUrl,
-      paylink_generated_at: new Date().toISOString(),
-      payment_status: "paylink_sent",
-    });
 
-    // Send payment link notification
-    const { notifyPaymentLink } = await import(
-      "../utils/customerNotifications"
-    );
-    await notifyPaymentLink(pendingOrder, paylinkUrl);
+    try {
+      await OrderApi.SubmitPayLink({
+        paylink_url: paylinkUrl,
+        paylink_generated_at: new Date().toISOString(),
+        payment_status: "paylink_sent",
+        order_id: pendingOrder.id,
+      });
 
-    setSubmitting(false);
-    setShowPaylinkDialog(false);
-    setPaylinkUrl("");
-    setPendingOrder(null);
-    onAccept();
+      // Send payment link notification
+      const { notifyPaymentLink } = await import("../utils/customerNotifications");
+      await notifyPaymentLink(pendingOrder, paylinkUrl);
+
+      setShowPaylinkDialog(false);
+      setPaylinkUrl("");
+      setPendingOrder(null);
+      onAccept();
+    } catch (err) {
+      // Use react-hot-toast for errors (not your ShadCN toaster)
+      if (err.type === "validation" && err.errors) {
+        Object.values(err.errors).forEach((messages) => {
+          messages.forEach((msg) => {
+            toast.error(msg); // react-hot-toast shows the message
+          });
+        });
+      } else {
+        toast.error(err.message || "Something went wrong");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+
+
 
   const handleCancelOrder = async () => {
     if (!pendingOrder) return;
