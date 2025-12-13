@@ -211,7 +211,7 @@ export default function DeliveryPartnerOnboarding() {
           formData.phone,
           "delivery_boy"
         );
-        setStep(result.data.deliveryboy_onboarding_step);
+        setStep(result.deliveryboy_onboarding_step);
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
       }
