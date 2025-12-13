@@ -214,7 +214,7 @@ export default function DeliveryPartnerOnboarding() {
         setStep(
           nextStep.data.email_verified == 1
             ? 3
-            : 2
+            : nextStep.data.deliveryboy_onboarding_step
         );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
@@ -338,7 +338,7 @@ export default function DeliveryPartnerOnboarding() {
         formData.phone,
         "delivery_boy"
       );
-      setStep(nextStep.data.email_verified == 1 ? 3 : 2);
+      setStep(nextStep.data.deliveryboy_onboarding_step);
       if (result.access_token) {
         localStorage.setItem("access_token", result.access_token);
         sessionStorage.setItem("access_token", result.access_token);
