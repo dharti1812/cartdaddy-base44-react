@@ -204,6 +204,8 @@ export default function DeliveryPartnerOnboarding() {
       const result = await AuthApi.verifyOTP(formData.phone, otp);
 
       if (result.success) {
+        console.log(result);
+        console.log(result.deliveryboy_onboarding_step);
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
@@ -325,6 +327,7 @@ export default function DeliveryPartnerOnboarding() {
     );
 
     if (result.success) {
+      console.log(result);
       setSuccess("✅ Email verified successfully!");
       setStep(result.deliveryboy_onboarding_step);
       if (result.access_token) {
