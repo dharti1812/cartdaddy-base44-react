@@ -38,8 +38,6 @@ import DeliveryStatusModal from "@/components/DeliveryStatusModal";
 import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailableOrders";
 import DeliveryBoyProfileSettings from "@/components/DeliveryBoyProfileSettings";
 
-
-
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -53,13 +51,16 @@ export default function DeliveryBoyPortal() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [directions, setDirections] = useState([]);
   const [locationEnabled, setLocationEnabled] = useState(true);
-    const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
     available: 0,
   });
   const watchIdRef = useRef(null);
+  const notificationAudioRef = useRef(null);
+  const prevUnreadCountRef = useRef(0);
+  
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -72,25 +73,47 @@ export default function DeliveryBoyPortal() {
   }, []);
 
   useEffect(() => {
+  const unlockAudio = () => {
+    notificationAudioRef.current?.play().catch(() => {});
+    document.removeEventListener("click", unlockAudio);
+  };
+
+  document.addEventListener("click", unlockAudio);
+  return () => document.removeEventListener("click", unlockAudio);
+}, []);
+
+  useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const token = sessionStorage.getItem("token");
-        const data = await deliveryPartnerApi.getNotifications(token);
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unread_count || 0);
-      } catch (error) {
-        console.error("Notification fetch error:", error);
-      }
-    };
-    fetchNotifications();
+ useEffect(() => {
+  const fetchNotifications = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const data = await deliveryPartnerApi.getNotifications(token);
 
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+      const newUnread = data.unread_count || 0;
+      const oldUnread = prevUnreadCountRef.current;
+
+      if (newUnread > oldUnread && notificationAudioRef.current) {
+        notificationAudioRef.current.play().catch(() => {});
+      }
+
+      prevUnreadCountRef.current = newUnread;
+
+      setNotifications(data.notifications || []);
+      setUnreadCount(newUnread);
+    } catch (error) {
+      console.error("Notification fetch error:", error);
+    }
+  };
+
+  fetchNotifications();
+  const interval = setInterval(fetchNotifications, 30000);
+
+  return () => clearInterval(interval);
+}, []);
+
 
   const loadData = async () => {
     setLoading(true);
@@ -259,6 +282,11 @@ export default function DeliveryBoyPortal() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
+        <audio
+          ref={notificationAudioRef}
+          src="/notification.mp3"
+          preload="auto"
+        />
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -303,8 +331,6 @@ export default function DeliveryBoyPortal() {
                     </span>
                   )}
                 </div>
-
-               
 
                 {/* Logout Button */}
                 <Button
@@ -459,29 +485,19 @@ export default function DeliveryBoyPortal() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                
-              <button
-                // 💡 CHANGE: Use state setter instead of window.location.href
-                onClick={() => setShowProfileModal(true)}
-                className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 background-[#FFEB3B] border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
-                title="View Profile Settings"
-              >
-              <img
-                  src={
-                    `https://ui-avatars.com/api/?name=${
-                      partner.name 
-                    }&background=FFEB3B&color=000&bold=true`
-                  }
-                  alt={`${partner.name} profile`}
-                  className="w-full h-full object-cover"
-                />
-             
-               
-              </button>
+                  <button
+                    // 💡 CHANGE: Use state setter instead of window.location.href
+                    onClick={() => setShowProfileModal(true)}
+                    className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 background-[#FFEB3B] border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
+                    title="View Profile Settings"
+                  >
+                    <img
+                      src={`https://ui-avatars.com/api/?name=${partner.name}&background=FFEB3B&color=000&bold=true`}
+                      alt={`${partner.name} profile`}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
                   <div className="relative">
-                  
-   
-      
                     <div
                       className="cursor-pointer"
                       onClick={() => {
@@ -524,9 +540,6 @@ export default function DeliveryBoyPortal() {
                       </div>
                     )}
                   </div>
-
-
-        
 
                   {/* 🚪 Logout Button */}
                   <Button
@@ -898,14 +911,13 @@ export default function DeliveryBoyPortal() {
         <DialogContent className="sm:max-w-[800px] p-0">
           <DialogHeader className="p-6 pb-0">
             <DialogTitle className="flex items-center gap-2 text-2xl text-[#075E66]">
-
               Delivery Boy Profile & Settings
             </DialogTitle>
           </DialogHeader>
 
           <div className="p-6 pt-0 max-h-[85vh] overflow-y-auto">
             <DeliveryBoyProfileSettings
-             dBProfile={partner}
+              dBProfile={partner}
               onUpdateProfile={() => {
                 loadData(); // Reload seller profile and stats
                 setShowProfileModal(false); // Close modal on successful update
@@ -916,7 +928,5 @@ export default function DeliveryBoyPortal() {
       </Dialog>
       {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
-
-    
   );
 }

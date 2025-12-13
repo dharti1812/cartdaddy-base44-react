@@ -214,7 +214,7 @@ export default function DeliveryPartnerOnboarding() {
         setStep(
           nextStep.data.email_verified == 1
             ? 3
-            : nextStep.data.deliveryboy_onboarding_step
+            : 2
         );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
