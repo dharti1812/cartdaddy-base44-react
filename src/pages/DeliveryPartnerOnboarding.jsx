@@ -207,10 +207,6 @@ export default function DeliveryPartnerOnboarding() {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
-        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
-          formData.phone,
-          "delivery_boy"
-        );
         setStep(result.deliveryboy_onboarding_step);
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
@@ -330,10 +326,6 @@ export default function DeliveryPartnerOnboarding() {
 
     if (result.success) {
       setSuccess("✅ Email verified successfully!");
-      const nextStep = await UserApi.deliveryBoyOnboardingStatus(
-        formData.phone,
-        "delivery_boy"
-      );
       setStep(result.deliveryboy_onboarding_step);
       if (result.access_token) {
         localStorage.setItem("access_token", result.access_token);
