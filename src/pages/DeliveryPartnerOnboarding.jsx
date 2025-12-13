@@ -338,7 +338,7 @@ export default function DeliveryPartnerOnboarding() {
         formData.phone,
         "delivery_boy"
       );
-      setStep(nextStep.data.deliveryboy_onboarding_step);
+      setStep(result.deliveryboy_onboarding_step);
       if (result.access_token) {
         localStorage.setItem("access_token", result.access_token);
         sessionStorage.setItem("access_token", result.access_token);
