@@ -34,6 +34,7 @@ import {
   verifyBankAccount,
 } from "../components/utils/cashfreeConfig";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
+import { UserApi } from "@/components/utils/userApi";
 
 export default function DeliveryPartnerOnboarding() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -41,15 +42,7 @@ export default function DeliveryPartnerOnboarding() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [step, setStepState] = useState(() => {
-    const savedStep = localStorage.getItem("DeliveryPartnerOnboardingStep");
-    return savedStep ? Number(savedStep) : 1;
-  });
-
-  const setStep = (s) => {
-    setStepState(s);
-    localStorage.setItem("DeliveryPartnerOnboardingStep", s);
-  };
+  const [step, setStep] = useState(1);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -214,7 +207,15 @@ export default function DeliveryPartnerOnboarding() {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
-        setStep(2);
+        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+          formData.phone,
+          "delivery_boy"
+        );
+        setStep(
+          nextStep.data.email_verified == 1
+            ? 3
+            : nextStep.data.deliveryboy_onboarding_step
+        );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
       }
@@ -333,7 +334,11 @@ export default function DeliveryPartnerOnboarding() {
 
     if (result.success) {
       setSuccess("✅ Email verified successfully!");
-      setStep(3);
+      const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+        formData.phone,
+        "delivery_boy"
+      );
+      setStep(nextStep.data.email_verified == 1 ? 3 : 2);
       if (result.access_token) {
         localStorage.setItem("access_token", result.access_token);
         sessionStorage.setItem("access_token", result.access_token);
@@ -385,7 +390,11 @@ export default function DeliveryPartnerOnboarding() {
         });
 
         setSuccess("✅ Vehicle Verified Successfully!");
-        setStep(4);
+        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+          result.phone,
+          "delivery_boy"
+        );
+        setStep(nextStep.data.deliveryboy_onboarding_step);
       } else {
         setError(`❌ ${result.message}`);
       }
@@ -459,7 +468,11 @@ export default function DeliveryPartnerOnboarding() {
         });
 
         setSuccess("✅ Bank account verified successfully!");
-        setStep(5);
+        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+          result.phone,
+          "delivery_boy"
+        );
+        setStep(nextStep.data.deliveryboy_onboarding_step);
       } else {
         setError(result?.message || "❌ Invalid bank details");
       }
@@ -529,17 +542,28 @@ export default function DeliveryPartnerOnboarding() {
     reader.readAsDataURL(file);
   };
 
-  const submitDocs = () => {
+  const submitDocs = async () => {
     if (
-      formData.dl_front &&
-      formData.pan &&
-      formData.aadhar_front &&
-      formData.aadhar_back &&
-      formData.vehicle_rc
+      !formData.dl_front ||
+      !formData.pan ||
+      !formData.aadhar_front ||
+      !formData.aadhar_back ||
+      !formData.vehicle_rc
     ) {
-      setStep(step + 1);
-    } else {
       alert("Please upload all KYC documents before continuing.");
+      return;
+    }
+
+    try {
+      const res = await UserApi.deliveryBoyOnboardingStatus(
+        result.phone,
+        "delivery_boy"
+      );
+      setStep(res.data.deliveryboy_onboarding_step);
+    } catch (err) {
+      alert("Failed to update onboarding step");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -648,7 +672,11 @@ export default function DeliveryPartnerOnboarding() {
         selfie_id: result.selfie_url,
       });
 
-      setStep(step + 1); // Move to next step
+      const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+        result.phone,
+        "delivery_boy"
+      );
+      setStep(nextStep.data.deliveryboy_onboarding_step);
     } catch (err) {
       console.error(err);
       alert("Something went wrong!");
@@ -1448,7 +1476,8 @@ export default function DeliveryPartnerOnboarding() {
                 Basic Verification Complete!
               </h2>
               <p className="text-gray-600 mb-6">
-                The sign up process is complete and you will be notified once it is approved. 
+                The sign up process is complete and you will be notified once it
+                is approved.
               </p>
               <BackButton />
             </div>
