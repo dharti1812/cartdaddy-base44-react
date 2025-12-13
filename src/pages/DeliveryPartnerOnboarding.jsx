@@ -204,12 +204,18 @@ export default function DeliveryPartnerOnboarding() {
       const result = await AuthApi.verifyOTP(formData.phone, otp);
 
       if (result.success) {
-        console.log(result);
-        console.log(result.deliveryboy_onboarding_step);
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
-        setStep(result.deliveryboy_onboarding_step);
+        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+          formData.phone,
+          "delivery_boy"
+        );
+        setStep(
+          nextStep.data.email_verified == 1
+            ?  3 
+            :  nextStep.data.email_verified == false ? 2 :nextStep.data.deliveryboy_onboarding_step
+        );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
       }
@@ -327,9 +333,16 @@ export default function DeliveryPartnerOnboarding() {
     );
 
     if (result.success) {
-      console.log(result);
       setSuccess("✅ Email verified successfully!");
-      setStep(result.deliveryboy_onboarding_step);
+      const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+        formData.phone,
+        "delivery_boy"
+      );
+      setStep(
+          nextStep.data.email_verified == false
+            ?  2
+            :  result.deliveryboy_onboarding_step
+        );
       if (result.access_token) {
         localStorage.setItem("access_token", result.access_token);
         sessionStorage.setItem("access_token", result.access_token);
