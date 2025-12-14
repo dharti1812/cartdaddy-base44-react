@@ -352,7 +352,7 @@ export default function DeliveryPartnerOnboarding() {
     }
     setSaving(false);
   };
-
+  // test comment
   const handleVerifyVehicle = async () => {
     setError("");
     setSuccess("");
