@@ -27,13 +27,6 @@ import {
 } from "lucide-react";
 import { AuthApi } from "@/components/utils/authApi";
 import { createPageUrl } from "@/utils";
-import { UploadFile } from "@/api/integrations";
-import { sendMultiChannelOTP } from "../components/utils/sarvAPI";
-import {
-  verifyDrivingLicense,
-  verifyBankAccount,
-} from "../components/utils/cashfreeConfig";
-import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { UserApi } from "@/components/utils/userApi";
 
 export default function DeliveryPartnerOnboarding() {
@@ -207,18 +200,20 @@ export default function DeliveryPartnerOnboarding() {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
-      if (result.access_token) {
-        localStorage.setItem("access_token", result.access_token);
-        sessionStorage.setItem("access_token", result.access_token);
-      }
+        if (result.access_token) {
+          localStorage.setItem("access_token", result.access_token);
+          sessionStorage.setItem("access_token", result.access_token);
+        }
         const nextStep = await UserApi.deliveryBoyOnboardingStatus(
           formData.phone,
           "delivery_boy"
         );
         setStep(
           nextStep.data.email_verified == 1
-            ?  3 
-            :  nextStep.data.email_verified == false ? 2 :nextStep.data.deliveryboy_onboarding_step
+            ? 3
+            : nextStep.data.email_verified == false
+            ? 2
+            : nextStep.data.deliveryboy_onboarding_step
         );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
@@ -343,17 +338,17 @@ export default function DeliveryPartnerOnboarding() {
         "delivery_boy"
       );
       setStep(
-          nextStep.data.email_verified == false
-            ?  2
-            :  result.deliveryboy_onboarding_step
-        );
+        nextStep.data.email_verified == false
+          ? 2
+          : result.deliveryboy_onboarding_step
+      );
     } else {
       setError("❌ Invalid OTP. Please try again.");
     }
     setSaving(false);
   };
-  // test comment
-  const handleVerifyVehicle = async () => {
+
+  const handleVerifyDL = async () => {
     setError("");
     setSuccess("");
 
@@ -361,14 +356,47 @@ export default function DeliveryPartnerOnboarding() {
       setError("Please enter a valid Driving License number");
       return;
     }
+
     if (!formData.dob) {
       setError("Please enter your Date of Birth");
       return;
     }
+
+    setSaving(true);
+
+    try {
+      const result = await AuthApi.verifyDrivingLicense({
+        dlNumber: formData.driving_license,
+        dob: formData.dob,
+      });
+
+      if (result.success) {
+        setSuccess("✅ Driving License Verified Successfully");
+        const nextStep = await UserApi.deliveryBoyOnboardingStatus(
+          result.phone,
+          "delivery_boy"
+        );
+        setStep(nextStep.data.deliveryboy_onboarding_step);
+      } else {
+        setError(`❌ ${result.message}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong while verifying Driving License");
+    }
+
+    setSaving(false);
+  };
+
+  const handleVerifyVehicle = async () => {
+    setError("");
+    setSuccess("");
+
     if (!formData.vehicle_type) {
       setError("Please select vehicle type");
       return;
     }
+
     if (!formData.vehicle_rc_number || formData.vehicle_rc_number.length < 5) {
       setError("Please enter a valid Vehicle RC number");
       return;
@@ -378,15 +406,13 @@ export default function DeliveryPartnerOnboarding() {
 
     try {
       const result = await AuthApi.verifyVehicle({
-        dlNumber: formData.driving_license,
-        dob: formData.dob,
         vehicle_type: formData.vehicle_type,
         vehicle_rc_number: formData.vehicle_rc_number,
       });
 
       if (result.success) {
         const vehicleNumberFromRC =
-          result.rc_data?.vehicle_details?.vehicle_number || "";
+          result.vehicle_number || formData.vehicle_rc_number;
 
         setFormData({
           ...formData,
@@ -400,7 +426,6 @@ export default function DeliveryPartnerOnboarding() {
         );
         setStep(nextStep.data.deliveryboy_onboarding_step);
       } else {
-        console.log(result);
         setError(`❌ ${result.message}`);
       }
     } catch (err) {
@@ -1007,9 +1032,10 @@ export default function DeliveryPartnerOnboarding() {
               <div className="text-center mb-6">
                 <FileText className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
                 <h3 className="text-2xl font-bold text-black">
-                  Driving License & Vehicle
+                  Driving License Verification
                 </h3>
               </div>
+
               <div>
                 <Label className="text-black">Driving License Number *</Label>
                 <Input
@@ -1024,6 +1050,7 @@ export default function DeliveryPartnerOnboarding() {
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
+
               <div>
                 <Label className="text-black">Date of Birth *</Label>
                 <Input
@@ -1035,6 +1062,28 @@ export default function DeliveryPartnerOnboarding() {
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
+
+              <Button
+                onClick={handleVerifyDL}
+                disabled={saving}
+                className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
+              >
+                {saving ? "Verifying..." : "Verify Driving License"}
+              </Button>
+
+              <BackButton />
+            </div>
+          )}
+
+          {step === 3.5 && (
+            <div className="space-y-6">
+              <div className="text-center mb-6">
+                <FileText className="w-16 h-16 text-[#075E66] mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-black">
+                  Vehicle Verification
+                </h3>
+              </div>
+
               <div>
                 <Label className="text-black">Vehicle Type *</Label>
                 <div className="grid grid-cols-2 gap-3 mt-2">
@@ -1060,6 +1109,7 @@ export default function DeliveryPartnerOnboarding() {
                       <p className="text-xs opacity-75">Bike/Scooter</p>
                     </div>
                   </Button>
+
                   <Button
                     type="button"
                     variant={
@@ -1084,8 +1134,9 @@ export default function DeliveryPartnerOnboarding() {
                   </Button>
                 </div>
               </div>
+
               <div>
-                <Label className="text-black">Vehicle Number</Label>
+                <Label className="text-black">Vehicle Number *</Label>
                 <Input
                   value={formData.vehicle_rc_number}
                   onChange={(e) =>
@@ -1098,13 +1149,15 @@ export default function DeliveryPartnerOnboarding() {
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
               </div>
+
               <Button
                 onClick={handleVerifyVehicle}
                 disabled={saving}
                 className="w-full bg-[#FFEB3B] hover:bg-[#FFEB3B] hover:opacity-90 text-black font-bold py-6 border-2 border-[#075E66]"
               >
-                {saving ? "Verifying..." : "Verify Driving License"}
+                {saving ? "Verifying..." : "Verify Vehicle"}
               </Button>
+
               <BackButton />
             </div>
           )}

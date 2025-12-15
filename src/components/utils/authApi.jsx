@@ -83,31 +83,6 @@ export const AuthApi = {
     }
   },
 
-  verifyDrivingLicense: async (dlNumber, dob, vehicle_type) => {
-    try {
-      const token = localStorage.getItem("access_token");
-      console.log("🔍 Verifying DL:", dlNumber, dob, vehicle_type);
-      const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          dl_number: dlNumber,
-          dob,
-          vehicle_type,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to verify Driving License");
-      return await res.json();
-    } catch (err) {
-      console.error("❌ verifyDrivingLicense error:", err);
-      return { success: false, message: err.message };
-    }
-  },
-
   logout: async () => {
     return await fetch(`${API_BASE_URL}/api/logout`, {
       method: "POST",
@@ -148,7 +123,35 @@ export const AuthApi = {
     return await response.json();
   },
 
-  verifyVehicle: async ({ dlNumber, dob, vehicle_type, vehicle_rc_number }) => {
+  verifyDrivingLicense: async ({ dlNumber, dob }) => {
+    try {
+      const token = localStorage.getItem("access_token");
+
+      const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ dl_number: dlNumber, dob }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        return {
+          success: false,
+          message: data.message || "DL verification failed",
+        };
+      }
+
+      return data;
+    } catch (err) {
+      return { success: false, message: err.message || "Something went wrong" };
+    }
+  },
+
+  verifyVehicle: async ({ vehicle_type, vehicle_rc_number }) => {
     try {
       const token = localStorage.getItem("access_token");
 
@@ -158,32 +161,21 @@ export const AuthApi = {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          dl_number: dlNumber,
-          dob,
-          vehicle_type,
-          vehicle_rc_number,
-        }),
+        body: JSON.stringify({ vehicle_type, vehicle_rc_number }),
       });
 
-      const data = await res.json(); 
+      const data = await res.json();
 
       if (!res.ok) {
         return {
           success: false,
-          message: data.message || "Verification failed",
-          dl_name: data.dl_name,
-          rc_owner_name: data.rc_owner_name,
+          message: data.message || "Vehicle verification failed",
         };
       }
 
       return data;
     } catch (err) {
-      console.error("❌ verifyVehicle error:", err);
-      return {
-        success: false,
-        message: err.message || "Something went wrong",
-      };
+      return { success: false, message: err.message || "Something went wrong" };
     }
   },
 };
