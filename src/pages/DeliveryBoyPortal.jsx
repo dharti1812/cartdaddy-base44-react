@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Bell, NavigationIcon } from "lucide-react";
+import { Bell, Phone } from "lucide-react";
 import {
   Package,
   LogOut,
@@ -60,7 +60,6 @@ export default function DeliveryBoyPortal() {
   const watchIdRef = useRef(null);
   const notificationAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
-  
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -73,47 +72,46 @@ export default function DeliveryBoyPortal() {
   }, []);
 
   useEffect(() => {
-  const unlockAudio = () => {
-    notificationAudioRef.current?.play().catch(() => {});
-    document.removeEventListener("click", unlockAudio);
-  };
+    const unlockAudio = () => {
+      notificationAudioRef.current?.play().catch(() => {});
+      document.removeEventListener("click", unlockAudio);
+    };
 
-  document.addEventListener("click", unlockAudio);
-  return () => document.removeEventListener("click", unlockAudio);
-}, []);
+    document.addEventListener("click", unlockAudio);
+    return () => document.removeEventListener("click", unlockAudio);
+  }, []);
 
   useEffect(() => {
     loadData();
   }, []);
 
- useEffect(() => {
-  const fetchNotifications = async () => {
-    try {
-      const token = sessionStorage.getItem("token");
-      const data = await deliveryPartnerApi.getNotifications(token);
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+        const data = await deliveryPartnerApi.getNotifications(token);
 
-      const newUnread = data.unread_count || 0;
-      const oldUnread = prevUnreadCountRef.current;
+        const newUnread = data.unread_count || 0;
+        const oldUnread = prevUnreadCountRef.current;
 
-      if (newUnread > oldUnread && notificationAudioRef.current) {
-        notificationAudioRef.current.play().catch(() => {});
+        if (newUnread > oldUnread && notificationAudioRef.current) {
+          notificationAudioRef.current.play().catch(() => {});
+        }
+
+        prevUnreadCountRef.current = newUnread;
+
+        setNotifications(data.notifications || []);
+        setUnreadCount(newUnread);
+      } catch (error) {
+        console.error("Notification fetch error:", error);
       }
+    };
 
-      prevUnreadCountRef.current = newUnread;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
 
-      setNotifications(data.notifications || []);
-      setUnreadCount(newUnread);
-    } catch (error) {
-      console.error("Notification fetch error:", error);
-    }
-  };
-
-  fetchNotifications();
-  const interval = setInterval(fetchNotifications, 30000);
-
-  return () => clearInterval(interval);
-}, []);
-
+    return () => clearInterval(interval);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -211,6 +209,22 @@ export default function DeliveryBoyPortal() {
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Error marking single notification as read:", error);
+    }
+  };
+
+  const callCustomer = async (order) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/click-to-call`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: partner.phone,
+          to: order.customer_phone,
+        }),
+      });
+    } catch (error) {
+      console.error("SARV call failed", error);
+      alert("Unable to connect call");
     }
   };
 
@@ -837,12 +851,24 @@ export default function DeliveryBoyPortal() {
                                   {order.drop_address?.city} —{" "}
                                   {order.drop_address?.pincode}
                                 </p>
-                                <p className="text-gray-700 text-sm">
-                                  <span className="font-semibold">
-                                    Customer:
-                                  </span>{" "}
-                                  {order.customer_name} ({order.customer_phone})
-                                </p>
+                                <div className="flex items-center text-gray-700 text-sm gap-3">
+                                  <div>
+                                    <span className="font-semibold">
+                                      Customer:
+                                    </span>{" "}
+                                    <span>{order.customer_name}</span>
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => callCustomer(order)}
+                                    className="flex items-center gap-2 whitespace-nowrap"
+                                  >
+                                    <Phone className="w-4 h-4" />
+                                    Call to Customer
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
