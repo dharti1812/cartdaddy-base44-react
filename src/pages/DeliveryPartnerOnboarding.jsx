@@ -207,6 +207,10 @@ export default function DeliveryPartnerOnboarding() {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
         setOtpSent(false);
+      if (result.access_token) {
+        localStorage.setItem("access_token", result.access_token);
+        sessionStorage.setItem("access_token", result.access_token);
+      }
         const nextStep = await UserApi.deliveryBoyOnboardingStatus(
           formData.phone,
           "delivery_boy"
@@ -343,10 +347,6 @@ export default function DeliveryPartnerOnboarding() {
             ?  2
             :  result.deliveryboy_onboarding_step
         );
-      if (result.access_token) {
-        localStorage.setItem("access_token", result.access_token);
-        sessionStorage.setItem("access_token", result.access_token);
-      }
     } else {
       setError("❌ Invalid OTP. Please try again.");
     }
@@ -400,6 +400,7 @@ export default function DeliveryPartnerOnboarding() {
         );
         setStep(nextStep.data.deliveryboy_onboarding_step);
       } else {
+        console.log(result);
         setError(`❌ ${result.message}`);
       }
     } catch (err) {

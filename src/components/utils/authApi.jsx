@@ -31,8 +31,8 @@ export const AuthApi = {
     return await res.json();
   },
 
-
   sendOTPtoMobile: async (phone, name, userCode, address) => {
+    localStorage.removeItem("access_token");
     const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -41,7 +41,6 @@ export const AuthApi = {
     if (!res.ok) return { success: false };
     return await res.json();
   },
-
 
   verifyOTP: async (phone, phone_otp) => {
     const res = await fetch(`${API_BASE_URL}/api/verify-otp`, {
@@ -52,7 +51,6 @@ export const AuthApi = {
     if (!res.ok) return { success: false };
     return await res.json();
   },
-
 
   sendOTPtoEmail: async (email, phone, userCode, address) => {
     console.log("🔍 Sending email OTP to:", email, "for phone:", phone);
@@ -87,15 +85,18 @@ export const AuthApi = {
 
   verifyDrivingLicense: async (dlNumber, dob, vehicle_type) => {
     try {
-      const token = sessionStorage.getItem("access_token");
+      const token = localStorage.getItem("access_token");
       console.log("🔍 Verifying DL:", dlNumber, dob, vehicle_type);
       const res = await fetch(`${API_BASE_URL}/api/verify-driving-license`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           dl_number: dlNumber,
           dob,
-          vehicle_type
+          vehicle_type,
         }),
       });
 
@@ -138,7 +139,9 @@ export const AuthApi = {
     if (!response.ok) {
       // Parse error body if available and throw a detailed error
       const errorBody = await response.json();
-      const error = new Error(errorBody.message || `HTTP error! status: ${response.status}`);
+      const error = new Error(
+        errorBody.message || `HTTP error! status: ${response.status}`
+      );
       error.response = { data: errorBody, status: response.status };
       throw error;
     }
@@ -147,29 +150,40 @@ export const AuthApi = {
 
   verifyVehicle: async ({ dlNumber, dob, vehicle_type, vehicle_rc_number }) => {
     try {
-      const token = sessionStorage.getItem("access_token");
-      console.log("🔍 Verifying Vehicle:", dlNumber, dob, vehicle_type, vehicle_rc_number);
+      const token = localStorage.getItem("access_token");
 
       const res = await fetch(`${API_BASE_URL}/api/verify-vehicle`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}` 
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           dl_number: dlNumber,
           dob,
           vehicle_type,
-          vehicle_rc_number: vehicle_rc_number,
+          vehicle_rc_number,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to verify Driving License or Vehicle Number");
-      return await res.json();
+      const data = await res.json(); 
+
+      if (!res.ok) {
+        return {
+          success: false,
+          message: data.message || "Verification failed",
+          dl_name: data.dl_name,
+          rc_owner_name: data.rc_owner_name,
+        };
+      }
+
+      return data;
     } catch (err) {
       console.error("❌ verifyVehicle error:", err);
-      return { success: false, message: err.message };
+      return {
+        success: false,
+        message: err.message || "Something went wrong",
+      };
     }
   },
-
 };
