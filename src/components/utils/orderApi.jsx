@@ -53,7 +53,6 @@ export const OrderApi = {
 
   acceptOrder: async (data) => {
     const token = sessionStorage.getItem("token");
-    console.log("Accepting order with data:", data);
     const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accept`, {
       method: "POST",
       headers: {

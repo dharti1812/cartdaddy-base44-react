@@ -112,174 +112,15 @@ export default function AvailableOrders({
       notify_delivery_boys: order.payment_type !== "needs_paylink",
     });
 
-
-    // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
-    // await Retailer.update(retailerId, {
-    //   current_orders: (retailerProfile?.current_orders || 0) + 1,
-    //   active_order_ids: [...(retailerProfile?.active_order_ids || []), order.id]
-    // });
-
-    // // Send customer notification
-    // if (position === 1) {
-    //   const { notifyOrderAcceptedByRetailer } = await import('../utils/customerNotifications');
-    //   await notifyOrderAcceptedByRetailer({...order, ...updateData}, retailerProfile);
-    // }
-
-    // NEW: Notify all active delivery boys under this retailer
-    if (position === 1) {
-      await notifyAllDeliveryBoys(order, retailerProfile);
-    }
-
-    if (typeof onAccept === "function") {
-      await onAccept();
-    }
-
     setAccepting(null);
 
     // If payment link needed and this retailer is active, show dialog immediately
     if (order.payment_type === "needs_paylink") {
+      
       setPendingOrder({ ...order, ...updateData });
-      setShowPaylinkDialog(true);
       return;
     } else {
       onAccept();
-    }
-  };
-
-  // Notify all active delivery boys about new order
-  const notifyAllDeliveryBoys = async (order, retailer) => {
-    const allDeliveryBoys = retailer.delivery_boys || [];
-    const { DeliveryPartner } = await import("@/api/entities"); // Import once
-
-    const matchingDeliveryBoysPromises = allDeliveryBoys.map(async (db) => {
-      if (!db.is_active) {
-        console.log(
-          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Not active`
-        );
-        return null;
-      }
-
-      // Check vehicle type match
-      // If order.required_vehicle_type is not specified, any vehicle type is allowed.
-      // If it is specified, the delivery boy's vehicle_type must match.
-      if (
-        order.required_vehicle_type &&
-        db.vehicle_type !== order.required_vehicle_type
-      ) {
-        console.log(
-          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Vehicle mismatch (needs ${order.required_vehicle_type}, has ${db.vehicle_type})`
-        );
-        return null;
-      }
-
-      // Check mutual partnership
-      // The DB must have also selected this retailer in their partnered_retailers
-      const partner = await DeliveryPartner.get(db.delivery_partner_id);
-
-      if (!partner) {
-        console.log(
-          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Delivery Partner not found in DB`
-        );
-        return null;
-      }
-
-      const hasRetailerInPreferences = (partner.partnered_retailers || []).some(
-        (pr) =>
-          pr.retailer_id === retailer.id && pr.partnership_status === "approved"
-      );
-
-      if (!hasRetailerInPreferences) {
-        console.log(
-          `⏭️ Skipping ${db.name} (ID: ${db.delivery_partner_id}) - Hasn't selected this retailer in their preferences or not approved`
-        );
-        return null;
-      }
-
-      return db; // If all checks pass, return the delivery boy
-    });
-
-    const resolvedDeliveryBoys = await Promise.all(
-      matchingDeliveryBoysPromises
-    );
-    const activeDeliveryBoys = resolvedDeliveryBoys.filter((db) => db !== null); // Filter out nulls
-
-    if (activeDeliveryBoys.length === 0) {
-      console.log(
-        `⚠️ No matching delivery boys found for ${
-          order.required_vehicle_type
-            ? order.required_vehicle_type + " order"
-            : "order with any vehicle type"
-        } from retailer ${retailer.id}`
-      );
-      return;
-    }
-
-    console.log(
-      `📢 Notifying ${activeDeliveryBoys.length} ${
-        order.required_vehicle_type || "any vehicle type"
-      } delivery boys about order ${order.id}`
-    );
-
-    // In a real system, you would send push notifications via FCM/OneSignal
-    // For now, we'll update the order to mark that notifications were sent
-    // Delivery boys will see this order when they check their available orders list
-
-    // Send SMS/WhatsApp to each delivery boy
-    for (const db of activeDeliveryBoys) {
-      if (db.phone) {
-        await sendDeliveryBoyNotification(db, order, retailer);
-      }
-    }
-  };
-
-  const sendDeliveryBoyNotification = async (deliveryBoy, order, retailer) => {
-    const vehicleEmoji =
-      order.required_vehicle_type === "2_wheeler"
-        ? "🏍️"
-        : order.required_vehicle_type === "4_wheeler"
-        ? "🚗"
-        : "📦"; // Default emoji
-
-    const message = `${vehicleEmoji} NEW ${
-      order.required_vehicle_type
-        ? order.required_vehicle_type.toUpperCase()
-        : "ANY VEHICLE"
-    } DELIVERY!
-
-Order #${order.website_ref || order.id.slice(0, 8)}
-💰 Earn: ₹${(order.amount * 0.1).toFixed(0)} (estimated)
-📍 Distance: ${order.distance_km || "Unknown"} km
-⏱️ Deliver in: ${order.sla_minutes || 60} min
-
-${order.customer_name}
-${order.drop_address?.city}
-
-🏃 First to accept gets the order!
-Login NOW!
-
-${retailer.full_name}`;
-
-    try {
-      // Send via SMS
-      await fetch("https://api.sarv.com/api/v2.0/sms_campaign.php", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: window.REACT_APP_SARV_API_TOKEN || "YOUR_TOKEN",
-          sender: "CARTDD",
-          route: "TR",
-          mobile: deliveryBoy.phone.replace("+91", ""),
-          message: message,
-        }),
-      });
-
-      console.log(
-        `✅ Notified delivery boy: ${deliveryBoy.name} for ${
-          order.required_vehicle_type || "any vehicle type"
-        } order`
-      );
-    } catch (error) {
-      console.error(`Error notifying delivery boy ${deliveryBoy.name}:`, error);
     }
   };
 
@@ -335,46 +176,46 @@ ${retailer.full_name}`;
   };
 
   const handleSubmitPaylink = async () => {
-    if (!paylinkUrl || !pendingOrder) return;
+  if (!paylinkUrl || !pendingOrder) return;
 
-    setSubmitting(true);
+  setSubmitting(true);
 
-    try {
-      await OrderApi.SubmitPayLink({
-        paylink_url: paylinkUrl,
-        paylink_generated_at: new Date().toISOString(),
-        payment_status: "paylink_sent",
-        order_id: pendingOrder.id,
-      });
+  try {
+    await OrderApi.SubmitPayLink({
+      paylink_url: paylinkUrl,
+      paylink_generated_at: new Date().toISOString(),
+      payment_status: "paylink_sent",
+      order_id: pendingOrder.id,
+    });
 
-      // Send payment link notification
-      const { notifyPaymentLink } = await import("../utils/customerNotifications");
-      await notifyPaymentLink(pendingOrder, paylinkUrl);
+    // Send payment link notification
+    const { notifyPaymentLink } = await import("../utils/customerNotifications");
+    await notifyPaymentLink(pendingOrder, paylinkUrl);
 
-      setShowPaylinkDialog(false);
-      setPaylinkUrl("");
+    setPaylinkUrl("");
 
-      // move order into payment-confirmation mode
-      setPaymentConfirmedOrder(pendingOrder);
-      setAwaitingPaymentConfirmation(true);
+    // move order into payment-confirmation mode
+    setPaymentConfirmedOrder(pendingOrder);
+    setAwaitingPaymentConfirmation(true);
 
-      setPendingOrder(null);
+    // 🔑 THIS closes the dialog
+    setPendingOrder(null);
 
-    } catch (err) {
-      // Use react-hot-toast for errors (not your ShadCN toaster)
-      if (err.type === "validation" && err.errors) {
-        Object.values(err.errors).forEach((messages) => {
-          messages.forEach((msg) => {
-            toast.error(msg); // react-hot-toast shows the message
-          });
+  } catch (err) {
+    if (err.type === "validation" && err.errors) {
+      Object.values(err.errors).forEach((messages) => {
+        messages.forEach((msg) => {
+          toast.error(msg);
         });
-      } else {
-        toast.error(err.message || "Something went wrong");
-      }
-    } finally {
-      setSubmitting(false);
+      });
+    } else {
+      toast.error(err.message || "Something went wrong");
     }
-  };
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   const handlePaymentReceivedAndNotify = async (order) => {
     try {
@@ -399,8 +240,6 @@ ${retailer.full_name}`;
       toast.error("Failed to confirm payment");
     }
   };
-
-
 
   const handleCancelOrder = async () => {
     if (!pendingOrder) return;
@@ -453,8 +292,8 @@ ${retailer.full_name}`;
     setPendingOrder(null);
     onAccept();
   };
-  console.log(orders);
-  // Filter orders based on COD preference and status
+  
+
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
     if (
@@ -472,7 +311,6 @@ ${retailer.full_name}`;
     // Non-COD orders shown to everyone
     return true;
   });
-  console.log("Filtered Orders:", filteredOrders);
 
   if (filteredOrders.length === 0) {
     return (
@@ -540,28 +378,9 @@ ${retailer.full_name}`;
               order.distance_km,
               deliverySettings
             );
-            console.log("Charges:", charges);
           }
 
-          // Now you can safely use it
-          console.log("Final:", charges);
-
-          if (!charges) {
-            console.warn(
-              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
-            );
-          }
-          console.log("Order ID:", order.id);
-          console.log("Amount:", amount);
-          console.log("Distance KM:", 5);
-          console.log("DeliverySettings:", deliverySettings);
-          console.log("Charges:", charges);
-
-          if (!charges) {
-            console.warn(
-              `⚠️ Charges are null for order ID: ${order.id}, subtotal: ${order.amount}, distance_km: ${order.distance_km}`
-            );
-          }
+          
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
@@ -915,7 +734,7 @@ ${retailer.full_name}`;
       </div>
 
       {/* Payment Link Dialog */}
-      <Dialog open={showPaylinkDialog} onOpenChange={() => {}}>
+      <Dialog open={!!pendingOrder} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}

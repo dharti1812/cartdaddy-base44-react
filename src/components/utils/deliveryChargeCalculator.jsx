@@ -22,7 +22,7 @@ export function calculateDeliveryCharges(orderValue, distanceKm, config) {
     
     // Seller receives order value minus delivery charges
     const sellerNetPayable = orderValue - deliveryCharge;
-    console.log(deliveryCharge, riderPayout, orderValue);
+    
     return {
       delivery_charge: deliveryCharge,
       rider_payout: riderPayout,
