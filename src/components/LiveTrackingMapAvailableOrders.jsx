@@ -167,7 +167,7 @@ const reverseGeocode = async (lat, lng) => {
 
     const fetchTracking = async () => {
       const res = await axios.get(
-        `${API_BASE_URL}/api/delivery-partner/track-order/${deliveryBoyId}/${orderId}`
+        `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
       );
 
       const d = res.data.delivery_boy;
