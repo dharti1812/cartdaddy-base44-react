@@ -51,9 +51,9 @@ export const OrderApi = {
     return res.json();
   },
 
-
   acceptOrder: async (data) => {
     const token = sessionStorage.getItem("token");
+    console.log("Accepting order with data:", data);
     const res = await fetch(`${API_BASE_URL}/api/retailer/orders/accept`, {
       method: "POST",
       headers: {
@@ -130,5 +130,19 @@ export const OrderApi = {
     return data;
   },
 
+  updateOrder: async (orderCode, payload) => {
+    const token = sessionStorage.getItem("token");
 
+    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/${orderCode}/updateOrder`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error("Failed to update order");
+    return res.json();
+  },
 };

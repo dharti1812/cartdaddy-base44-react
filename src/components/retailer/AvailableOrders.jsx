@@ -44,6 +44,9 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [awaitingPaymentConfirmation, setAwaitingPaymentConfirmation] = useState(false);
+  const [paymentConfirmedOrder, setPaymentConfirmedOrder] = useState(null);
+
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -104,7 +107,11 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
     
-    await OrderApi.acceptOrder(apiData);
+    await OrderApi.acceptOrder({
+      ...apiData,
+      notify_delivery_boys: order.payment_type !== "needs_paylink",
+    });
+
 
     // //Update retailer's current_orders count and active_order_ids (for tracking, not limiting)
     // await Retailer.update(retailerId, {
@@ -118,10 +125,10 @@ export default function AvailableOrders({
     //   await notifyOrderAcceptedByRetailer({...order, ...updateData}, retailerProfile);
     // }
 
-    // // NEW: Notify all active delivery boys under this retailer
-    // if (position === 1) {
-    //   await notifyAllDeliveryBoys(order, retailerProfile);
-    // }
+    // NEW: Notify all active delivery boys under this retailer
+    if (position === 1) {
+      await notifyAllDeliveryBoys(order, retailerProfile);
+    }
 
     if (typeof onAccept === "function") {
       await onAccept();
@@ -133,6 +140,7 @@ export default function AvailableOrders({
     if (order.payment_type === "needs_paylink") {
       setPendingOrder({ ...order, ...updateData });
       setShowPaylinkDialog(true);
+      return;
     } else {
       onAccept();
     }
@@ -345,8 +353,13 @@ ${retailer.full_name}`;
 
       setShowPaylinkDialog(false);
       setPaylinkUrl("");
+
+      // move order into payment-confirmation mode
+      setPaymentConfirmedOrder(pendingOrder);
+      setAwaitingPaymentConfirmation(true);
+
       setPendingOrder(null);
-      onAccept();
+
     } catch (err) {
       // Use react-hot-toast for errors (not your ShadCN toaster)
       if (err.type === "validation" && err.errors) {
@@ -363,6 +376,29 @@ ${retailer.full_name}`;
     }
   };
 
+  const handlePaymentReceivedAndNotify = async (order) => {
+    try {
+      await OrderApi.updateOrder(order.id, {
+        payment_status: "paid",
+        paid_at: new Date().toISOString(),
+      });
+
+      toast.success("Payment confirmed.");
+
+      await OrderApi.acceptOrder({
+        orderId: order.code || order.id,
+        retailerId: retailerId,
+        notify_delivery_boys: true,
+      });
+
+      setAwaitingPaymentConfirmation(false);
+      setPaymentConfirmedOrder(null);
+
+      onAccept();
+    } catch (err) {
+      toast.error("Failed to confirm payment");
+    }
+  };
 
 
 
@@ -457,7 +493,35 @@ ${retailer.full_name}`;
   }
 
   return (
+    
     <>
+      <style>{`
+      @keyframes running-border {
+        0% {
+          border-image-source: linear-gradient(
+            0deg,
+            #6366f1,
+            #8b5cf6,
+            #ec4899,
+            #6366f1
+          );
+        }
+        100% {
+          border-image-source: linear-gradient(
+            360deg,
+            #6366f1,
+            #8b5cf6,
+            #ec4899,
+            #6366f1
+          );
+        }
+      }
+
+      .animate-running-border {
+        border-image-slice: 1;
+        animation: running-border 1.5s linear infinite;
+      }
+    `}</style>
       <div className="space-y-4">
         {filteredOrders.map((order) => {
           const amount = parseFloat(
@@ -802,14 +866,46 @@ ${retailer.full_name}`;
 
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button
-                      onClick={() => handleAccept(order)}
-                      disabled={accepting === order.id}
-                      className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-6 text-lg"
-                    >
-                      {accepting === order.id
-                        ? "Accepting..."
-                        : `Accept Order - Notify Delivery Boys`}
-                    </Button>
+  onClick={() =>
+    awaitingPaymentConfirmation &&
+    paymentConfirmedOrder?.id === order.id
+      ? handlePaymentReceivedAndNotify(order)
+      : handleAccept(order)
+  }
+  disabled={accepting === order.id}
+  className={`
+    relative w-full py-6 text-lg text-white font-semibold
+    overflow-hidden rounded-xl
+    transition-all duration-300
+    ${
+      awaitingPaymentConfirmation &&
+      paymentConfirmedOrder?.id === order.id
+        ? "bg-slate-900"
+        : "bg-gradient-to-r from-blue-600 to-blue-700"
+    }
+  `}
+>
+  {/* Running Border */}
+  {awaitingPaymentConfirmation &&
+    paymentConfirmedOrder?.id === order.id && (
+      <span className="absolute inset-0 rounded-xl border-2 border-transparent animate-running-border" />
+    )}
+
+  {/* Button Content */}
+  <span className="relative z-10 flex items-center justify-center gap-2">
+    {awaitingPaymentConfirmation &&
+    paymentConfirmedOrder?.id === order.id ? (
+      <>
+        <span className="text-lg animate-bounce">⚡</span>
+        Confirm Payment Received & Notify Delivery
+      </>
+    ) : (
+      "Accept Order - Notify Delivery Boys"
+    )}
+  </span>
+</Button>
+
+
                   </div>
                 </div>
               </CardContent>
