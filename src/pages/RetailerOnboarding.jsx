@@ -494,7 +494,7 @@ export default function SellerOnboarding() {
     setSuccess("✅ Mobile verified");
     setOtp("");
     const nextStep = await UserApi.status(data.phone, "seller");
-    setStep(nextStep.data.email_verified == 1 ? nextStep.data.current_step : 2);
+    setStep(nextStep.data.current_step);
 
     
 
@@ -543,7 +543,7 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, phone: data.phone }),
+        body: JSON.stringify({ email: data.email, phone: data.phone, user_type:'delivery_boy' }),
       });
 
       const result = await response.json();
