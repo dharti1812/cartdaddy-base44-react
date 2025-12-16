@@ -1076,6 +1076,12 @@ export default function SuperAdminDashboard() {
                           {selectedDetail?.data?.account_number || "N/A"}
                         </p>
                       </div>
+                      <div>
+                        <p className="text-sm text-gray-500">IFSC</p>
+                        <p className="font-semibold text-black">
+                          {selectedDetail?.data?.ifsc || "N/A"}
+                        </p>
+                      </div>
 
                       <div>
                         <p className="text-sm text-gray-500">Status</p>
@@ -1172,7 +1178,7 @@ export default function SuperAdminDashboard() {
                       <div>
                         <p className="text-sm text-gray-500">Vehicle Number</p>
                         <p className="font-semibold text-black">
-                          {selectedDetail.data.vehicle_number || "N/A"}
+                          {selectedDetail.data.delivery_partner.vehicle_number || "N/A"}
                         </p>
                       </div>
                       <div>
