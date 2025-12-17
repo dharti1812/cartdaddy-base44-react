@@ -543,7 +543,7 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, phone: data.phone, user_type:'delivery_boy' }),
+        body: JSON.stringify({ email: data.email, phone: data.phone, user_type:'seller' }),
       });
 
       const result = await response.json();
