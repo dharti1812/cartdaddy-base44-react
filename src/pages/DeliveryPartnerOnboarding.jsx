@@ -165,14 +165,14 @@ export default function DeliveryPartnerOnboarding() {
     const phone = formData.phone;
     const name = formData.full_name || "Delivery Partner";
     const address = formData.address;
-    const userCode = "D";
+    const user_type = 'delivery_boy';
 
     setSaving(true);
 
     const result = await AuthApi.sendOTPtoMobile(
       phone,
       name,
-      userCode,
+      user_type,
       address
     );
 
@@ -194,8 +194,12 @@ export default function DeliveryPartnerOnboarding() {
 
     setSaving(true);
     try {
-      const result = await AuthApi.verifyOTP(formData.phone, otp);
-
+       
+      const result = await AuthApi.verifyOTP(
+              formData.phone,
+              otp,
+              "delivery_boy",
+            );
       if (result.success) {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
@@ -209,11 +213,7 @@ export default function DeliveryPartnerOnboarding() {
           "delivery_boy"
         );
         setStep(
-          nextStep.data.email_verified == 1
-            ? 3
-            : nextStep.data.email_verified == false
-            ? 2
-            : nextStep.data.deliveryboy_onboarding_step
+          nextStep.data.deliveryboy_onboarding_step
         );
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
@@ -238,7 +238,7 @@ export default function DeliveryPartnerOnboarding() {
       const result = await AuthApi.sendOTPtoEmail(
         formData.email,
         formData.phone,
-        "D",
+        'delivery_boy',
         formData.address
       );
 
@@ -327,7 +327,7 @@ export default function DeliveryPartnerOnboarding() {
       formData.email,
       formData.phone,
       emailOtp,
-      "D",
+      'delivery_boy',
       formData.address
     );
 
@@ -606,7 +606,7 @@ export default function DeliveryPartnerOnboarding() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: formData.phone,
-          userType: "D",
+          user_type: "delivery_boy",
         }),
       });
 
@@ -747,7 +747,7 @@ export default function DeliveryPartnerOnboarding() {
           body: JSON.stringify({
             phone,
             role: "staff",
-            userType: "delivery_boy",
+            user_type: "delivery_boy",
           }),
         }
       );
@@ -772,7 +772,7 @@ export default function DeliveryPartnerOnboarding() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${access_token}`,
           },
-          body: JSON.stringify({ phone, otp, userType: "delivery_boy" }),
+          body: JSON.stringify({ phone, otp, user_type: "delivery_boy" }),
         }
       );
       return await res.json();

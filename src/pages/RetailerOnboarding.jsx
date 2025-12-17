@@ -33,7 +33,7 @@ const sendOTP = async (phone, name) => {
     const response = await fetch(`${API_BASE_URL}/api/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, name, userType: "seller" }),
+      body: JSON.stringify({ phone, name, user_type: "seller" }),
     });
     const data = await response.json();
     console.log(data);
@@ -43,14 +43,19 @@ const sendOTP = async (phone, name) => {
   }
 };
 
-const verifyOTP = async (phone_otp, phone) => {
-  console.log(`verifing OTP to ${phone_otp} at ${phone}`);
+const verifyOTP = async (phone_otp, phone, user_type = "seller") => {
+  console.log(`verifying OTP ${phone_otp} for ${phone}`);
   try {
     const response = await fetch(`${API_BASE_URL}/api/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone_otp, phone }),
+      body: JSON.stringify({
+        phone,
+        phone_otp,
+        user_type,
+      }),
     });
+
     const data = await response.json();
     console.log(data);
     return data;
@@ -480,7 +485,7 @@ export default function SellerOnboarding() {
     setLoading(true);
 
     const result = await verifyOTP(otp, data.phone);
-  
+
     if (!result.success) {
       setError(result.message || "Wrong OTP");
       setLoading(false);
@@ -495,8 +500,6 @@ export default function SellerOnboarding() {
     setOtp("");
     const nextStep = await UserApi.status(data.phone, "seller");
     setStep(nextStep.data.current_step);
-
-    
 
     setLoading(false);
   };
@@ -514,7 +517,7 @@ export default function SellerOnboarding() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone: data.phone,
-          userType: "seller",
+          user_type: "seller",
         }),
       });
 
@@ -543,7 +546,11 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/send-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, phone: data.phone, user_type:'seller' }),
+        body: JSON.stringify({
+          email: data.email,
+          phone: data.phone,
+          user_type: "seller",
+        }),
       });
 
       const result = await response.json();
@@ -568,7 +575,7 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/verify-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: data.phone, email_otp: otp }),
+        body: JSON.stringify({ phone: data.phone, email_otp: otp, user_type :"seller" }),
       });
 
       const result = await response.json();
@@ -624,7 +631,6 @@ export default function SellerOnboarding() {
         );
 
         const nextStep = await UserApi.status(result.phone, "seller");
-        console.log(nextStep.data.current_step);
         setStep(nextStep.data.current_step);
       } else {
         setError(result.message || "GSTIN verification failed");
@@ -713,7 +719,7 @@ export default function SellerOnboarding() {
     setSuccess("");
 
     const access_token = localStorage.getItem("access_token");
-    console.log('dharti');
+    console.log("dharti");
     console.log(access_token);
     try {
       const res = await fetch(`${API_BASE_URL}/api/verify-pan`, {
@@ -736,7 +742,6 @@ export default function SellerOnboarding() {
         setSuccess("✅ PAN verified successfully");
         const nextStep = await UserApi.status(result.phone, "seller");
         setStep(nextStep.data.current_step);
-        
       } else {
         setError(result.message || "PAN verification failed");
       }
