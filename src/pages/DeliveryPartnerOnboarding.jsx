@@ -337,11 +337,7 @@ export default function DeliveryPartnerOnboarding() {
         formData.phone,
         "delivery_boy"
       );
-      setStep(
-        nextStep.data.email_verified == false
-          ? 2
-          : result.deliveryboy_onboarding_step
-      );
+      setStep(nextStep.data.deliveryboy_onboarding_step);
     } else {
       setError("❌ Invalid OTP. Please try again.");
     }
