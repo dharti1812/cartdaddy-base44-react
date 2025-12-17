@@ -100,27 +100,42 @@ export const AuthApi = {
       throw new Error("Authentication token missing.");
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/change-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data),
-    });
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/api/change-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+    } catch (err) {
+      throw new Error("Network error. Please check your internet connection.");
+    }
 
-    console.log(response);
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error("Unexpected server response.");
+    }
 
     if (!response.ok) {
-      // Parse error body if available and throw a detailed error
-      const errorBody = await response.json();
-      const error = new Error(
-        errorBody.message || `HTTP error! status: ${response.status}`
-      );
-      error.response = { data: errorBody, status: response.status };
-      throw error;
+      if (response.status === 422 && result.errors) {
+        const firstError = Object.values(result.errors)[0][0];
+        throw new Error(firstError);
+      }
+
+      if (response.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
+      throw new Error(result.message || "Something went wrong.");
     }
-    return await response.json();
+
+    return result;
   },
 
   verifyDrivingLicense: async ({ dlNumber, dob }) => {
