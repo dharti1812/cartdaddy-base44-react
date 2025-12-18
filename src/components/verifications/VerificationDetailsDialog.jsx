@@ -59,6 +59,12 @@ export default function VerificationDetailsDialog({
     shopPhotos = [];
   }
 
+  const resolveImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+  };
+
   console.log("Parsed shop photos:", shopPhotos);
   const handleDownloadReport = async () => {
     // try {
@@ -544,7 +550,7 @@ export default function VerificationDetailsDialog({
                         rel="noopener noreferrer"
                       >
                         <img
-                          src={photo.url}
+                          src={resolveImageUrl(photo.url)}
                           alt={photo.type || `Shop photo ${i + 1}`}
                           className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                         />
