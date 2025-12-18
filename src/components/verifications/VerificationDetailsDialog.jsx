@@ -476,19 +476,19 @@ export default function VerificationDetailsDialog({
                       <p className="font-mono">
                         ****
                         {isRetailer
-                          ? data.user.bank_information.account_number?.slice(-4)
-                          : data.user?.bank_information?.bank_acc_no?.slice(-4)}
+                          ? data.user.bank_information.account_number
+                          : data.user?.bank_information?.bank_acc_no}
                       </p>
                     </div>
 
-                    {/* <div>
+                    <div>
                         <Label className="text-gray-500">IFSC Code</Label>
                         <p className="font-mono">
                           {isRetailer
                             ? data.user.bank_information.ifsc
                             : data.bank_information.ifsc}
                         </p>
-                      </div> */}
+                      </div>
 
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
