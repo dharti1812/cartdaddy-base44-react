@@ -74,8 +74,6 @@ export default function BankOffersPage() {
         setOffers(updated);
     };
 
-    
-
     const loadCities = async (stateIds) => {
         if (!stateIds.length) {
             setCities([]);
@@ -91,31 +89,29 @@ export default function BankOffersPage() {
     };
 
     const handleSelectProduct = async (product) => {
-    setSelectedProduct(product);
-    setOffers([]);
-    setCities([]);
+        setSelectedProduct(product);
+        setOffers([]);
+        setCities([]);
 
-    try {
-        const existingOffers = await bankOfferApi.getOffersByProduct(product.id);
+        try {
+            const existingOffers = await bankOfferApi.getOffersByProduct(product.id);
 
-        if (existingOffers.length > 0) {
-        setOffers(existingOffers);
+            if (existingOffers.length > 0) {
+                setOffers(existingOffers);
+                const allStateIds = [
+                    ...new Set(existingOffers.flatMap(o => o.state_ids))
+                ];
 
-        // preload cities for selected states
-        const allStateIds = [
-            ...new Set(existingOffers.flatMap(o => o.state_ids))
-        ];
-
-        if (allStateIds.length) {
-            loadCities(allStateIds);
+                if (allStateIds.length) {
+                    loadCities(allStateIds);
+                }
+            } else {
+                addNewOffer();
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load offers");
         }
-        } else {
-        addNewOffer(); // no offers → show blank form
-        }
-    } catch (error) {
-        console.error(error);
-        toast.error("Failed to load offers");
-    }
     };
 
     const saveOffers = async () => {
@@ -142,39 +138,33 @@ export default function BankOffersPage() {
     };
 
     const removeOffer = async (index) => {
-  const offer = offers[index];
+        const offer = offers[index];
 
-  // Unsaved (temp) offer → UI only
-  if (String(offer.id).startsWith("temp-")) {
-    setOffers(offers.filter((_, i) => i !== index));
-    return;
-  }
+        if (String(offer.id).startsWith("temp-")) {
+            setOffers(offers.filter((_, i) => i !== index));
+            return;
+        }
 
-  // Confirm delete
-  if (!window.confirm("Are you sure you want to delete this offer?")) {
-    return;
-  }
+        if (!window.confirm("Are you sure you want to delete this offer?")) {
+            return;
+        }
 
-  try {
-    await bankOfferApi.deleteOffer(offer.id);
+        try {
+            await bankOfferApi.deleteOffer(offer.id);
 
-    toast.success("Offer deleted successfully");
+            toast.success("Offer deleted successfully");
 
-    setOffers(offers.filter((_, i) => i !== index));
-  } catch (err) {
-    console.error(err);
-    toast.error(err?.message || "Failed to delete offer");
-  }
-};
-
-
-
-
+            setOffers(offers.filter((_, i) => i !== index));
+        } catch (err) {
+            console.error(err);
+            toast.error(err?.message || "Failed to delete offer");
+        }
+    };
     const filteredProducts = products.filter(
         (p) =>
             !searchTerm ||
-            p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.seo?.slug?.toLowerCase().includes(searchTerm.toLowerCase())
+            p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.slug?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -214,8 +204,8 @@ export default function BankOffersPage() {
                                         key={product.id}
                                         onClick={() => handleSelectProduct(product)}
                                         className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedProduct?.id === product.id
-                                                ? "border-[#FFEB3B] bg-[#FFEB3B] bg-opacity-10"
-                                                : "border-gray-200 hover:border-[#075E66]"
+                                            ? "border-[#FFEB3B] bg-[#FFEB3B] bg-opacity-10"
+                                            : "border-gray-200 hover:border-[#075E66]"
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -342,9 +332,9 @@ export default function BankOffersPage() {
                                                             variant="ghost"
                                                             onClick={() => removeOffer(index)}
                                                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                            >
+                                                        >
                                                             <Trash2 className="w-4 h-4" />
-                                                            </Button>
+                                                        </Button>
 
                                                     </div>
 
