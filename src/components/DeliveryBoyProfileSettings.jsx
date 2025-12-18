@@ -36,8 +36,7 @@ export default function DeliveryBoyProfileSettings({
         account_number: dBProfile.bank_information.account_number || "",
         ifsc_code: dBProfile.bank_information.ifsc || "",
         bank_name: dBProfile.bank_information.bank_name || "",
-        nameAtBank:
-          dBProfile.bank_information.nameAtBank || "",
+        nameAtBank: dBProfile.bank_information.nameAtBank || "",
       });
     }
   }, [dBProfile]);
@@ -47,31 +46,39 @@ export default function DeliveryBoyProfileSettings({
     setBankData((prev) => ({ ...prev, [name]: value }));
   };
 
-   const handleUpdateBankDetails = async (e) => {
-      e.preventDefault();
-      try {
-        const response = await retailerApi.changeBank(bankData);
-  
-        if (response.verified) {
-          alert(response.message);
-  
-          setBankData({
-            account_number: response.bank_info.account_number,
-            ifsc_code: response.bank_info.ifsc,
-            bank_name: bankData.bank_name,
-            account_holder_name: response.bank_info.account_holder_name,
-          });
-  
-          setShowBankForm(false);
-          onUpdateProfile();
-        } else {
-          alert(response.message);
-        }
-      } catch (error) {
-        console.error(error);
-        alert("Failed to update bank details");
+  const [bankLoading, setBankLoading] = useState(false);
+
+  const handleUpdateBankDetails = async (e) => {
+    e.preventDefault();
+    setBankLoading(true);
+    try {
+      const payload = {
+        account_number: bankData.account_number,
+        ifsc_code: bankData.ifsc_code,
+        bank_name: bankData.bank_name || "",
+      };
+      const response = await retailerApi.changeBank(payload);
+
+      if (response.verified) {
+        alert(response.message);
+        setBankData({
+          account_number: response.bank_info.account_number,
+          ifsc_code: response.bank_info.ifsc,
+          bank_name: bankData.bank_name,
+          account_holder_name: response.bank_info.account_holder_name,
+        });
+        setShowBankForm(false);
+        onUpdateProfile();
+      } else {
+        alert(response.message);
       }
-    };
+    } catch (error) {
+      console.error(error);
+      alert("Failed to update bank details");
+    } finally {
+      setBankLoading(false);
+    }
+  };
 
   /* ---------------- PASSWORD STATE ---------------- */
   const [passwordForm, setPasswordForm] = useState({
@@ -298,8 +305,12 @@ export default function DeliveryBoyProfileSettings({
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="submit" className="bg-[#075E66]">
-                    Save
+                  <Button
+                    type="submit"
+                    className="bg-[#075E66]"
+                    disabled={bankLoading}
+                  >
+                    {bankLoading ? "Saving..." : "Save"}
                   </Button>
                   <Button
                     type="button"
@@ -310,8 +321,7 @@ export default function DeliveryBoyProfileSettings({
                         account_number:
                           dBProfile?.bank_information?.account_number || "",
                         ifsc_code: dBProfile?.bank_information?.ifsc || "",
-                        bank_name:
-                          dBProfile?.bank_information?.bank_name || "",
+                        bank_name: dBProfile?.bank_information?.bank_name || "",
                         nameAtBank:
                           dBProfile?.bank_information?.nameAtBank || "",
                       });
