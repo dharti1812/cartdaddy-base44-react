@@ -291,7 +291,7 @@ export default function RetailerProfileSettings({
                   <Input
                     name="account_number"
                     placeholder="Account Number"
-                    // value={bankData.account_number}
+                    value={bankData.account_number}
                     onChange={handleBankDataChange}
                     required
                   />
@@ -301,7 +301,7 @@ export default function RetailerProfileSettings({
                   <Input
                     name="ifsc_code"
                     placeholder="IFSC Code"
-                    // value={bankData.ifsc_code}
+                    value={bankData.ifsc_code}
                     onChange={handleBankDataChange}
                     maxLength={11}
                     required
@@ -312,7 +312,7 @@ export default function RetailerProfileSettings({
                   <Input
                     name="bank_name"
                     placeholder="Bank Name"
-                    // value={bankData.bank_name}
+                    value={bankData.bank_name}
                     onChange={handleBankDataChange}
                   />
                 </div>
