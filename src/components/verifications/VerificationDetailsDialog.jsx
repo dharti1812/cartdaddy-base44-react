@@ -268,7 +268,12 @@ export default function VerificationDetailsDialog({
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <Label className="text-gray-500">Full Name</Label>
-                <p className="font-medium">{data?.user?.name || "N/A"}</p>
+                <p className="font-medium">
+                  {data?.user?.name
+                    ? data.user.name.charAt(0).toUpperCase() +
+                      data.user.name.slice(1)
+                    : "N/A"}
+                </p>
               </div>
               {isRetailer && data?.name && (
                 <div>
@@ -349,17 +354,14 @@ export default function VerificationDetailsDialog({
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <Label className="text-gray-500">Account Number</Label>
+                      <p className="font-mono">{data?.bank_acc_no || "N/A"}</p>
+                    </div>
+                    <div>
+                      <Label className="text-gray-500">IFSC Code</Label>
                       <p className="font-mono">
-                        ****
-                        {data?.bank_acc_no?.slice(-4) || "N/A"}
+                        {data?.user?.bank_information?.ifsc || "N/A"}
                       </p>
                     </div>
-                    {/* <div>
-                        <Label className="text-gray-500">IFSC Code</Label>
-                        <p className="font-mono">
-                          {data?.ban?.ifsc || "N/A"}
-                        </p>
-                      </div> */}
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
                       <p className="font-medium">
