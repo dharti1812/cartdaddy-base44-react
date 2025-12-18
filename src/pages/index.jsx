@@ -73,6 +73,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import RetailerProfile from "./RetailerProfile.jsx";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
+import BankOffersPage from "./BankOffers.jsx";
 
 const PAGES = {
 
@@ -144,6 +145,8 @@ const PAGES = {
 
     ProductGenerator: ProductGenerator,
 
+    BankOffers: BankOffersPage
+
 }
 
 function _getCurrentPage(url) {
@@ -201,6 +204,8 @@ function PagesContent() {
                 <Route path="/Orders" element={<Orders />} />
 
                 <Route path="/retailerprofile" element={<RetailerProfile />} />
+
+                <Route path="/BankOffers" element={<BankOffersPage />} />
 
                 <Route path="/Retailers" element={<Retailers />} />
 

@@ -11,6 +11,7 @@ import {
   Settings,
   Menu,
   Shield,
+  CreditCard,
   UserCheck,
   LogOut
 } from "lucide-react";
@@ -35,6 +36,11 @@ const adminNavigationItems = [
     title: "Dashboard",
     url: createPageUrl("Dashboard"),
     icon: LayoutDashboard,
+  },
+  {
+    title: "Bank Offers",
+    url: createPageUrl("BankOffers"),
+    icon: CreditCard,
   },
   {
     title: "Super Admin",
