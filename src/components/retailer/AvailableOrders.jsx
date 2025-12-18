@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wallet, Smartphone, CreditCard, Landmark, BadgeIndianRupee } from "lucide-react";
+import {
+  Wallet,
+  Smartphone,
+  CreditCard,
+  Landmark,
+  BadgeIndianRupee,
+} from "lucide-react";
 import {
   MapPin,
   Package,
@@ -44,18 +50,19 @@ export default function AvailableOrders({
   const [pendingOrder, setPendingOrder] = useState(null);
   const [paylinkUrl, setPaylinkUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [awaitingPaymentConfirmation, setAwaitingPaymentConfirmation] = useState(false);
+  const [awaitingPaymentConfirmation, setAwaitingPaymentConfirmation] =
+    useState(false);
   const [paymentConfirmedOrder, setPaymentConfirmedOrder] = useState(null);
-
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
 
     const acceptedRetailers = Array.isArray(order.accepted_retailers)
-    ? order.accepted_retailers
-    : [];
+      ? order.accepted_retailers
+      : [];
 
-    const position = acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
+    const position =
+      acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
     // Get device info for tracking
     const deviceId = localStorage.getItem("cart_daddy_device_id") || "unknown";
@@ -106,7 +113,7 @@ export default function AvailableOrders({
       orderId: order.code || order.id,
       retailerId: retailerId,
     };
-    
+
     await OrderApi.acceptOrder({
       ...apiData,
       notify_delivery_boys: order.payment_type !== "needs_paylink",
@@ -116,7 +123,6 @@ export default function AvailableOrders({
 
     // If payment link needed and this retailer is active, show dialog immediately
     if (order.payment_type === "needs_paylink") {
-      
       setPendingOrder({ ...order, ...updateData });
       return;
     } else {
@@ -129,93 +135,93 @@ export default function AvailableOrders({
       label: "Cash on Delivery",
       icon: BadgeIndianRupee,
       className: "bg-green-50 text-green-700 border border-green-200",
-      iconClass: "text-green-600"
+      iconClass: "text-green-600",
     },
     needs_paylink: {
       label: "Payment Link Required",
       icon: LinkIcon,
       className: "bg-orange-50 text-orange-700 border border-orange-200",
-      iconClass: "text-orange-600"
+      iconClass: "text-orange-600",
     },
     prepaid: {
       label: "Prepaid",
       icon: Wallet,
       className: "bg-blue-50 text-blue-700 border border-blue-200",
-      iconClass: "text-blue-600"
+      iconClass: "text-blue-600",
     },
     upi: {
       label: "UPI",
       icon: Smartphone,
       className: "bg-purple-50 text-purple-700 border border-purple-200",
-      iconClass: "text-purple-600"
+      iconClass: "text-purple-600",
     },
     card: {
       label: "Card Payment",
       icon: CreditCard,
       className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
-      iconClass: "text-indigo-600"
+      iconClass: "text-indigo-600",
     },
     phonepe: {
       label: "PhonePe",
       icon: Smartphone,
       className: "bg-violet-50 text-violet-700 border border-violet-200",
-      iconClass: "text-violet-600"
+      iconClass: "text-violet-600",
     },
     google_pay: {
       label: "Google Pay",
       icon: Smartphone,
       className: "bg-red-50 text-red-700 border border-red-200",
-      iconClass: "text-red-600"
+      iconClass: "text-red-600",
     },
     paytm: {
       label: "Paytm",
       icon: Smartphone,
       className: "bg-cyan-50 text-cyan-700 border border-cyan-200",
-      iconClass: "text-cyan-600"
+      iconClass: "text-cyan-600",
     },
   };
 
   const handleSubmitPaylink = async () => {
-  if (!paylinkUrl || !pendingOrder) return;
+    if (!paylinkUrl || !pendingOrder) return;
 
-  setSubmitting(true);
+    setSubmitting(true);
 
-  try {
-    await OrderApi.SubmitPayLink({
-      paylink_url: paylinkUrl,
-      paylink_generated_at: new Date().toISOString(),
-      payment_status: "paylink_sent",
-      order_id: pendingOrder.id,
-    });
-
-    // Send payment link notification
-    const { notifyPaymentLink } = await import("../utils/customerNotifications");
-    await notifyPaymentLink(pendingOrder, paylinkUrl);
-
-    setPaylinkUrl("");
-
-    // move order into payment-confirmation mode
-    setPaymentConfirmedOrder(pendingOrder);
-    setAwaitingPaymentConfirmation(true);
-
-    // 🔑 THIS closes the dialog
-    setPendingOrder(null);
-
-  } catch (err) {
-    if (err.type === "validation" && err.errors) {
-      Object.values(err.errors).forEach((messages) => {
-        messages.forEach((msg) => {
-          toast.error(msg);
-        });
+    try {
+      await OrderApi.SubmitPayLink({
+        paylink_url: paylinkUrl,
+        paylink_generated_at: new Date().toISOString(),
+        payment_status: "paylink_sent",
+        order_id: pendingOrder.id,
       });
-    } else {
-      toast.error(err.message || "Something went wrong");
-    }
-  } finally {
-    setSubmitting(false);
-  }
-};
 
+      // Send payment link notification
+      const { notifyPaymentLink } = await import(
+        "../utils/customerNotifications"
+      );
+      await notifyPaymentLink(pendingOrder, paylinkUrl);
+
+      setPaylinkUrl("");
+
+      // move order into payment-confirmation mode
+      setPaymentConfirmedOrder(pendingOrder);
+      setAwaitingPaymentConfirmation(true);
+
+      // 🔑 THIS closes the dialog
+      setPendingOrder(null);
+    } catch (err) {
+      if (err.type === "validation" && err.errors) {
+        Object.values(err.errors).forEach((messages) => {
+          messages.forEach((msg) => {
+            toast.error(msg);
+          });
+        });
+      } else {
+        toast.error(err.message || "Something went wrong");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handlePaymentReceivedAndNotify = async (order) => {
     try {
@@ -292,7 +298,6 @@ export default function AvailableOrders({
     setPendingOrder(null);
     onAccept();
   };
-  
 
   const filteredOrders = orders.filter((order) => {
     // Show pending orders and queued orders
@@ -331,7 +336,6 @@ export default function AvailableOrders({
   }
 
   return (
-    
     <>
       <style>{`
       @keyframes running-border {
@@ -380,13 +384,44 @@ export default function AvailableOrders({
             );
           }
 
-          
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
           const isCOD = order.is_cod || order.payment_method === "cod";
           const isQueued = order.status === "queued" || order.is_queued;
 
+          // Base product amount
+          const productCost = amount;
+
+          // Delivery & fuel
+          const deliveryCharge = charges?.baseCharge || 0;
+          const fuelCost = charges?.fuelCost || 0;
+
+          // Platform commission (percent OR fixed)
+          const commissionItem = order.items?.find(
+            (item) =>
+              item.commission_type === "percent" ||
+              item.commission_type === "fixed"
+          );
+
+          let platformFeeAmount = 0;
+          let platformFeeLabel = "";
+
+          if (commissionItem) {
+            if (commissionItem.commission_type === "percent") {
+              platformFeeAmount =
+                (productCost * commissionItem.commission_value) / 100;
+              platformFeeLabel = `Platform Fee`;
+            } else if (commissionItem.commission_type === "fixed") {
+              platformFeeAmount = commissionItem.commission_value;
+              platformFeeLabel = `Platform Fee`;
+            }
+          }
+
+          // Settlement calculation
+          const settlementAmount =
+            productCost - platformFeeAmount - deliveryCharge - fuelCost;
+          const roundedSettlementAmount = Math.round(settlementAmount);
           return (
             <Card
               key={order.id}
@@ -442,7 +477,6 @@ export default function AvailableOrders({
                     </div>
                   </div>
 
-                  
                   {order.items && order.items.length > 0 && (
                     <div className="pt-3 border-t">
                       <p className="text-xs font-medium text-gray-500 mb-2">
@@ -495,17 +529,30 @@ export default function AvailableOrders({
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Base Charge:</span>
+                          <span>Delivery Charges:</span>
                           <span className="font-medium">
                             ₹{charges.baseCharge}
                           </span>
                         </div>
-                        
+                        <div className="flex justify-between">
+                          <span>{platformFeeLabel}</span>
+                          <span className="font-semibold text-red-600">
+                            -₹{platformFeeAmount}
+                          </span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-green-300 font-bold text-sm">
+                          <span className="text-green-900">
+                            Settlement Amount
+                          </span>
+                          <span className="text-emerald-700">
+                            ₹{roundedSettlementAmount}
+                          </span>
+                        </div>
 
-                        <div className="flex justify-between pt-1 border-t border-green-300 font-semibold">
+                        {/* <div className="flex justify-between pt-1 border-t border-green-300 font-semibold">
                           <span>Total Delivery Charge:</span>
                           <span>₹{charges.delivery_charge}</span>
-                        </div>
+                        </div> */}
                         {/* <div className="flex justify-between text-green-900 pt-1">
                           <span>
                             Your Share ({charges.breakdown?.retailerPercent}%):
@@ -528,7 +575,6 @@ export default function AvailableOrders({
                   )}
 
                   <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mt-3">
-
                     {/* Posted Time */}
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
@@ -539,8 +585,11 @@ export default function AvailableOrders({
                           const hours = date.getUTCHours();
                           const minutes = date.getUTCMinutes();
                           const ampm = hours >= 12 ? "pm" : "am";
-                          const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
-                          const formattedMinutes = minutes.toString().padStart(2, "0");
+                          const formattedHours =
+                            hours % 12 === 0 ? 12 : hours % 12;
+                          const formattedMinutes = minutes
+                            .toString()
+                            .padStart(2, "0");
                           return `${formattedHours}:${formattedMinutes} ${ampm}`;
                         })()}
                       </span>
@@ -552,7 +601,9 @@ export default function AvailableOrders({
                         <span className="text-gray-400">•</span>
                         <div className="flex items-center gap-1">
                           <NavigationIcon className="w-4 h-4" />
-                          <span className="font-medium">{order.distance_km} km away</span>
+                          <span className="font-medium">
+                            {order.distance_km} km away
+                          </span>
                         </div>
                       </>
                     )}
@@ -573,21 +624,24 @@ export default function AvailableOrders({
                         <span className="text-gray-400">•</span>
 
                         <div
-                          className={`flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${paymentInfo[order.payment_type].className}`}
+                          className={`flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
+                            paymentInfo[order.payment_type].className
+                          }`}
                         >
-                          {React.createElement(paymentInfo[order.payment_type].icon, {
-                            size: 16,
-                            className: paymentInfo[order.payment_type].iconClass,
-                          })}
+                          {React.createElement(
+                            paymentInfo[order.payment_type].icon,
+                            {
+                              size: 16,
+                              className:
+                                paymentInfo[order.payment_type].iconClass,
+                            }
+                          )}
 
                           <span>{paymentInfo[order.payment_type].label}</span>
                         </div>
                       </>
                     )}
-
-
                   </div>
-
                 </div>
 
                 <div className="p-4 space-y-4">
@@ -682,49 +736,45 @@ export default function AvailableOrders({
                     </Alert>
                   )}
 
-
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button
-  onClick={() =>
-    awaitingPaymentConfirmation &&
-    paymentConfirmedOrder?.id === order.id
-      ? handlePaymentReceivedAndNotify(order)
-      : handleAccept(order)
-  }
-  disabled={accepting === order.id}
-  className={`
+                      onClick={() =>
+                        awaitingPaymentConfirmation &&
+                        paymentConfirmedOrder?.id === order.id
+                          ? handlePaymentReceivedAndNotify(order)
+                          : handleAccept(order)
+                      }
+                      disabled={accepting === order.id}
+                      className={`
     relative w-full py-6 text-lg text-white font-semibold
     overflow-hidden rounded-xl
     transition-all duration-300
     ${
-      awaitingPaymentConfirmation &&
-      paymentConfirmedOrder?.id === order.id
+      awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
         ? "bg-slate-900"
         : "bg-gradient-to-r from-blue-600 to-blue-700"
     }
   `}
->
-  {/* Running Border */}
-  {awaitingPaymentConfirmation &&
-    paymentConfirmedOrder?.id === order.id && (
-      <span className="absolute inset-0 rounded-xl border-2 border-transparent animate-running-border" />
-    )}
+                    >
+                      {/* Running Border */}
+                      {awaitingPaymentConfirmation &&
+                        paymentConfirmedOrder?.id === order.id && (
+                          <span className="absolute inset-0 rounded-xl border-2 border-transparent animate-running-border" />
+                        )}
 
-  {/* Button Content */}
-  <span className="relative z-10 flex items-center justify-center gap-2">
-    {awaitingPaymentConfirmation &&
-    paymentConfirmedOrder?.id === order.id ? (
-      <>
-        <span className="text-lg animate-bounce">⚡</span>
-        Confirm Payment Received & Notify Delivery
-      </>
-    ) : (
-      "Accept Order - Notify Delivery Boys"
-    )}
-  </span>
-</Button>
-
-
+                      {/* Button Content */}
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        {awaitingPaymentConfirmation &&
+                        paymentConfirmedOrder?.id === order.id ? (
+                          <>
+                            <span className="text-lg animate-bounce">⚡</span>
+                            Confirm Payment Received & Notify Delivery
+                          </>
+                        ) : (
+                          "Accept Order - Notify Delivery Boys"
+                        )}
+                      </span>
+                    </Button>
                   </div>
                 </div>
               </CardContent>
