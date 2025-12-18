@@ -311,6 +311,12 @@ export default function SellerOnboarding() {
     }
   };
 
+  const resolveImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+  };
+
   // Capture photo from video stream
   const capturePhoto = async () => {
     if (!cameraStream) {
@@ -575,7 +581,11 @@ export default function SellerOnboarding() {
       const response = await fetch(`${API_BASE_URL}/api/verify-email-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: data.phone, email_otp: otp, user_type :"seller" }),
+        body: JSON.stringify({
+          phone: data.phone,
+          email_otp: otp,
+          user_type: "seller",
+        }),
       });
 
       const result = await response.json();
@@ -1555,7 +1565,7 @@ export default function SellerOnboarding() {
                     {data.shopPhotos.map((photo, i) => (
                       <div key={i} className="relative">
                         <img
-                          src={photo.url}
+                          src={resolveImageUrl(photo.url)}
                           alt={photo.type}
                           className="w-full h-32 object-cover rounded border-2 border-green-500"
                         />
