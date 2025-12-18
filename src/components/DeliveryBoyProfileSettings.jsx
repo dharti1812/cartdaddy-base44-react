@@ -47,20 +47,31 @@ export default function DeliveryBoyProfileSettings({
     setBankData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleUpdateBankDetails = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await deliveryPartnerApi.changeBank(bankData);
-      if (response?.message) {
-        alert(response.message);
-        setShowBankForm(false);
-        onUpdateProfile();
+   const handleUpdateBankDetails = async (e) => {
+      e.preventDefault();
+      try {
+        const response = await retailerApi.changeBank(bankData);
+  
+        if (response.verified) {
+          alert(response.message);
+  
+          setBankData({
+            account_number: response.bank_info.account_number,
+            ifsc_code: response.bank_info.ifsc,
+            bank_name: bankData.bank_name,
+            account_holder_name: response.bank_info.account_holder_name,
+          });
+  
+          setShowBankForm(false);
+          onUpdateProfile();
+        } else {
+          alert(response.message);
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Failed to update bank details");
       }
-    } catch (error) {
-      alert("Failed to update bank details");
-      console.error(error);
-    }
-  };
+    };
 
   /* ---------------- PASSWORD STATE ---------------- */
   const [passwordForm, setPasswordForm] = useState({

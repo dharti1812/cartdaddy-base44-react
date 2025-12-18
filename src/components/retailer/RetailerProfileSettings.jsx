@@ -52,14 +52,25 @@ export default function RetailerProfileSettings({
     e.preventDefault();
     try {
       const response = await retailerApi.changeBank(bankData);
-      if (response?.message) {
+
+      if (response.verified) {
         alert(response.message);
+
+        setBankData({
+          account_number: response.bank_info.account_number,
+          ifsc_code: response.bank_info.ifsc,
+          bank_name: bankData.bank_name,
+          account_holder_name: response.bank_info.account_holder_name,
+        });
+
         setShowBankForm(false);
         onUpdateProfile();
+      } else {
+        alert(response.message);
       }
     } catch (error) {
-      alert("Failed to update bank details");
       console.error(error);
+      alert("Failed to update bank details");
     }
   };
 

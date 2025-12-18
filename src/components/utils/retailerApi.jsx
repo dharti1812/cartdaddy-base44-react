@@ -144,7 +144,6 @@ export const retailerApi = {
   changeBank: async (payload) => {
     const token = sessionStorage.getItem("token");
 
-    // 1. Throw error if no token
     if (!token) {
       throw new Error("Authentication token missing.");
     }
