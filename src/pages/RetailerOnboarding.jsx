@@ -674,9 +674,14 @@ export default function SellerOnboarding() {
       });
 
       const result = await response.json();
+
+      if (!result.verified) {
+        throw new Error(result.message || "Bank verification failed");
+      }
+
       setSuccess("✅ Bank verified successfully");
+
       const nextStep = await UserApi.status(result.phone, "seller");
-      console.log(result.phone);
       setStep(nextStep.data.current_step);
     } catch (err) {
       setError(err.message || "Something went wrong");
