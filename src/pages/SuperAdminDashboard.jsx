@@ -35,7 +35,6 @@ import {
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
 import { API_BASE_URL } from "@/config";
 
-
 export default function SuperAdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [retailers, setRetailers] = useState([]);
@@ -691,6 +690,9 @@ export default function SuperAdminDashboard() {
                   {filteredSellers.map((seller) => (
                     <div
                       key={seller.id}
+                      onClick={() =>
+                        setSelectedDetail({ type: "seller", data: seller })
+                      }
                       className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-4">
@@ -819,6 +821,12 @@ export default function SuperAdminDashboard() {
                   {filteredDeliveryPartners.map((dp) => (
                     <div
                       key={dp.id}
+                      onClick={() =>
+                        setSelectedDetail({
+                          type: "delivery_partner",
+                          data: dp,
+                        })
+                      }
                       className="flex items-center justify-between p-4 border-b hover:bg-gray-50"
                     >
                       <div className="flex items-center gap-4">
@@ -991,6 +999,7 @@ export default function SuperAdminDashboard() {
         {/* Detail Dialog */}
         {selectedDetail && (
           <Dialog open onOpenChange={() => setSelectedDetail(null)}>
+          
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold">
@@ -1045,7 +1054,7 @@ export default function SuperAdminDashboard() {
                           {selectedDetail.data.email}
                         </p>
                       </div>
-                      {selectedDetail.data.alternate_phones && (
+                      {selectedDetail?.data?.alternate_phones?.length > 0 && (
                         <div className="col-span-2">
                           <p className="text-sm text-gray-500 mb-2">
                             Additional Contacts
@@ -1063,6 +1072,7 @@ export default function SuperAdminDashboard() {
                           )}
                         </div>
                       )}
+
                       <div>
                         <p className="text-sm text-gray-500">GST Number</p>
                         <p className="font-semibold text-black">
@@ -1178,7 +1188,8 @@ export default function SuperAdminDashboard() {
                       <div>
                         <p className="text-sm text-gray-500">Vehicle Number</p>
                         <p className="font-semibold text-black">
-                          {selectedDetail.data.delivery_partner.vehicle_number || "N/A"}
+                          {selectedDetail.data.delivery_partner
+                            .vehicle_number || "N/A"}
                         </p>
                       </div>
                       <div>
