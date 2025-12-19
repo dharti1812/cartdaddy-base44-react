@@ -147,6 +147,21 @@ export const deliveryPartnerApi = {
     return res.json();
   },
 
+  getMyCompletedDeliveries: async (partnerId) => {
+    const token = sessionStorage.getItem("token");
+    const res = await fetch(
+      `${API_BASE_URL}/api/delivery-partner/my-completed-deliveries/${partnerId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (!res.ok) throw new Error("Failed to fetch deliveries");
+    return res.json();
+  },
+
   getNotifications: async () => {
     const token = sessionStorage.getItem("token");
     const res = await fetch(

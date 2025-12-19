@@ -538,7 +538,7 @@ export default function ActiveDeliveries({
                     </div>
                   )}
 
-                  {!isPrimary && (
+                  {/* {!isPrimary && (
                     <Alert className="bg-amber-50 border-amber-200 mt-3">
                       <AlertCircle className="w-4 h-4 text-amber-600" />
                       <AlertDescription className="text-sm text-amber-900">
@@ -547,7 +547,7 @@ export default function ActiveDeliveries({
                         activated if they fail.
                       </AlertDescription>
                     </Alert>
-                  )}
+                  )} */}
 
                   {isPrimary &&
                     order.payment_status === "needs_paylink" &&
@@ -634,7 +634,7 @@ export default function ActiveDeliveries({
                             </>
                           )}
 
-                          {order.delivery_status === "picked_up" && (
+                          {order.delivery_status === "out_for_delivery" && (
                             <Badge className="bg-green-600 text-white px-3 py-1 text-xs">
                               OTP Verified
                             </Badge>

@@ -152,7 +152,13 @@ export default function DeliveryBoyPortal() {
       const myDeliveries = await deliveryPartnerApi.getMyDeliveries(
         partnerData.id
       );
-      const combinedOrders = [...allOrders, ...myDeliveries];
+      const completedDeliveries =
+        await deliveryPartnerApi.getMyCompletedDeliveries(partnerData.id);
+      const combinedOrders = [
+        ...allOrders,
+        ...myDeliveries,
+        ...completedDeliveries,
+      ];
       //const combinedOrders = [ ...myDeliveries];
 
       setOrders(combinedOrders);
@@ -439,6 +445,12 @@ export default function DeliveryBoyPortal() {
       !["delivered", "cancelled"].includes(o.delivery_status)
   );
 
+  const completedDeliveries = orders.filter(
+    (o) =>
+      o.assign_delivery_boy === partner.id &&
+      ["delivered"].includes(o.delivery_status)
+  );
+
   const completedToday = orders.filter((o) => {
     if (
       o.assign_delivery_boy?.id !== partner.id ||
@@ -616,7 +628,7 @@ export default function DeliveryBoyPortal() {
         <Card className="mt-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <CardHeader className="border-b">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="available">
                   Available Deliveries
                   {availableOrders.length > 0 && (
@@ -630,6 +642,14 @@ export default function DeliveryBoyPortal() {
                   {myActiveDeliveries.length > 0 && (
                     <Badge className="ml-2 bg-blue-500">
                       {myActiveDeliveries.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed Deliveries
+                  {completedDeliveries.length > 0 && (
+                    <Badge className="ml-2 bg-blue-500">
+                      {completedDeliveries.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -704,7 +724,7 @@ export default function DeliveryBoyPortal() {
                                   <span className="font-semibold">
                                     Retailer:
                                   </span>{" "}
-                                  {order.retailer?.retailer_name}
+                                  {order.retailer_name}
                                 </p>
                                 <p className="text-gray-700 text-sm">
                                   {order.pickup_address?.street},{" "}
@@ -811,7 +831,25 @@ export default function DeliveryBoyPortal() {
                             {order.website_ref || `Order #${order.id}`}
                           </h3>
 
-                          <div className="border rounded-lg p-3 bg-white shadow-sm">
+                          <p className="text-gray-700 text-sm flex items-center gap-2">
+                            <Store className="w-4 h-4 text-gray-500" />
+                            <span className="font-semibold">
+                              Retailer:
+                            </span>{" "}
+                            {order.seller_id === 9
+                              ? "Admin"
+                              : order.retailer_name || "Not Assigned"}
+                          </p>
+                          <p className="text-gray-700 text-sm">
+                            <span className="font-semibold">
+                              Pickup Address:
+                            </span>{" "}
+                            {order.pickup_address
+                              ? `${order.pickup_address.street}, ${order.pickup_address.city}`
+                              : "Not Assigned"}
+                          </p>
+
+                          <div className="border rounded-lg p-3 bg-white shadow-sm mt-2">
                             <p className="font-semibold text-gray-800 mb-1">
                               📦 Product Details
                             </p>
@@ -921,6 +959,92 @@ export default function DeliveryBoyPortal() {
                     onClose={() => setSelectedOrder(null)}
                     onUpdate={loadData}
                   />
+                )}
+              </TabsContent>
+
+              <TabsContent value="completed" className="mt-0">
+                {completedDeliveries.length === 0 ? (
+                  <p className="text-center text-gray-500 py-6">
+                    No active deliveries found.
+                  </p>
+                ) : (
+                  // If deliveries exist
+                  <div className="space-y-4">
+                    {completedDeliveries.map((order) => (
+                      <Card
+                        key={order.id}
+                        className="border border-green-300 bg-green-50"
+                      >
+                        <CardContent className="p-4 space-y-3">
+                          {/* Header */}
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-lg ">
+                              {order.website_ref || `Order #${order.id}`}
+                            </h3>
+
+                            <Badge className="bg-green-600 text-white flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4" />
+                              Delivered
+                            </Badge>
+                          </div>
+
+                         
+                          <p className="text-gray-700 text-sm flex items-center gap-2">
+                            <Store className="w-4 h-4 text-gray-500" />
+                            <span className="font-semibold">Retailer:</span>
+                            {order.seller_id === 9
+                              ? "Admin"
+                              : order.retailer_name || "Not Assigned"}
+                          </p>
+
+                         
+                          <p className="text-gray-700 text-sm">
+                            <span className="font-semibold">Pickup:</span>{" "}
+                            {order.pickup_address
+                              ? `${order.pickup_address.street}, ${order.pickup_address.city}`
+                              : "Not Assigned"}
+                          </p>
+
+                         
+                          <p className="text-gray-700 text-sm">
+                            <span className="font-semibold">Delivered To:</span>{" "}
+                            {order.drop_address
+                              ? `${order.drop_address.street}, ${order.drop_address.city} - ${order.drop_address.pincode}`
+                              : "Not Assigned"}
+                          </p>
+
+                        
+                          <div className="border rounded-lg p-3 bg-white">
+                            <p className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                              📦 Products
+                            </p>
+
+                            {order.items?.map((item, index) => (
+                              <div
+                                key={index}
+                                className="text-sm text-gray-700 flex justify-between"
+                              >
+                                <span>{item.name}</span>
+                                <span className="font-medium">
+                                  {item.quantity} × ₹{item.price}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Delivered Time */}
+                          <p className="text-xs text-gray-600">
+                            Delivered on{" "}
+                            <span className="font-medium">
+                              {new Date(
+                                order.actual_delivery_time || order.updated_at
+                              ).toLocaleString()}
+                            </span>
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </TabsContent>
 

@@ -62,6 +62,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
         setCustomerOtp(false);
         await sendOtp("customer");
       } else if (newStatus === "reached_to_customer") {
+        await sendOtp("customer");
         setCustomerOtp(true); // show OTP modal
       }
 
@@ -164,7 +165,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
       const data = await res.json();
       if (data.success) {
         setCustomerOtp(false); // hide OTP input
-        setStatus("otp_verified"); // set status to OTP verified
+        setStatus("out_for_delivery"); // set status to OTP verified
         setShowCustomerInfo(true); // show customer info form
         //onUpdate && onUpdate("otp_verified"); // update parent with OTP verified
       } else {
