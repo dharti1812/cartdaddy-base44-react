@@ -104,7 +104,7 @@ export default function RetailersList({
                           <Phone className="w-4 h-4 flex-shrink-0" />
                           <span>{retailer.phone}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-600">
+                        {/* <div className="flex items-center gap-2 text-gray-600">
                           <VehicleIcon className="w-4 h-4 flex-shrink-0" />
                           <span className="capitalize">
                             {retailer.vehicle_type}
@@ -117,7 +117,7 @@ export default function RetailersList({
                               </span>
                             </>
                           )}
-                        </div>
+                        </div> */}
                         <div className="flex items-center gap-2 text-gray-600">
                           <Package className="w-4 h-4 flex-shrink-0" />
                           <span>

@@ -278,12 +278,12 @@ export default function RetailersPage() {
                     <Label className="text-sm font-semibold">Email</Label>
                     <p className="text-lg">{retailerToApprove.email}</p>
                   </div>
-                  <div>
+                  {/* <div>
                     <Label className="text-sm font-semibold">Vehicle</Label>
                     <p className="text-lg capitalize">
                       {retailerToApprove.vehicle_type}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
 
                 {retailerToApprove.bank_account && (
