@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import CallButton from "../components/communication/CallButton";
 import CustomerDataMask from "../components/privacy/CustomerDataMask";
 import { API_BASE_URL } from "@/config";
+import { formatDateTime } from "@/helpers/dateHelper";
 
 /**
  * Customer CRM - Customer 360 View
@@ -602,57 +603,100 @@ export default function CustomerCRM() {
                               customerOrders.map((order) => (
                                 <div
                                   key={order.id}
-                                  className="p-4 bg-gray-50 rounded-lg border"
+                                  className="bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition space-y-4"
                                 >
-                                  <div className="flex items-start justify-between mb-2">
+                                  {/* Header */}
+                                  <div className="flex justify-between items-start">
                                     <div>
-                                      <p className="font-semibold">
-                                        {order.website_ref ||
-                                          `#${order.id.toString().slice(0, 8)}`}
+                                      <p className="font-semibold text-base">
+                                        #{order.id}
                                       </p>
-                                      <p className="text-sm text-gray-600">
-                                        {order.created_at}
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        {formatDateTime(order.created_date)}
                                       </p>
                                     </div>
+
                                     <div className="text-right">
-                                      <p className="font-bold text-lg">
+                                      <p className="text-lg font-bold text-emerald-600">
                                         ₹{order.amount}
                                       </p>
                                       <Badge
-                                        className={
-                                          order.delivery_status === "delivered"
-                                            ? "bg-green-500"
-                                            : order.delivery_status ===
-                                              "en_route"
-                                            ? "bg-blue-500"
-                                            : "bg-amber-500"
-                                        }
+                                        className={`mt-1 ${
+                                          order.status === "pending"
+                                            ? "bg-amber-500"
+                                            : "bg-green-500"
+                                        }`}
                                       >
                                         {order.status}
                                       </Badge>
                                     </div>
                                   </div>
-                                  {order.active_retailer_info && (
-                                    <p className="text-xs text-gray-600">
-                                      Seller:{" "}
-                                      {
-                                        order.active_retailer_info
-                                          .retailer_business_name
-                                      }{" "}
-                                      (
-                                      {order.active_retailer_info.retailer_name}
-                                      )
+
+                                  {/* Products */}
+                                  <div className="bg-gray-50 rounded-lg p-3">
+                                    <p className="text-sm font-semibold text-gray-700 mb-2">
+                                      📦 Products
                                     </p>
-                                  )}
-                                  {order.sla_breach && (
-                                    <Badge
-                                      variant="destructive"
-                                      className="mt-2"
+
+                                    <div className="space-y-2">
+                                      {order.items.map((item, index) => (
+                                        <div
+                                          key={index}
+                                          className="flex justify-between items-start text-sm"
+                                        >
+                                          <div>
+                                            <p className="text-gray-800 font-medium">
+                                              {item.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                              Qty: {item.quantity}
+                                            </p>
+                                          </div>
+
+                                          <p className="font-semibold text-gray-900">
+                                            ₹{item.price}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-gray-500">🧑‍💼 Assign Seller</p>
+                                      <p className="font-medium text-gray-800">
+                                        {order.seller_id === 9
+                                          ? "Admin"
+                                          : order.retailer_name ||
+                                            "Not Assigned"}
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="text-gray-500">
+                                        🚚 Assign Delivery Boy
+                                      </p>
+                                      <p className="font-medium text-gray-800">
+                                        {order.assign_delivery_boy_name ?? 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex justify-between items-center pt-2 border-t">
+                                    <span
+                                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                        order.payment_status === "unpaid"
+                                          ? "bg-red-100 text-red-600"
+                                          : "bg-green-100 text-green-600"
+                                      }`}
                                     >
-                                      <AlertCircle className="w-3 h-3 mr-1" />
-                                      SLA Breach
-                                    </Badge>
-                                  )}
+                                      💳 {order.payment_status.toUpperCase()}
+                                    </span>
+
+                                    <span className="text-xs text-gray-500">
+                                      📍 {order.drop_address}
+                                    </span>
+                                  </div>
                                 </div>
                               ))
                             )}

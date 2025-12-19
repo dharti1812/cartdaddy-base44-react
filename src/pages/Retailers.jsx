@@ -39,9 +39,15 @@ export default function RetailersPage() {
 
   const loadRetailers = async () => {
     setLoading(true);
+
     const data = await retailerApi.list();
     console.log("Loaded retailers:", data);
-    setRetailers(data);
+
+    const filteredRetailers = data.filter(
+      (retailer) => Number(retailer.current_step) >= 7.0
+    );
+
+    setRetailers(filteredRetailers);
     setLoading(false);
   };
 
