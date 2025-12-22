@@ -208,7 +208,7 @@ export const deliveryPartnerApi = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json",
+          Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
@@ -218,12 +218,50 @@ export const deliveryPartnerApi = {
     // 2. Handle non-2xx responses
     if (!res.ok) {
       const errorBody = await res.json();
-      const error = new Error(errorBody.message || `HTTP error! Status: ${res.status}`);
+      const error = new Error(
+        errorBody.message || `HTTP error! Status: ${res.status}`
+      );
       error.response = { data: errorBody, status: res.status };
       throw error;
     }
 
     // 3. CRITICAL FIX: Return the JSON response
+    return await res.json();
+  },
+
+  updateProfile: async (payload) => {
+    const token = sessionStorage.getItem("token");
+    if (!token) {
+      throw new Error("Authentication token missing.");
+    }
+
+    const res = await fetch(`${API_BASE_URL}/api/delivery-partner/profile`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      let errorBody = {};
+      try {
+        errorBody = await res.json();
+      } catch (_) {}
+
+      const error = new Error(
+        errorBody.message || `Request failed (${res.status})`
+      );
+
+      error.response = {
+        data: errorBody,
+        status: res.status,
+      };
+
+      throw error;
+    }
     return await res.json();
   },
 };

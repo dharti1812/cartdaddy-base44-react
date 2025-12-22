@@ -19,6 +19,13 @@ export default function DeliveryBoyProfileSettings({
   onUpdateProfile,
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState("general");
+  const [editGeneral, setEditGeneral] = useState(false);
+
+  const [generalForm, setGeneralForm] = useState({
+    name: dBProfile?.name || "",
+    phone: dBProfile?.phone || "",
+    email: dBProfile?.email || "",
+  });
 
   /* ---------------- BANK STATE ---------------- */
   const [showBankForm, setShowBankForm] = useState(false);
@@ -31,6 +38,13 @@ export default function DeliveryBoyProfileSettings({
   });
 
   useEffect(() => {
+    if (dBProfile) {
+      setGeneralForm({
+        name: dBProfile.name || "",
+        phone: dBProfile.phone || "",
+        email: dBProfile.email || "",
+      });
+    }
     if (dBProfile?.bank_information) {
       setBankData({
         account_number: dBProfile.bank_information.account_number || "",
@@ -46,6 +60,18 @@ export default function DeliveryBoyProfileSettings({
     setBankData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleUpdateGeneral = async (e) => {
+    e.preventDefault();
+    try {
+      await deliveryPartnerApi.updateProfile(generalForm);
+      alert("Profile updated successfully");
+      setEditGeneral(false);
+      onUpdateProfile();
+    } catch (err) {
+      alert("Failed to update profile");
+    }
+  };
+
   const [bankLoading, setBankLoading] = useState(false);
 
   const handleUpdateBankDetails = async (e) => {
@@ -53,11 +79,11 @@ export default function DeliveryBoyProfileSettings({
     setBankLoading(true);
     try {
       const payload = {
-        account_number: bankData.account_number,
-        ifsc_code: bankData.ifsc_code,
+        acno: bankData.account_number,
+        ifsc: bankData.ifsc_code,
         bank_name: bankData.bank_name || "",
       };
-      const response = await retailerApi.changeBank(payload);
+      const response = await deliveryPartnerApi.changeBank(payload);
 
       if (response.verified) {
         alert(response.message);
@@ -141,27 +167,61 @@ export default function DeliveryBoyProfileSettings({
 
           {/* ---------------- GENERAL ---------------- */}
           <TabsContent value="general">
-            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
-              <h3 className="font-semibold text-gray-700">
-                General Information
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-gray-500">Delivery Boy Name</Label>
-                  <p className="font-medium">{dBProfile?.name || "N/A"}</p>
+            {!editGeneral ? (
+              <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <Label>Name</Label>
+                    <p>{dBProfile?.name}</p>
+                  </div>
+                  <div>
+                    <Label>Phone</Label>
+                    <p>{dBProfile?.phone}</p>
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <p>{dBProfile?.email}</p>
+                  </div>
                 </div>
 
-                <div>
-                  <Label className="text-gray-500">Mobile</Label>
-                  <p className="font-medium">{dBProfile?.phone || "N/A"}</p>
-                </div>
-                <div>
-                  <Label className="text-gray-500">Email</Label>
-                  <p className="font-medium">{dBProfile?.email || "N/A"}</p>
-                </div>
+                <Button onClick={() => setEditGeneral(true)}>Edit</Button>
               </div>
-            </div>
+            ) : (
+              <form onSubmit={handleUpdateGeneral} className="space-y-3">
+                <Input
+                  name="name"
+                  value={generalForm.name}
+                  onChange={(e) =>
+                    setGeneralForm({ ...generalForm, name: e.target.value })
+                  }
+                />
+                <Input
+                  name="phone"
+                  value={generalForm.phone}
+                  onChange={(e) =>
+                    setGeneralForm({ ...generalForm, phone: e.target.value })
+                  }
+                />
+                <Input
+                  name="email"
+                  value={generalForm.email}
+                  onChange={(e) =>
+                    setGeneralForm({ ...generalForm, email: e.target.value })
+                  }
+                />
+
+                <div className="flex gap-2">
+                  <Button type="submit">Save</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditGeneral(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            )}
           </TabsContent>
 
           {/* ---------------- SECURITY ---------------- */}
