@@ -314,8 +314,14 @@ export default function DeliveryBoyProfileSettings({
                     <Label className="text-gray-500">Account Holder Name</Label>
                     <p className="font-medium">
                       {bankData.nameAtBank || "Not added"}
-                    </p>
+                    </p>  
                   </div>
+                  {bankData.bank_name && (
+                    <div>
+                      <Label className="text-gray-500">Bank Name</Label>
+                      <p className="font-medium">{bankData.bank_name}</p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
