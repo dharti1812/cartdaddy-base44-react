@@ -141,6 +141,28 @@ export const retailerApi = {
     return res.json();
   },
 
+  updateProfile: async (payload) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/retailer/update-profile`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(error);
+      return { message: error.message || "Something went wrong" };
+    }
+  },
+
   changeBank: async (payload) => {
     const token = sessionStorage.getItem("token");
 
@@ -148,23 +170,22 @@ export const retailerApi = {
       throw new Error("Authentication token missing.");
     }
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/retailer/change-bank`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
+    const res = await fetch(`${API_BASE_URL}/api/retailer/change-bank`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
     // 2. Handle non-2xx responses
     if (!res.ok) {
       const errorBody = await res.json();
-      const error = new Error(errorBody.message || `HTTP error! Status: ${res.status}`);
+      const error = new Error(
+        errorBody.message || `HTTP error! Status: ${res.status}`
+      );
       error.response = { data: errorBody, status: res.status };
       throw error;
     }

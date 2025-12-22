@@ -21,6 +21,14 @@ export default function RetailerProfileSettings({
 }) {
   const [activeSettingsTab, setActiveSettingsTab] = useState("general");
 
+  const [generalForm, setGeneralForm] = useState({
+    name: retailerProfile?.name || "",
+    phone: retailerProfile?.phone || "",
+    email: retailerProfile?.email || "",
+  });
+
+  const [profileLoading, setProfileLoading] = useState(false);
+
   /* ---------------- BANK STATE ---------------- */
   const [showBankForm, setShowBankForm] = useState(false);
 
@@ -32,6 +40,13 @@ export default function RetailerProfileSettings({
   });
 
   useEffect(() => {
+    if (retailerProfile) {
+      setGeneralForm({
+        name: retailerProfile.name || "",
+        phone: retailerProfile.phone || "",
+        email: retailerProfile.email || "",
+      });
+    }
     if (retailerProfile?.bank_details) {
       setBankData({
         account_number: retailerProfile.bank_details.account_number || "",
@@ -142,41 +157,88 @@ export default function RetailerProfileSettings({
           </TabsList>
 
           <TabsContent value="general">
-            <div className="space-y-4 border rounded-lg p-4 bg-gray-50">
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setProfileLoading(true);
+                try {
+                  const payload = {
+                    name: generalForm.name,
+                    phone: generalForm.phone,
+                    email: generalForm.email,
+                  };
+                  const response = await retailerApi.updateProfile(payload);
+
+                  if (response?.message) {
+                    alert(response.message);
+                    onUpdateProfile();
+                  }
+                } catch (error) {
+                  console.error(error);
+                  alert(error?.message || "Failed to update profile");
+                } finally {
+                  setProfileLoading(false);
+                }
+              }}
+              className="space-y-4 border rounded-lg p-4 bg-gray-50"
+            >
               <h3 className="font-semibold text-gray-700">
                 General Information
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-gray-500">Retailer Name</Label>
-                  <p className="font-medium">
-                    {retailerProfile?.name || "N/A"}
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Retailer Name</Label>
+                  <Input
+                    name="name"
+                    value={generalForm.name}
+                    onChange={(e) =>
+                      setGeneralForm({ ...generalForm, name: e.target.value })
+                    }
+                    required
+                  />
                 </div>
 
-                <div>
+                <div className="space-y-2">
                   <Label className="text-gray-500">Business Name</Label>
-                  <p className="font-medium">
+                  <p className="font-medium text-gray-900">
                     {retailerProfile?.business_name || "N/A"}
                   </p>
                 </div>
 
-                <div>
-                  <Label className="text-gray-500">Mobile Number</Label>
-                  <p className="font-medium">
-                    {retailerProfile?.phone || "N/A"}
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Mobile Number</Label>
+                  <Input
+                    name="phone"
+                    value={generalForm.phone}
+                    onChange={(e) =>
+                      setGeneralForm({ ...generalForm, phone: e.target.value })
+                    }
+                    required
+                  />
                 </div>
 
-                <div>
-                  <Label className="text-gray-500">Email</Label>
-                  <p className="font-medium">
-                    {retailerProfile?.email || "N/A"}
-                  </p>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    name="email"
+                    value={generalForm.email}
+                    onChange={(e) =>
+                      setGeneralForm({ ...generalForm, email: e.target.value })
+                    }
+                    required
+                  />
                 </div>
               </div>
-            </div>
+
+              <Button
+                type="submit"
+                className="bg-[#075E66] w-full"
+                disabled={profileLoading}
+              >
+                {profileLoading ? "Saving..." : "Save Changes"}
+              </Button>
+            </form>
           </TabsContent>
 
           {/* ---------------- SECURITY ---------------- */}
@@ -275,6 +337,13 @@ export default function RetailerProfileSettings({
                       {bankData.account_holder_name || "Not added"}
                     </p>
                   </div>
+
+                  {bankData.bank_name && (
+                    <div>
+                      <Label className="text-gray-500">Bank Name</Label>
+                      <p className="font-medium">{bankData.bank_name}</p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
