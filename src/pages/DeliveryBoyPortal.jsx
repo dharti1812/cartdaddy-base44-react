@@ -72,16 +72,6 @@ export default function DeliveryBoyPortal() {
   }, []);
 
   useEffect(() => {
-    const unlockAudio = () => {
-      notificationAudioRef.current?.play().catch(() => {});
-      document.removeEventListener("click", unlockAudio);
-    };
-
-    document.addEventListener("click", unlockAudio);
-    return () => document.removeEventListener("click", unlockAudio);
-  }, []);
-
-  useEffect(() => {
     loadData();
   }, []);
 
@@ -94,12 +84,15 @@ export default function DeliveryBoyPortal() {
         const newUnread = data.unread_count || 0;
         const oldUnread = prevUnreadCountRef.current;
 
+        // 🔔 Only play if new unread notifications appear
         if (newUnread > oldUnread && notificationAudioRef.current) {
-          notificationAudioRef.current.play().catch(() => {});
+          notificationAudioRef.current.currentTime = 0;
+          notificationAudioRef.current.play().catch((err) => {
+            console.error("Audio play failed:", err);
+          });
         }
 
         prevUnreadCountRef.current = newUnread;
-
         setNotifications(data.notifications || []);
         setUnreadCount(newUnread);
       } catch (error) {
@@ -109,7 +102,6 @@ export default function DeliveryBoyPortal() {
 
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -141,9 +133,9 @@ export default function DeliveryBoyPortal() {
       setPartner(partnerData);
       console.log("✅ Delivery Partner Data:", partnerData);
 
-      const notifyData = await deliveryPartnerApi.getNotifications(token);
-      setNotifications(notifyData.notifications);
-      setUnreadCount(notifyData.unread_count);
+      // const notifyData = await deliveryPartnerApi.getNotifications(token);
+      // setNotifications(notifyData.notifications);
+      // setUnreadCount(notifyData.unread_count);
 
       const statsData = await deliveryPartnerApi.getStats(partnerData.id);
       setStats(statsData);
@@ -170,6 +162,17 @@ export default function DeliveryBoyPortal() {
     }
   };
 
+  const playNotificationSound = () => {
+    const audio = notificationAudioRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
+    audio.play().catch((err) => {
+      console.error("Audio playback failed:", err);
+    });
+  };
+
   const markAllAsRead = async () => {
     try {
       const token = sessionStorage.getItem("token");
@@ -187,6 +190,7 @@ export default function DeliveryBoyPortal() {
       const data = await res.json();
       console.log(data);
       setUnreadCount(0);
+      prevUnreadCountRef.current = 0;
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -302,11 +306,6 @@ export default function DeliveryBoyPortal() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
-        <audio
-          ref={notificationAudioRef}
-          src="/notification.mp3"
-          preload="auto"
-        />
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
@@ -471,6 +470,11 @@ export default function DeliveryBoyPortal() {
         mobileView ? "max-w-md mx-auto" : ""
       }`}
     >
+      <audio
+        ref={notificationAudioRef}
+        src="/notification.mp3"
+        preload="auto"
+      />
       {/* Mobile View Toggle */}
       {typeof window !== "undefined" && window.innerWidth > 768 && (
         <div className="fixed top-4 right-4 z-50">
@@ -681,6 +685,7 @@ export default function DeliveryBoyPortal() {
                       >
                         <CardContent className="p-4 space-y-4">
                           {/* Header */}
+
                           <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg text-gray-900">
                               {order.website_ref ||
@@ -988,7 +993,6 @@ export default function DeliveryBoyPortal() {
                             </Badge>
                           </div>
 
-                         
                           <p className="text-gray-700 text-sm flex items-center gap-2">
                             <Store className="w-4 h-4 text-gray-500" />
                             <span className="font-semibold">Retailer:</span>
@@ -997,7 +1001,6 @@ export default function DeliveryBoyPortal() {
                               : order.retailer_name || "Not Assigned"}
                           </p>
 
-                         
                           <p className="text-gray-700 text-sm">
                             <span className="font-semibold">Pickup:</span>{" "}
                             {order.pickup_address
@@ -1005,7 +1008,6 @@ export default function DeliveryBoyPortal() {
                               : "Not Assigned"}
                           </p>
 
-                         
                           <p className="text-gray-700 text-sm">
                             <span className="font-semibold">Delivered To:</span>{" "}
                             {order.drop_address
@@ -1013,7 +1015,6 @@ export default function DeliveryBoyPortal() {
                               : "Not Assigned"}
                           </p>
 
-                        
                           <div className="border rounded-lg p-3 bg-white">
                             <p className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
                               📦 Products
