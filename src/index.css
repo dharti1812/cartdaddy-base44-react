@@ -156,3 +156,16 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+/* Enable textarea-like resizing for ReactQuill */
+
+.quill-editor .ql-container {
+  resize: vertical;       /* 👈 drag up/down */
+  overflow: auto;         /* required for resize */
+  min-height: 150px;
+}
+
+.quill-editor .ql-editor {
+  min-height: 150px;
+}
+

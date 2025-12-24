@@ -4,20 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { bankOfferApi } from "@/components/utils/BankOffersApi.jsx";
 import { CreditCard, Plus, Trash2, Save, Search, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
-
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 export default function BankOffersPage() {
     const [products, setProducts] = useState([]);
@@ -32,6 +25,27 @@ export default function BankOffersPage() {
         loadProducts();
         loadStates();
     }, []);
+
+    const quillModules = {
+        toolbar: [
+            [{ header: [1, 2, false] }],
+            ["bold", "italic", "underline"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["link"],
+            ["clean"],
+        ],
+    };
+
+    const quillFormats = [
+        "header",
+        "bold",
+        "italic",
+        "underline",
+        "list",
+        "bullet",
+        "link",
+    ];
+
 
     const loadProducts = async () => {
         try {
@@ -168,6 +182,7 @@ export default function BankOffersPage() {
     );
 
     return (
+
         <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Header */}
@@ -369,21 +384,22 @@ export default function BankOffersPage() {
 
                                                         <div className="md:col-span-2">
                                                             <Label>Description</Label>
-                                                            <Textarea
-                                                                value={offer.description}
-                                                                onChange={(e) =>
-                                                                    updateOffer(
-                                                                        index,
-                                                                        "description",
-                                                                        e.target.value
-                                                                    )
-                                                                }
-                                                                placeholder="Detailed offer terms and conditions..."
-                                                                className="mt-1"
-                                                                rows={3}
-                                                            />
-                                                        </div>
 
+                                                            <div className="mt-1 bg-white">
+                                                                <ReactQuill
+                                                                    theme="snow"
+                                                                    value={offer.description}
+                                                                    onChange={(value) =>
+                                                                        updateOffer(index, "description", value)
+                                                                    }
+                                                                    modules={quillModules}
+                                                                    formats={quillFormats}
+                                                                    placeholder="Detailed offer terms and conditions..."
+                                                                    className="quill-editor"
+                                                                />
+
+                                                            </div>
+                                                        </div>
                                                         <div>
                                                             <Label>States</Label>
                                                             <div className="border rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
