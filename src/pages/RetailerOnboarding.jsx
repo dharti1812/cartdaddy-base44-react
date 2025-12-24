@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { createPageUrl } from "@/utils";
-import { API_BASE_URL } from "../../src/config";
+import { API_BASE_URL, ASSET_BASE_URL } from "../../src/config";
 import { UserApi } from "@/components/utils/userApi";
 
 const sendOTP = async (phone, name) => {
@@ -313,8 +313,17 @@ export default function SellerOnboarding() {
 
   const resolveImageUrl = (url) => {
     if (!url) return "";
-    if (url.startsWith("http")) return url;
-    return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+
+    if (url.startsWith("http")) {
+      try {
+        const parsed = new URL(url);
+        return `${ASSET_BASE_URL}${parsed.pathname}`;
+      } catch {
+        return url;
+      }
+    }
+
+    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
   };
 
   // Capture photo from video stream
