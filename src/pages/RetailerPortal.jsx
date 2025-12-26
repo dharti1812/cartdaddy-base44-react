@@ -69,7 +69,6 @@ function useLocationChecker() {
   return locationEnabled;
 }
 
-
 export default function SellerPortal() {
   const [sellerProfile, setSellerProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -308,7 +307,7 @@ export default function SellerPortal() {
       </div>
     );
   }
-  console.log("All Orders:", orders);
+  
   const availableOrders = orders.filter((o) => {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id

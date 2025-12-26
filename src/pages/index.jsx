@@ -5,7 +5,6 @@ import Dashboard from "./Dashboard";
 import Orders from "./Orders";
 
 import Retailers from "./Retailers";
-
 import Dispatch from "./Dispatch";
 
 import Analytics from "./Analytics";
@@ -74,6 +73,7 @@ import RetailerProfile from "./RetailerProfile.jsx";
 
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import BankOffersPage from "./BankOffers.jsx";
+import OfferDetails from "./OfferDetails.jsx";
 
 const PAGES = {
 
@@ -145,7 +145,8 @@ const PAGES = {
 
     ProductGenerator: ProductGenerator,
 
-    BankOffers: BankOffersPage
+    BankOffers: BankOffersPage,
+    OfferDetails: OfferDetails,
 
 }
 
@@ -202,6 +203,7 @@ function PagesContent() {
                 />
 
                 <Route path="/Orders" element={<Orders />} />
+                
 
                 <Route path="/retailerprofile" element={<RetailerProfile />} />
 
@@ -216,7 +218,7 @@ function PagesContent() {
                 <Route path="/Settings" element={<Settings />} />
 
                 <Route path="/RetailerPortal" element={<RetailerPortal />} />
-
+                
                 <Route path="/RetailerOnboarding" element={<RetailerOnboarding />} />
 
                 <Route path="/APIDocumentation" element={<APIDocumentation />} />
