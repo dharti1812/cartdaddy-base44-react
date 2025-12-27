@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { OrderApi } from "@/components/utils/orderApi";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,8 +88,26 @@ export default function SellerPortal() {
   const [stats, setStats] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [deliverySettings, setDeliverySettings] = useState(null);
-   const locationEnabled = useLocationChecker();
+  const locationEnabled = useLocationChecker();
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const notificationAudioRef = useRef(null);
+  const prevUnreadCountRef = useRef(0);
 
+  const unlockAudio = () => {
+    if (notificationAudioRef.current) {
+      notificationAudioRef.current.muted = true;
+      notificationAudioRef.current
+        .play()
+        .then(() => {
+          notificationAudioRef.current.pause();
+          notificationAudioRef.current.muted = false;
+          console.log("🔊 Audio unlocked");
+        })
+        .catch(() => {});
+    }
+  };
   const loadData = async () => {
     try {
       const token = sessionStorage.getItem("token");
@@ -165,6 +183,64 @@ export default function SellerPortal() {
       setError(error.message || "Something went wrong");
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    let initialLoad = true;
+
+    const fetchNotifications = async () => {
+      try {
+        const token = sessionStorage.getItem("token");
+        const res = await fetch(`${API_BASE_URL}/api/retailer/notifications`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+        if (!initialLoad && data.unread_count > prevUnreadCountRef.current) {
+          notificationAudioRef.current?.play().catch(() => {});
+        }
+
+        prevUnreadCountRef.current = data.unread_count;
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unread_count || 0);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    fetchNotifications();
+    initialLoad = false;
+    const interval = setInterval(fetchNotifications, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const markAllAsRead = async () => {
+    const token = sessionStorage.getItem("token");
+
+    await fetch(`${API_BASE_URL}/api/retailer/notifications/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setUnreadCount(0);
+    prevUnreadCountRef.current = 0;
+  };
+
+  const markNotificationAsRead = async (id) => {
+    const token = sessionStorage.getItem("token");
+
+    await fetch(`${API_BASE_URL}/api/retailer/notifications/${id}/read`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, read_at: new Date().toISOString() } : n
+      )
+    );
+    setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
 
   const handleNewOrder = (newOrders) => {
@@ -245,29 +321,29 @@ export default function SellerPortal() {
     );
   }
 
-   if (!locationEnabled) {
-     return (
-       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
-         <Card className="max-w-md w-full">
-           <CardContent className="p-8 text-center">
-             <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-             <h2 className="text-2xl font-bold text-Black mb-2">
-               Location Disabled
-             </h2>
-             <p className="text-black mb-4">
-               Please enable location services to use the retailer portal.
-             </p>
-             <Button
-               onClick={() => window.location.reload()}
-               className="bg-[#FFEB3B] text-black"
-             >
-               Retry
-             </Button>
-           </CardContent>
-         </Card>
-       </div>
-     );
-   }
+  if (!locationEnabled) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-Black mb-2">
+              Location Disabled
+            </h2>
+            <p className="text-black mb-4">
+              Please enable location services to use the retailer portal.
+            </p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-[#FFEB3B] text-black"
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -307,7 +383,7 @@ export default function SellerPortal() {
       </div>
     );
   }
-  
+
   const availableOrders = orders.filter((o) => {
     const alreadyAccepted = o.accepted_retailers?.some(
       (ar) => ar.retailer_id === sellerProfile?.id
@@ -317,7 +393,7 @@ export default function SellerPortal() {
     );
     //return !alreadyAccepted;
   });
-  
+
   const myActiveOrders = myAcceptedOrders;
 
   const activeOrders = myAcceptedOrders.filter((o) =>
@@ -346,6 +422,12 @@ export default function SellerPortal() {
         retailerId={sellerProfile?.id}
         onSessionConflict={() => setSessionConflict(true)}
       /> */}
+
+      <audio
+        ref={notificationAudioRef}
+        src="/notification.mp3"
+        preload="auto"
+      />
 
       <div className="bg-[#075E66] text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg border-b-4 border-[#FFEB3B]">
         <div className="max-w-7xl mx-auto">
@@ -397,15 +479,60 @@ export default function SellerPortal() {
                     sellerProfile.availability_status.slice(1).toLowerCase()
                   : ""}
               </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-[#FFEB3B] h-8 w-8 sm:h-10 sm:w-10 hover:bg-white/20"
-                onClick={loadData}
-                title="Refresh orders"
-              >
-                <Bell className="w-5 h-5 sm:w-6 sm:h-6" />
-              </Button>
+              <div className="relative">
+                {/* Bell Icon */}
+                <div
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setShowDropdown(!showDropdown);
+                    if (!showDropdown && unreadCount > 0) {
+                      markAllAsRead();
+                    }
+                  }}
+                >
+                  <Bell className="w-6 h-6 text-[#FFEB3B]" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+
+                {showDropdown && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-2 z-50">
+                    {notifications.length === 0 ? (
+                      <p className="text-gray-500 text-sm text-center py-2">
+                        No notifications
+                      </p>
+                    ) : (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          className={`p-3 border-b last:border-0 text-sm cursor-pointer rounded-md transition-colors duration-200 ${
+                            n.read_at
+                              ? "bg-gray-800 text-white"
+                              : "bg-yellow-50 text-gray-900"
+                          } hover:bg-gray-700 hover:text-white`}
+                          onClick={() => markNotificationAsRead(n.id)}
+                        >
+                          <p className="font-semibold">
+                            {n.data?.order_id
+                              ? `Order #${n.data.order_id}`
+                              : "Notification"}
+                          </p>
+                          <p className="text-sm mt-1">{n.data?.message}</p>
+                          {n.data?.amount && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Amount: ₹{n.data.amount}
+                            </p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Button
                 variant="ghost"
                 size="icon"
