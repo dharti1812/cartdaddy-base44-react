@@ -165,7 +165,7 @@ export default function DeliveryPartnerOnboarding() {
     const phone = formData.phone;
     const name = formData.full_name || "Delivery Partner";
     const address = formData.address;
-    const user_type = 'delivery_boy';
+    const user_type = "delivery_boy";
 
     setSaving(true);
 
@@ -194,12 +194,11 @@ export default function DeliveryPartnerOnboarding() {
 
     setSaving(true);
     try {
-       
       const result = await AuthApi.verifyOTP(
-              formData.phone,
-              otp,
-              "delivery_boy",
-            );
+        formData.phone,
+        otp,
+        "delivery_boy"
+      );
       if (result.success) {
         setSuccess("✅ Phone verified successfully!");
         setOtp("");
@@ -212,9 +211,7 @@ export default function DeliveryPartnerOnboarding() {
           formData.phone,
           "delivery_boy"
         );
-        setStep(
-          nextStep.data.deliveryboy_onboarding_step
-        );
+        setStep(nextStep.data.deliveryboy_onboarding_step);
       } else {
         setError("❌ " + (result.message || "Invalid OTP"));
       }
@@ -238,7 +235,7 @@ export default function DeliveryPartnerOnboarding() {
       const result = await AuthApi.sendOTPtoEmail(
         formData.email,
         formData.phone,
-        'delivery_boy',
+        "delivery_boy",
         formData.address
       );
 
@@ -327,7 +324,7 @@ export default function DeliveryPartnerOnboarding() {
       formData.email,
       formData.phone,
       emailOtp,
-      'delivery_boy',
+      "delivery_boy",
       formData.address
     );
 
@@ -580,16 +577,26 @@ export default function DeliveryPartnerOnboarding() {
       return;
     }
 
+    setSaving(true);
+
     try {
       const res = await UserApi.deliveryBoyOnboardingStatus(
         result.phone,
         "delivery_boy"
       );
+
+      console.log("Onboarding API response:", res);
+
+      if (!res?.data?.deliveryboy_onboarding_step) {
+        throw new Error("Invalid response from server");
+      }
+
       setStep(res.data.deliveryboy_onboarding_step);
     } catch (err) {
-      alert("Failed to update onboarding step");
+      console.error("Submit docs error:", err);
+      alert(err.message || "Failed to update onboarding step");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
