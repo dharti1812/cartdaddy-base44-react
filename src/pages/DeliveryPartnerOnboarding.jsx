@@ -581,7 +581,7 @@ export default function DeliveryPartnerOnboarding() {
 
     try {
       const res = await UserApi.deliveryBoyOnboardingStatus(
-        result.phone,
+        formData.phone,
         "delivery_boy"
       );
 
