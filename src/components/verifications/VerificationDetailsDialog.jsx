@@ -61,10 +61,9 @@ export default function VerificationDetailsDialog({
 
   const resolveImageUrl = (url) => {
     if (!url) return "";
-    return url.replace(/^https?:\/\/api\.cartdaddy\.in/i, ASSET_BASE_URL);
+    if (url.startsWith("http")) return url;
+    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
   };
-
-  const finalUrl = resolveImageUrl(photo.url);
 
   console.log("Parsed shop photos:", shopPhotos);
   const handleDownloadReport = async () => {
@@ -548,12 +547,12 @@ export default function VerificationDetailsDialog({
                   shopPhotos.map((photo, i) => (
                     <div key={i} className="relative">
                       <a
-                        href={finalUrl}
+                        href={resolveImageUrl(photo.url)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         <img
-                           src={finalUrl}
+                          src={resolveImageUrl(photo.url)}
                           alt={photo.type || `Shop photo ${i + 1}`}
                           className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                         />
