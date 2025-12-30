@@ -585,7 +585,7 @@ export default function VerificationDetailsDialog({
                           rel="noopener noreferrer"
                         >
                           <img
-                            src={`${ASSET_BASE_URL}/public/${data?.selfie_file?.file_name}`}
+                            src={`${ASSET_BASE_URL}/${data?.selfie_file?.file_name}`}
                             alt="Selfie"
                             className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500"
                           />
