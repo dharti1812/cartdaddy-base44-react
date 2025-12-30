@@ -29,7 +29,7 @@ import {
   Download,
 } from "lucide-react";
 import { Retailer, DeliveryPartner } from "@/api/entities";
-import { API_BASE_URL, ASSET_BASE_URL } from "@/config";
+import { API_BASE_URL } from "@/config";
 // import { generateVerificationReport } from "@/api/functions";
 
 export default function VerificationDetailsDialog({
@@ -60,9 +60,19 @@ export default function VerificationDetailsDialog({
   }
 
   const resolveImageUrl = (url) => {
+    console.log("Original URL:", url);
+
     if (!url) return "";
-    if (url.startsWith("http")) return url;
-    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+
+    if (url.startsWith("http")) {
+      console.log("Final URL (absolute):", url);
+      return url;
+    }
+
+    const finalUrl = `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+    console.log("Final URL (resolved):", finalUrl);
+
+    return finalUrl;
   };
 
   console.log("Parsed shop photos:", shopPhotos);
