@@ -587,14 +587,10 @@ export default function DeliveryPartnerOnboarding() {
 
       console.log("Onboarding API response:", res);
 
-      if (!res?.data?.deliveryboy_onboarding_step) {
-        throw new Error("Invalid response from server");
-      }
-
       setStep(res.data.deliveryboy_onboarding_step);
     } catch (err) {
       console.error("Submit docs error:", err);
-      alert(err.message || "Failed to update onboarding step");
+      alert("Failed to update onboarding step");
     } finally {
       setSaving(false);
     }
