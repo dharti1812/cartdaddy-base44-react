@@ -61,8 +61,8 @@ export default function VerificationDetailsDialog({
 
   const resolveImageUrl = (url) => {
     if (!url) return "";
-    if (url.startsWith("http")) return url;
-    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+
+    return url.replace("https://api.cartdaddy.in", ASSET_BASE_URL);
   };
 
   console.log("Parsed shop photos:", shopPhotos);
