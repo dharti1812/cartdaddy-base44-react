@@ -491,7 +491,7 @@ export default function VerificationDetailsDialog({
                       <p className="font-mono">
                         {isRetailer
                           ? data?.user?.bank_information?.ifsc ?? "-"
-                          : data?.bank_information?.ifsc ?? "-"}
+                          : data?.user?.bank_information?.ifsc ?? "-"}
                       </p>
                     </div>
 
