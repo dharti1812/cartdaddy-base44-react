@@ -62,7 +62,7 @@ export default function VerificationDetailsDialog({
   const resolveImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `${API_BASE_URL}/${url.replace(/^\/+/, "")}`;
+    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
   };
 
   console.log("Parsed shop photos:", shopPhotos);
@@ -482,13 +482,13 @@ export default function VerificationDetailsDialog({
                     </div>
 
                     <div>
-                        <Label className="text-gray-500">IFSC Code</Label>
-                        <p className="font-mono">
-                          {isRetailer
-                            ? data.user.bank_information.ifsc
-                            : data.bank_information.ifsc}
-                        </p>
-                      </div>
+                      <Label className="text-gray-500">IFSC Code</Label>
+                      <p className="font-mono">
+                        {isRetailer
+                          ? data.user.bank_information.ifsc
+                          : data.bank_information.ifsc}
+                      </p>
+                    </div>
 
                     <div>
                       <Label className="text-gray-500">Account Holder</Label>
