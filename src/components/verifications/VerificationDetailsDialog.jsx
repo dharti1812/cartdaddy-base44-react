@@ -62,9 +62,14 @@ export default function VerificationDetailsDialog({
   const resolveImageUrl = (url) => {
     if (!url) return "";
 
-    return url.replace(/^https?:\/\/api\.cartdaddy\.in/i, ASSET_BASE_URL);
+    const finalUrl = url.replace(
+      /^https?:\/\/api\.cartdaddy\.in/i,
+      ASSET_BASE_URL
+    );
+
+    return finalUrl;
   };
-  
+
   console.log("Parsed shop photos1:", shopPhotos);
   const handleDownloadReport = async () => {
     // try {
