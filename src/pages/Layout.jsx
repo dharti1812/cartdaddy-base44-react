@@ -67,11 +67,11 @@ const adminNavigationItems = [
     url: createPageUrl("Orders"),
     icon: Package,
   },
-  {
-    title: "Sellers",
-    url: createPageUrl("Retailers"),
-    icon: Users,
-  },
+  // {
+  //   title: "Sellers",
+  //   url: createPageUrl("Retailers"),
+  //   icon: Users,
+  // },
   {
     title: "Dispatch",
     url: createPageUrl("Dispatch"),
