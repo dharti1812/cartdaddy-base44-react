@@ -17,19 +17,19 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
   const user = retailer.user || {}; // fallback if user is null
   const bank = retailer.bank_information || {};
   const gst = retailer.gst_information || {};
-  let shopPhotos = [];
+  const shopPhotos = React.useMemo(() => {
+    try {
+      if (typeof retailer.shop_photos === "string") {
+        return JSON.parse(retailer.shop_photos);
+      }
+      return Array.isArray(retailer.shop_photos) ? retailer.shop_photos : [];
+    } catch (e) {
+      console.error("Invalid shop_photos JSON", e);
+      return [];
+    }
+  }, [retailer.shop_photos]);
 
-  try {
-    shopPhotos =
-      typeof retailer.shop_photos === "string"
-        ? JSON.parse(retailer.shop_photos)
-        : retailer.shop_photos || [];
-  } catch (error) {
-    console.error("Error parsing shop_photos:", error);
-    shopPhotos = [];
-  }
-
-  const photosCount = Array.isArray(shopPhotos) ? shopPhotos.length : 0;
+  const photosCount = shopPhotos.length;
 
   return (
     <Card
