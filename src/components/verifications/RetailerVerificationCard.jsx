@@ -17,14 +17,14 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
   const user = retailer.user || {}; // fallback if user is null
   const bank = retailer.bank_information || {};
   const gst = retailer.gst_information || {};
-  let shopPhotos = [];
+ let shopPhotos = [];
 
   try {
     shopPhotos =
-      typeof data.shop_photos === "string"
-        ? JSON.parse(data.shop_photos)
-        : Array.isArray(data.shop_photos)
-        ? data.shop_photos
+      typeof retailer.shop_photos === "string"
+        ? JSON.parse(retailer.shop_photos)
+        : Array.isArray(retailer.shop_photos)
+        ? retailer.shop_photos
         : [];
   } catch (error) {
     console.error("Error parsing shop_photos:", error);
