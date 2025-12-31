@@ -20,7 +20,7 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
    const photosCount = Array.isArray(retailer.shop_photos)
                 ? retailer.shop_photos.length
                 : 0;
-
+  console.log(photosCount);
   return (
     <Card
       className="border-2 border-amber-200 hover:border-amber-400 transition-all cursor-pointer"
