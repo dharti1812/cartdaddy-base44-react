@@ -21,10 +21,10 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
 
   try {
     shopPhotos =
-      typeof retailer.shop_photos === "string"
-        ? JSON.parse(retailer.shop_photos)
-        : Array.isArray(retailer.shop_photos)
-        ? retailer.shop_photos
+      typeof data.shop_photos === "string"
+        ? JSON.parse(data.shop_photos)
+        : Array.isArray(data.shop_photos)
+        ? data.shop_photos
         : [];
   } catch (error) {
     console.error("Error parsing shop_photos:", error);
@@ -139,7 +139,7 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
                 ) : (
                   <XCircle className="w-3 h-3 mr-1" />
                 )}
-                Photos
+                {photosCount} Photos
               </Badge>
             </div>
           </div>
