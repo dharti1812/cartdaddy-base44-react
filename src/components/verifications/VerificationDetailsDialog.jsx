@@ -479,10 +479,9 @@ export default function VerificationDetailsDialog({
                     <div>
                       <Label className="text-gray-500">Account Number</Label>
                       <p className="font-mono">
-                        ****
                         {isRetailer
                           ? data.user.bank_information.account_number
-                          : data.user?.bank_information?.bank_acc_no}
+                          : data.user?.bank_information?.account_number}
                       </p>
                     </div>
 
@@ -500,7 +499,7 @@ export default function VerificationDetailsDialog({
                       <p className="font-medium">
                         {isRetailer
                           ? data.user.bank_information.account_holder_name
-                          : data?.user?.bank_information?.bank_acc_name}
+                          : data?.user?.bank_information?.nameAtBank}
                       </p>
                     </div>
 
