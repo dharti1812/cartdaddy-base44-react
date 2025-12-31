@@ -17,10 +17,20 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
   const user = retailer.user || {}; // fallback if user is null
   const bank = retailer.bank_information || {};
   const gst = retailer.gst_information || {};
-   const photosCount = Array.isArray(retailer.shop_photos)
-                ? retailer.shop_photos.length
-                : 0;
-  console.log(photosCount);
+  let shopPhotos = [];
+
+  try {
+    shopPhotos =
+      typeof retailer.shop_photos === "string"
+        ? JSON.parse(retailer.shop_photos)
+        : retailer.shop_photos || [];
+  } catch (error) {
+    console.error("Error parsing shop_photos:", error);
+    shopPhotos = [];
+  }
+
+  const photosCount = Array.isArray(shopPhotos) ? shopPhotos.length : 0;
+
   return (
     <Card
       className="border-2 border-amber-200 hover:border-amber-400 transition-all cursor-pointer"
@@ -114,7 +124,7 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
                 )}
                 Bank
               </Badge>
-             
+
               <Badge
                 className={`flex items-center ${
                   photosCount > 0
