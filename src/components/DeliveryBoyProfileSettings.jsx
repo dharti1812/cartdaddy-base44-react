@@ -182,6 +182,14 @@ export default function DeliveryBoyProfileSettings({
                     <Label>Email</Label>
                     <p>{dBProfile?.email}</p>
                   </div>
+                  <div>
+                    <Label>Licence Number</Label>
+                    <p>{dBProfile?.delivery_partner?.dl_number}</p>
+                  </div>
+                   <div>
+                    <Label>Vehicle Number</Label>
+                    <p>{dBProfile?.delivery_partner?.vehicle_number}</p>
+                  </div>
                 </div>
 
                 <Button onClick={() => setEditGeneral(true)}>Edit</Button>
@@ -191,9 +199,8 @@ export default function DeliveryBoyProfileSettings({
                 <Input
                   name="name"
                   value={generalForm.name}
-                  onChange={(e) =>
-                    setGeneralForm({ ...generalForm, name: e.target.value })
-                  }
+                  disabled
+                  className="bg-gray-100 cursor-not-allowed"
                 />
                 <Input
                   name="phone"
