@@ -1144,9 +1144,12 @@ export default function DeliveryPartnerOnboarding() {
                       vehicle_rc_number: e.target.value.toUpperCase(),
                     })
                   }
-                  placeholder="Enter RC Number"
+                  placeholder="Enter Vehicle Number"
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
+                 <p className="text-xs text-gray-500 mt-1">
+                    Do not put space in Vehicle Number. Example: <span className="font-semibold">UP70XX0000</span>
+                  </p>
               </div>
 
               <Button

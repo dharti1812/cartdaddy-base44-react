@@ -453,9 +453,9 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                   )}
 
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h5 className="font-bold text-gray-900">
                       {`Order #${order.id}`}
-                    </h3>
+                    </h5>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
                         <IndianRupee className="w-3 h-3 mr-1" />
@@ -495,7 +495,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                             className="flex justify-between text-sm bg-gray-50 p-2 rounded"
                           >
                             <span className="text-gray-700 font-medium">
-                              {item.name}
+                              {item.name} x {item.quantity || 1} 
                             </span>
                             <span className="font-bold text-gray-900">
                               ₹{order.amount}
@@ -504,6 +504,38 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                         ))}
                       </div>
                     </div>
+                  )}
+
+                   {order.payment_type === "needs_paylink" && (
+                    <>
+                      {/* Payment Alert */}
+                      <Alert className="bg-amber-50 border-amber-200 mt-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800 text-sm">
+                          <strong>Payment Link Required</strong> — You must generate and send a
+                          payment link to the customer to proceed with this order.
+                        </AlertDescription>
+                      </Alert>
+
+                      {/* Offer Details */}
+                      {order.offer_details && (
+                        <div 
+                          className="p-3 rounded-md bg-green-100 border-2 border-green-400 hover:bg-green-200 transition-colors"
+                          // onClick={() => setSelectedOffer(order.offer_details)}
+                        >
+                          <div className="font-semibold text-green-900 flex items-center justify-between">
+                            <span>
+                              🎁 Offer{" "}
+                              <span className="text-sm text-green-700 underline">
+                                {order.offer_details.code}
+                              </span>{" "}
+                              Applied
+                            </span>
+                            {/* <span className="text-xs text-green-600 font-medium">View Details →</span> */}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Delivery Earnings - Prominent Display */}
@@ -531,7 +563,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                             {deliverySettings?.fuel_cost_per_km || 5}/km):
                           </span>
                           <span className="font-medium">
-                            ₹{charges.fuelCost}
+                            ₹{Math.round(charges.fuelCost)}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -721,38 +753,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                     </div>
                   )}
 
-                  {order.payment_type === "needs_paylink" && (
-                    <>
-                      {/* Payment Alert */}
-                      <Alert className="bg-amber-50 border-amber-200">
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        <AlertDescription className="text-amber-800 text-sm">
-                          <strong>Payment Link Required</strong> — You must generate and send a
-                          payment link to the customer to proceed with this order.
-                        </AlertDescription>
-                      </Alert>
-
-                      {/* Offer Details */}
-                      {order.offer_details && (
-                        <div 
-                          className="p-3 rounded-md bg-green-100 border-2 border-green-400 cursor-pointer hover:bg-green-200 transition-colors"
-                          onClick={() => setSelectedOffer(order.offer_details)}
-                        >
-                          <div className="font-semibold text-green-900 flex items-center justify-between">
-                            <span>
-                              🎁 Offer{" "}
-                              <span className="text-sm text-green-700 underline">
-                                {order.offer_details.code}
-                              </span>{" "}
-                              Applied
-                            </span>
-                            <span className="text-xs text-green-600 font-medium">View Details →</span>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-
+                 
 
 
 
