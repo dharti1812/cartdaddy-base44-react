@@ -140,20 +140,25 @@ export default function DeliveryBoyPortal() {
       const statsData = await deliveryPartnerApi.getStats(partnerData.id);
       setStats(statsData);
 
-      const allOrders = await deliveryPartnerApi.getAvailableOrders();
-      const myDeliveries = await deliveryPartnerApi.getMyDeliveries(
-        partnerData.id
-      );
-      const completedDeliveries =
+      const allOrdersRes = await deliveryPartnerApi.getAvailableOrders();
+      const myDeliveriesRes = await deliveryPartnerApi.getMyDeliveries(partnerData.id);
+      const completedDeliveriesRes =
         await deliveryPartnerApi.getMyCompletedDeliveries(partnerData.id);
+
+      const allOrders = Array.isArray(allOrdersRes) ? allOrdersRes : allOrdersRes?.data ?? [];
+      const myDeliveries = Array.isArray(myDeliveriesRes) ? myDeliveriesRes : myDeliveriesRes?.data ?? [];
+      const completedDeliveries = Array.isArray(completedDeliveriesRes)
+        ? completedDeliveriesRes
+        : completedDeliveriesRes?.data ?? [];
+
       const combinedOrders = [
         ...allOrders,
         ...myDeliveries,
         ...completedDeliveries,
       ];
-      //const combinedOrders = [ ...myDeliveries];
 
       setOrders(combinedOrders);
+
       setLoading(false);
     } catch (error) {
       console.error("❌ Error:", error);
