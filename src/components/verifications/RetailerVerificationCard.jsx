@@ -110,10 +110,20 @@ export default function RetailerVerificationCard({ retailer, onClick }) {
                 )}
                 Bank
               </Badge>
-              <Badge className="bg-amber-100 text-amber-800">
-                <Clock className="w-3 h-3 mr-1" />
-                {retailer.shop_photos?.length || 0} Photos
-              </Badge>
+              <Badge
+                  className={`flex items-center ${
+                    retailer.shop_photos?.length > 0
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {retailer.shop_photos?.length > 0 ? (
+                    <Clock className="w-3 h-3 mr-1" />
+                  ) : (
+                    <XCircle className="w-3 h-3 mr-1" />
+                  )}
+                   Photos
+                </Badge>
             </div>
           </div>
 
