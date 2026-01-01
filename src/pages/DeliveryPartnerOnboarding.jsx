@@ -40,6 +40,10 @@ export default function DeliveryPartnerOnboarding() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const [docCameraOpen, setDocCameraOpen] = useState(false);
+  const [activeDocType, setActiveDocType] = useState(null);
+  const [docCameraStream, setDocCameraStream] = useState(null);
+
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
@@ -263,6 +267,77 @@ export default function DeliveryPartnerOnboarding() {
       setIsCameraOpen(true);
     } catch (err) {
       alert("Camera access denied");
+    }
+  };
+
+  const openDocCamera = async (docType) => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, // back camera for documents
+      });
+
+      setActiveDocType(docType);
+      setDocCameraStream(stream);
+      setDocCameraOpen(true);
+    } catch (err) {
+      alert("Camera permission denied");
+    }
+  };
+
+  const closeDocCamera = () => {
+    if (docCameraStream) {
+      docCameraStream.getTracks().forEach((t) => t.stop());
+    }
+    setDocCameraStream(null);
+    setDocCameraOpen(false);
+    setActiveDocType(null);
+  };
+
+  const captureDocPhoto = async () => {
+    const video = document.getElementById("doc-video");
+    if (!video) return alert("Camera not ready");
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const base64Image = canvas.toDataURL("image/jpeg", 0.9).split(",")[1];
+
+    try {
+      setUploading(true);
+
+      const res = await fetch(`${API_BASE_URL}/api/kyc-documents-upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({
+          image: base64Image,
+          filename: `${activeDocType}.jpg`,
+          document_type: activeDocType,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.result) {
+        setFormData((prev) => ({
+          ...prev,
+          [activeDocType]: data.upload_id,
+        }));
+      } else {
+        alert(data.message || "Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading document");
+    } finally {
+      closeDocCamera();
+      setUploading(false);
     }
   };
 
@@ -1147,9 +1222,10 @@ export default function DeliveryPartnerOnboarding() {
                   placeholder="Enter Vehicle Number"
                   className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
                 />
-                 <p className="text-xs text-gray-500 mt-1">
-                    Do not put space in Vehicle Number. Example: <span className="font-semibold">UP70XX0000</span>
-                  </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Do not put space in Vehicle Number. Example:{" "}
+                  <span className="font-semibold">UP70XX0000</span>
+                </p>
               </div>
 
               <Button
@@ -1231,15 +1307,30 @@ export default function DeliveryPartnerOnboarding() {
                   { key: "aadhar_back", label: "Aadhaar (Back)" },
                   { key: "vehicle_rc", label: "Vehicle RC" },
                 ].map((doc) => (
-                  <div key={doc.key}>
+                  <div key={doc.key} className="border p-3 rounded-lg">
                     <Label className="text-black">{doc.label} *</Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleDocUpload(e, doc.key)}
-                      disabled={uploading || formData[doc.key]}
-                      className="border-2 border-[#075E66]"
-                    />
+
+                    <div className="flex gap-2 mt-2">
+                      {/* File Upload */}
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleDocUpload(e, doc.key)}
+                        disabled={uploading || formData[doc.key]}
+                        className="flex-1 border-2 border-[#075E66]"
+                      />
+
+                      {/* Camera Button */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openDocCamera(doc.key)}
+                        disabled={uploading || formData[doc.key]}
+                      >
+                        📷
+                      </Button>
+                    </div>
+
                     {formData[doc.key] && (
                       <p className="text-xs text-green-600 mt-1">✅ Uploaded</p>
                     )}
@@ -1544,6 +1635,27 @@ export default function DeliveryPartnerOnboarding() {
           )}
         </CardContent>
       </Card>
+
+      {docCameraOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-xl">
+            <video
+              id="doc-video"
+              autoPlay
+              className="w-80 rounded"
+              ref={(video) => video && (video.srcObject = docCameraStream)}
+            />
+            <div className="flex gap-3 mt-3">
+              <Button className="bg-green-600 flex-1" onClick={captureDocPhoto}>
+                Capture
+              </Button>
+              <Button className="bg-red-600 flex-1" onClick={closeDocCamera}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
