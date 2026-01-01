@@ -34,6 +34,7 @@ import {
 import LocationTracker from "./LocationTracker";
 import { API_BASE_URL } from "@/config";
 import LiveTrackingMap from "../LiveTrackingMap";
+import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
 
 export default function ActiveDeliveries({
   orders,
@@ -41,6 +42,7 @@ export default function ActiveDeliveries({
   config,
   onUpdate,
   retailerProfile,
+  deliverySettings,
   onAssignDeliveryBoy,
   onHandoffDeliveryBoy,
 }) {
@@ -211,7 +213,9 @@ export default function ActiveDeliveries({
   const handleCancelOrder = async (order) => {
     if (
       !window.confirm(
-        `Are you sure? You'll be charged $${config?.cancellation_penalty_percentage || 2}% (₹${(
+        `Are you sure? You'll be charged $${
+          config?.cancellation_penalty_percentage || 2
+        }% (₹${(
           (order.total_amount *
             (config?.cancellation_penalty_percentage || 2)) /
           100
@@ -397,6 +401,51 @@ export default function ActiveDeliveries({
               order.delivery_boy?.code === currentDeliveryBoy?.id;
             const position = myAcceptance?.position;
 
+            let charges = null;
+
+            if (!deliverySettings) {
+              console.warn("⚠️ Delivery settings not available");
+            } else {
+              charges = calculateDeliveryCharges(
+                order.amount,
+                order.distance_km,
+                deliverySettings
+              );
+            }
+
+            // Base product amount
+            const productCost = order.amount;
+
+            // Delivery & fuel
+            const deliveryCharge = charges?.baseCharge || 0;
+            const fuelCost = charges?.fuelCost || 0;
+
+            // Platform commission (percent OR fixed)
+            const commissionItem = order.items?.find(
+              (item) =>
+                item.commission_type === "percent" ||
+                item.commission_type === "fixed"
+            );
+
+            let platformFeeAmount = 0;
+            let platformFeeLabel = "";
+
+            if (commissionItem) {
+              if (commissionItem.commission_type === "percent") {
+                platformFeeAmount =
+                  (productCost * commissionItem.commission_value) / 100;
+                platformFeeLabel = `Platform Fee`;
+              } else if (commissionItem.commission_type === "fixed") {
+                platformFeeAmount = commissionItem.commission_value;
+                platformFeeLabel = `Platform Fee`;
+              }
+            }
+
+            // Settlement calculation
+            const settlementAmount =
+              productCost - platformFeeAmount - deliveryCharge - fuelCost;
+            const roundedSettlementAmount = Math.round(settlementAmount);
+
             return (
               <Card
                 key={order.id}
@@ -484,7 +533,7 @@ export default function ActiveDeliveries({
                         )}
 
                         {/* Settlement info */}
-                        <div className="mt-3 p-3 bg-white border-2 border-amber-300 rounded-lg">
+                        {/* <div className="mt-3 p-3 bg-white border-2 border-amber-300 rounded-lg">
                           <p className="text-xs font-bold text-amber-900 mb-2">
                             💰 Settlement Information
                           </p>
@@ -519,6 +568,54 @@ export default function ActiveDeliveries({
                               ℹ️ Delivery charges deducted from your settlement
                               & paid to delivery boy
                             </p>
+                          </div>
+                        </div> */}
+                        {/* Settlement info */}
+                        <div className="mt-3 p-3 bg-white border-2 border-emerald-300 rounded-lg">
+                          <p className="text-xs font-bold text-emerald-900 mb-2">
+                            💰 Settlement Information
+                          </p>
+
+                          <div className="text-xs text-green-700 space-y-1">
+                            <div className="flex justify-between">
+                              <span>Distance:</span>
+                              <span className="font-medium">
+                                {order.distance_km} km
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <span>
+                                Fuel Cost (₹
+                                {deliverySettings?.fuel_cost_per_km || 5}/km):
+                              </span>
+                              <span className="font-medium">
+                                ₹{Math.round(charges.fuelCost)}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <span>Delivery Charges:</span>
+                              <span className="font-medium">
+                                ₹{charges.baseCharge}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between">
+                              <span>{platformFeeLabel}</span>
+                              <span className="font-semibold text-red-600">
+                                -₹{platformFeeAmount}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between pt-2 border-t border-green-300 font-bold text-sm">
+                              <span className="text-green-900">
+                                Settlement Amount
+                              </span>
+                              <span className="text-emerald-700">
+                                ₹{roundedSettlementAmount}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -600,76 +697,79 @@ export default function ActiveDeliveries({
                   </div>
 
                   {/* DELIVERY BOY WHO ACCEPTED ORDER */}
-                  {order.assign_delivery_boy_id && order.delivery_status !== "pendig" && order.delivery_status !== "accepted" && (
-                    <div className="mt-4 bg-green-50 border-2 border-green-400 rounded-xl p-4 w-full shadow-sm">
-                      {/* Header */}
-                      <div className="flex items-center justify-between border-b border-green-200 pb-2 mb-3">
-                        <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
-                          🚴‍♂️ Delivery Boy Details
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Badge className="bg-green-600 text-white text-[10px] px-2 py-[2px] rounded-full">
-                            Accepted
-                          </Badge>
-                          {order.items?.[0]?.delivery_boy_accepted_at && (
-                            <span className="text-[11px] text-gray-600 italic">
-                              {new Date(
-                                order.items[0].delivery_boy_accepted_at
-                              ).toLocaleString()}
-                            </span>
-                          )}
-
-                          {(order.delivery_status === "reached_to_seller" || order.delivery_status === "accepted_db") && (
-                            <>
-                              <Button
-                                onClick={() => {
-                                  setSelectedOrder(order);
-                                  setOtpInput("");
-                                  setShowVerifyOtpDialog(true);
-                                }}
-                                className="bg-green-500 hover:bg-green-600 text-white py-3 mt-2 text-xs"
-                              >
-                                Verify OTP
-                              </Button>
-                            </>
-                          )}
-
-                          {order.delivery_status === "out_for_delivery" && (
-                            <Badge className="bg-green-600 text-white px-3 py-1 text-xs">
-                              OTP Verified
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <LiveTrackingMap orderId={order.id} />
-                      </div>
-
-                      {/* Profile Section */}
-                      <div className="flex items-center gap-4">
-                        <img
-                          src={order.assign_delivery_boy_photo}
-                          alt={order.assign_delivery_boy_name}
-                          className="w-14 h-14 rounded-full border-2 border-green-400 object-cover shadow-md"
-                        />
-                        <div className="flex flex-col">
-                          <h4 className="font-semibold text-gray-900 text-sm">
-                            {order.assign_delivery_boy_name}
-                          </h4>
-                          <p className="text-xs text-gray-700 flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-green-600" />{" "}
-                            {order.assign_delivery_boy_phone}
+                  {order.assign_delivery_boy_id &&
+                    order.delivery_status !== "pendig" &&
+                    order.delivery_status !== "accepted" && (
+                      <div className="mt-4 bg-green-50 border-2 border-green-400 rounded-xl p-4 w-full shadow-sm">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-green-200 pb-2 mb-3">
+                          <p className="text-sm font-semibold text-green-900 flex items-center gap-2">
+                            🚴‍♂️ Delivery Boy Details
                           </p>
-                          {order.delivery_boy_vehicle_no && (
-                            <p className="text-[11px] text-gray-500">
-                              Vehicle No: {order.delivery_boy_vehicle_no}
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-green-600 text-white text-[10px] px-2 py-[2px] rounded-full">
+                              Accepted
+                            </Badge>
+                            {order.items?.[0]?.delivery_boy_accepted_at && (
+                              <span className="text-[11px] text-gray-600 italic">
+                                {new Date(
+                                  order.items[0].delivery_boy_accepted_at
+                                ).toLocaleString()}
+                              </span>
+                            )}
+
+                            {(order.delivery_status === "reached_to_seller" ||
+                              order.delivery_status === "accepted_db") && (
+                              <>
+                                <Button
+                                  onClick={() => {
+                                    setSelectedOrder(order);
+                                    setOtpInput("");
+                                    setShowVerifyOtpDialog(true);
+                                  }}
+                                  className="bg-green-500 hover:bg-green-600 text-white py-3 mt-2 text-xs"
+                                >
+                                  Verify OTP
+                                </Button>
+                              </>
+                            )}
+
+                            {order.delivery_status === "out_for_delivery" && (
+                              <Badge className="bg-green-600 text-white px-3 py-1 text-xs">
+                                OTP Verified
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          <LiveTrackingMap orderId={order.id} />
+                        </div>
+
+                        {/* Profile Section */}
+                        <div className="flex items-center gap-4">
+                          <img
+                            src={order.assign_delivery_boy_photo}
+                            alt={order.assign_delivery_boy_name}
+                            className="w-14 h-14 rounded-full border-2 border-green-400 object-cover shadow-md"
+                          />
+                          <div className="flex flex-col">
+                            <h4 className="font-semibold text-gray-900 text-sm">
+                              {order.assign_delivery_boy_name}
+                            </h4>
+                            <p className="text-xs text-gray-700 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-green-600" />{" "}
+                              {order.assign_delivery_boy_phone}
                             </p>
-                          )}
+                            {order.delivery_boy_vehicle_no && (
+                              <p className="text-[11px] text-gray-500">
+                                Vehicle No: {order.delivery_boy_vehicle_no}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {isPrimary &&
                     order.payment_status === "needs_paylink" &&
@@ -790,7 +890,9 @@ export default function ActiveDeliveries({
             {/* 🔥 Resend OTP UI */}
             <div className="flex justify-end mt-2">
               {resendTimer > 0 ? (
-                <p className="text-xs text-gray-500">Resend OTP in {resendTimer}s</p>
+                <p className="text-xs text-gray-500">
+                  Resend OTP in {resendTimer}s
+                </p>
               ) : (
                 <button
                   onClick={handleResendOtp}

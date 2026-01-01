@@ -673,6 +673,7 @@ export default function SellerPortal() {
                 <ActiveDeliveries
                   orders={activeOrders}
                   retailerId={sellerProfile?.id}
+                  deliverySettings={deliverySettings}
                   config={sellerProfile}
                   onUpdate={loadData}
                   retailerProfile={sellerProfile}
