@@ -77,6 +77,10 @@ export default function DeliveryPartnerOnboarding() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    setError("");
+  }, [step]);
+
   const loadData = async () => {
     try {
       // 1️⃣ Get current logged-in user

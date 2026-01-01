@@ -95,19 +95,21 @@ export default function SellerPortal() {
   const notificationAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
 
-  const unlockAudio = () => {
-    if (notificationAudioRef.current) {
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (!notificationAudioRef.current) return;
+
       notificationAudioRef.current.muted = true;
-      notificationAudioRef.current
-        .play()
-        .then(() => {
-          notificationAudioRef.current.pause();
-          notificationAudioRef.current.muted = false;
-          console.log("🔊 Audio unlocked");
-        })
-        .catch(() => {});
-    }
-  };
+      notificationAudioRef.current.play().then(() => {
+        notificationAudioRef.current.pause();
+        notificationAudioRef.current.muted = false;
+      });
+    };
+
+    window.addEventListener("click", unlockAudio, { once: true });
+    return () => window.removeEventListener("click", unlockAudio);
+  }, []);
+
   const loadData = async () => {
     try {
       const token = sessionStorage.getItem("token");
@@ -201,7 +203,7 @@ export default function SellerPortal() {
         }
 
         prevUnreadCountRef.current = data.unread_count;
-        setNotifications(data.notifications || []);
+        setNotifications((data.notifications || []).slice(0, 5));
         setUnreadCount(data.unread_count || 0);
       } catch (e) {
         console.error(e);
@@ -210,7 +212,7 @@ export default function SellerPortal() {
 
     fetchNotifications();
     initialLoad = false;
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(fetchNotifications, 60000);
 
     return () => clearInterval(interval);
   }, []);

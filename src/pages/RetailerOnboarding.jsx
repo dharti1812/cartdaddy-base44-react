@@ -511,6 +511,7 @@ export default function SellerOnboarding() {
     } else {
       console.warn("Token missing or invalid");
     }
+    setError(""); 
     setSuccess("✅ Mobile verified");
     setOtp("");
     const nextStep = await UserApi.status(data.phone, "seller");
@@ -604,7 +605,7 @@ export default function SellerOnboarding() {
         setLoading(false);
         return;
       }
-
+      setError("");
       setSuccess("✅ Email verified");
       setOtp("");
       const nextStep = await UserApi.status(data.phone, "seller");
@@ -644,7 +645,7 @@ export default function SellerOnboarding() {
           businessName: result.trade_name_of_business,
           gstInfo: result,
         });
-
+        setError(""); 
         setSuccess(
           "✅ GST verified - Business: " + result.trade_name_of_business
         );
@@ -689,7 +690,7 @@ export default function SellerOnboarding() {
       }
 
       setSuccess("✅ Bank verified successfully");
-
+setError("");
       const nextStep = await UserApi.status(result.phone, "seller");
       setStep(nextStep.data.current_step);
     } catch (err) {
@@ -764,6 +765,7 @@ export default function SellerOnboarding() {
 
       if (result.success) {
         console.log(result);
+        setError(""); 
         setSuccess("✅ PAN verified successfully");
         const nextStep = await UserApi.status(result.phone, "seller");
         setStep(nextStep.data.current_step);
@@ -841,6 +843,7 @@ export default function SellerOnboarding() {
       const result = await res.json();
       console.log(result);
       if (result.success) {
+        setError("");
         setSuccess("✅ Aadhaar verified successfully");
         const nextStep = await UserApi.status(result.phone, "seller");
         setStep(nextStep.data.current_step);

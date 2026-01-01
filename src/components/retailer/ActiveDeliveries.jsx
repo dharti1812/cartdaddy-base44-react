@@ -460,8 +460,8 @@ export default function ActiveDeliveries({
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-lg text-gray-900">
-                          {order.id}
+                        <h3 className="font-bold text-xs text-gray-900">
+                          Order #{order.id}
                         </h3>
                         <Badge
                           className={getStatusBadgeClass(order.delivery_status)}
@@ -476,11 +476,11 @@ export default function ActiveDeliveries({
                             PRIMARY
                           </Badge>
                         )}
-                        {!isPrimary && position && (
+                        {/* {!isPrimary && position && (
                           <Badge className="bg-blue-600 text-white">
                             BACKUP #{position}
                           </Badge>
-                        )}
+                        )} */}
                       </div>
 
                       {/* product details */}
@@ -571,11 +571,8 @@ export default function ActiveDeliveries({
                           </div>
                         </div> */}
                         {/* Settlement info */}
-                        <div className="mt-3 p-3 bg-white border-2 border-emerald-300 rounded-lg">
-                          <p className="text-xs font-bold text-emerald-900 mb-2">
-                            💰 Settlement Information
-                          </p>
-
+                         <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
+                         
                           <div className="text-xs text-green-700 space-y-1">
                             <div className="flex justify-between">
                               <span>Distance:</span>
