@@ -60,7 +60,7 @@ export default function AvailableOrders({
   const [awaitingPaymentConfirmation, setAwaitingPaymentConfirmation] =
     useState(false);
   const [paymentConfirmedOrder, setPaymentConfirmedOrder] = useState(null);
-const [selectedOffer, setSelectedOffer] = useState(null);
+  const [selectedOffer, setSelectedOffer] = useState(null);
 
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -77,8 +77,8 @@ const [selectedOffer, setSelectedOffer] = useState(null);
     const deviceName = /mobile/i.test(navigator.userAgent)
       ? "Mobile Device"
       : /tablet/i.test(navigator.userAgent)
-        ? "Tablet"
-        : "Desktop/Laptop";
+      ? "Tablet"
+      : "Desktop/Laptop";
 
     const newAcceptance = {
       retailer_id: retailerId,
@@ -98,13 +98,13 @@ const [selectedOffer, setSelectedOffer] = useState(null);
       active_retailer_info:
         position === 1
           ? {
-            retailer_id: retailerId,
-            retailer_name: retailerProfile?.name || "Retailer",
-            retailer_phone: retailerProfile?.phone || "",
-            device_id: deviceId,
-            device_name: deviceName,
-            assigned_at: new Date().toISOString(),
-          }
+              retailer_id: retailerId,
+              retailer_name: retailerProfile?.name || "Retailer",
+              retailer_phone: retailerProfile?.phone || "",
+              device_id: deviceId,
+              device_name: deviceName,
+              assigned_at: new Date().toISOString(),
+            }
           : order.active_retailer_info,
       // Mark as pending delivery boy assignment
       awaiting_delivery_boy: position === 1 ? true : false,
@@ -433,17 +433,19 @@ const [selectedOffer, setSelectedOffer] = useState(null);
           return (
             <Card
               key={order.id}
-              className={`border-none shadow-lg hover:shadow-xl transition-shadow ${isQueued ? "border-2 border-amber-500" : ""
-                }`}
+              className={`border-none shadow-lg hover:shadow-xl transition-shadow ${
+                isQueued ? "border-2 border-amber-500" : ""
+              }`}
             >
               <CardContent className="p-0">
                 <div
-                  className={`p-4 ${isCOD
+                  className={`p-4 ${
+                    isCOD
                       ? "bg-gradient-to-r from-amber-50 to-yellow-50"
                       : isQueued
-                        ? "bg-gradient-to-r from-amber-100 to-orange-100"
-                        : "bg-gradient-to-r from-blue-50 to-purple-50"
-                    } border-b`}
+                      ? "bg-gradient-to-r from-amber-100 to-orange-100"
+                      : "bg-gradient-to-r from-blue-50 to-purple-50"
+                  } border-b`}
                 >
                   {isQueued && (
                     <div className="mb-3 p-2 bg-amber-500 text-white rounded-lg flex items-center gap-2 text-sm font-semibold">
@@ -453,7 +455,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                   )}
 
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <h5 className="font-bold text-gray-900">
+                    <h5 className="font-bold text-gray-900 text-xs">
                       {`Order #${order.id}`}
                     </h5>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -495,7 +497,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                             className="flex justify-between text-sm bg-gray-50 p-2 rounded"
                           >
                             <span className="text-gray-700 font-medium">
-                              {item.name} x {item.quantity || 1} 
+                              {item.name} x {item.quantity || 1}
                             </span>
                             <span className="font-bold text-gray-900">
                               ₹{order.amount}
@@ -506,36 +508,30 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                     </div>
                   )}
 
-                   {order.payment_type === "needs_paylink" && (
-                    <>
-                      {/* Payment Alert */}
-                      <Alert className="bg-amber-50 border-amber-200 mt-2">
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                  {order.payment_type === "needs_paylink" && (
+                    <div className="flex flex-col md:flex-row gap-2 mt-2">
+                     
+                      <Alert className="flex items-center gap-2 bg-amber-50 border-amber-200 md:w-[80%]">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                         <AlertDescription className="text-amber-800 text-sm">
-                          <strong>Payment Link Required</strong> — You must generate and send a
-                          payment link to the customer to proceed with this order.
+                          <strong>Payment Link Required</strong> — Generate and
+                          send a payment link to proceed.
                         </AlertDescription>
                       </Alert>
 
-                      {/* Offer Details */}
+                      
                       {order.offer_details && (
-                        <div 
-                          className="p-3 rounded-md bg-green-100 border-2 border-green-400 hover:bg-green-200 transition-colors"
-                          // onClick={() => setSelectedOffer(order.offer_details)}
-                        >
-                          <div className="font-semibold text-green-900 flex items-center justify-between">
-                            <span>
-                              🎁 Offer{" "}
-                              <span className="text-sm text-green-700 underline">
-                                {order.offer_details.code}
-                              </span>{" "}
-                              Applied
-                            </span>
-                            {/* <span className="text-xs text-green-600 font-medium">View Details →</span> */}
-                          </div>
+                        <div className="flex items-center justify-center p-3 rounded-md bg-green-100 border-2 border-green-400 md:w-[20%]">
+                          <span className="font-semibold text-green-900 text-sm truncate text-center">
+                            🎁 Offer{" "}
+                            <span className="text-green-700 underline">
+                              {order.offer_details.code}
+                            </span>{" "}
+                            Applied
+                          </span>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {/* Delivery Earnings - Prominent Display */}
@@ -662,8 +658,9 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                         <span className="text-gray-400">•</span>
 
                         <div
-                          className={`flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${paymentInfo[order.payment_type].className
-                            }`}
+                          className={`flex items-center gap-2 px-2 py-1 rounded-md text-xs font-medium ${
+                            paymentInfo[order.payment_type].className
+                          }`}
                         >
                           {React.createElement(
                             paymentInfo[order.payment_type].icon,
@@ -753,15 +750,11 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                     </div>
                   )}
 
-                 
-
-
-
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button
                       onClick={() =>
                         awaitingPaymentConfirmation &&
-                          paymentConfirmedOrder?.id === order.id
+                        paymentConfirmedOrder?.id === order.id
                           ? handlePaymentReceivedAndNotify(order)
                           : handleAccept(order)
                       }
@@ -770,10 +763,11 @@ const [selectedOffer, setSelectedOffer] = useState(null);
     relative w-full py-6 text-lg text-white font-semibold
     overflow-hidden rounded-xl
     transition-all duration-300
-    ${awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
-                          ? "bg-slate-900"
-                          : "bg-gradient-to-r from-blue-600 to-blue-700"
-                        }
+    ${
+      awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
+        ? "bg-slate-900"
+        : "bg-gradient-to-r from-blue-600 to-blue-700"
+    }
   `}
                     >
                       {/* Running Border */}
@@ -785,7 +779,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                       {/* Button Content */}
                       <span className="relative z-10 flex items-center justify-center gap-2">
                         {awaitingPaymentConfirmation &&
-                          paymentConfirmedOrder?.id === order.id ? (
+                        paymentConfirmedOrder?.id === order.id ? (
                           <>
                             <span className="text-lg animate-bounce">⚡</span>
                             Confirm Payment Received & Notify Delivery
@@ -804,7 +798,7 @@ const [selectedOffer, setSelectedOffer] = useState(null);
       </div>
 
       {/* Payment Link Dialog */}
-      <Dialog open={!!pendingOrder} onOpenChange={() => { }}>
+      <Dialog open={!!pendingOrder} onOpenChange={() => {}}>
         <DialogContent
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -896,10 +890,10 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                 {config?.cancellation_penalty_percentage || 2}% penalty (₹
                 {pendingOrder
                   ? (
-                    (pendingOrder.amount *
-                      (config?.cancellation_penalty_percentage || 2)) /
-                    100
-                  ).toFixed(0)
+                      (pendingOrder.amount *
+                        (config?.cancellation_penalty_percentage || 2)) /
+                      100
+                    ).toFixed(0)
                   : 0}
                 )
               </AlertDescription>
@@ -929,113 +923,148 @@ const [selectedOffer, setSelectedOffer] = useState(null);
       </Dialog>
 
       <Sheet open={!!selectedOffer} onOpenChange={() => setSelectedOffer(null)}>
-              <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle className="text-2xl font-bold text-green-700 flex items-center gap-2">
-                    🎁 Offer Details
-                  </SheetTitle>
-                  <SheetDescription>
-                    Complete offer information and terms
-                  </SheetDescription>
-                </SheetHeader>
-      
-                {selectedOffer && (
-                  <div className="mt-6 space-y-6">
-                    {/* Offer Code */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg p-4">
-                      <p className="text-xs text-green-600 font-semibold mb-1">OFFER CODE</p>
-                      <p className="text-2xl font-bold text-green-900">{selectedOffer.code}</p>
-                    </div>
-      
-                    {/* Bank Name */}
-                    {selectedOffer.bank_name && (
-                      <div>
-                        <p className="text-xs text-gray-600 font-semibold mb-2">BANK</p>
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <Landmark className="w-6 h-6 text-blue-600" />
-                          <p className="text-lg font-bold text-blue-900">{selectedOffer.bank_name}</p>
-                        </div>
-                      </div>
-                    )}
-      
-                    {/* Title */}
-                    {selectedOffer.title && (
-                      <div>
-                        <p className="text-xs text-gray-600 font-semibold mb-2">OFFER TITLE</p>
-                        <p className="text-xl font-bold text-gray-900">{selectedOffer.title}</p>
-                      </div>
-                    )}
-      
-                    {/* Description */}
-{selectedOffer.description && (
-  <div>
-    <p className="text-xs text-gray-600 font-semibold mb-2">
-      DESCRIPTION
-    </p>
+        <SheetContent
+          side="right"
+          className="w-[400px] sm:w-[540px] overflow-y-auto"
+        >
+          <SheetHeader>
+            <SheetTitle className="text-2xl font-bold text-green-700 flex items-center gap-2">
+              🎁 Offer Details
+            </SheetTitle>
+            <SheetDescription>
+              Complete offer information and terms
+            </SheetDescription>
+          </SheetHeader>
 
-    <div
-      className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-200"
-      dangerouslySetInnerHTML={{
-        __html: selectedOffer.description,
-      }}
-    />
-  </div>
-)}
+          {selectedOffer && (
+            <div className="mt-6 space-y-6">
+              {/* Offer Code */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg p-4">
+                <p className="text-xs text-green-600 font-semibold mb-1">
+                  OFFER CODE
+                </p>
+                <p className="text-2xl font-bold text-green-900">
+                  {selectedOffer.code}
+                </p>
+              </div>
 
-      
-                    {/* Validity Period */}
-                    <div>
-                      <p className="text-xs text-gray-600 font-semibold mb-2">VALIDITY PERIOD</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                          <p className="text-xs text-purple-600 mb-1">Valid From</p>
-                          <p className="text-sm font-bold text-purple-900">
-                            {selectedOffer.valid_from ? new Date(selectedOffer.valid_from).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            }) : 'N/A'}
-                          </p>
-                        </div>
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                          <p className="text-xs text-orange-600 mb-1">Valid To</p>
-                          <p className="text-sm font-bold text-orange-900">
-                            {selectedOffer.valid_to ? new Date(selectedOffer.valid_to).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            }) : 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-      
-                    {/* Status & Priority */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                        <p className="text-xs text-gray-600 mb-1">Status</p>
-                        <Badge className={selectedOffer.is_active ? "bg-green-500 text-white" : "bg-gray-400 text-white"}>
-                          {selectedOffer.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
-                      {selectedOffer.priority && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="text-xs text-gray-600 mb-1">Priority</p>
-                          <p className="text-lg font-bold text-gray-900">{selectedOffer.priority}</p>
-                        </div>
-                      )}
-                    </div>
-      
-                    {/* Terms Footer */}
-                    <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-6">
-                      <p className="text-xs text-yellow-800">
-                        ⚠️ <strong>Note:</strong> Ensure customer is eligible for this offer before proceeding with payment link generation.
-                      </p>
-                    </div>
+              {/* Bank Name */}
+              {selectedOffer.bank_name && (
+                <div>
+                  <p className="text-xs text-gray-600 font-semibold mb-2">
+                    BANK
+                  </p>
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Landmark className="w-6 h-6 text-blue-600" />
+                    <p className="text-lg font-bold text-blue-900">
+                      {selectedOffer.bank_name}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Title */}
+              {selectedOffer.title && (
+                <div>
+                  <p className="text-xs text-gray-600 font-semibold mb-2">
+                    OFFER TITLE
+                  </p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {selectedOffer.title}
+                  </p>
+                </div>
+              )}
+
+              {/* Description */}
+              {selectedOffer.description && (
+                <div>
+                  <p className="text-xs text-gray-600 font-semibold mb-2">
+                    DESCRIPTION
+                  </p>
+
+                  <div
+                    className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-200"
+                    dangerouslySetInnerHTML={{
+                      __html: selectedOffer.description,
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Validity Period */}
+              <div>
+                <p className="text-xs text-gray-600 font-semibold mb-2">
+                  VALIDITY PERIOD
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <p className="text-xs text-purple-600 mb-1">Valid From</p>
+                    <p className="text-sm font-bold text-purple-900">
+                      {selectedOffer.valid_from
+                        ? new Date(selectedOffer.valid_from).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p className="text-xs text-orange-600 mb-1">Valid To</p>
+                    <p className="text-sm font-bold text-orange-900">
+                      {selectedOffer.valid_to
+                        ? new Date(selectedOffer.valid_to).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )
+                        : "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status & Priority */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-600 mb-1">Status</p>
+                  <Badge
+                    className={
+                      selectedOffer.is_active
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-400 text-white"
+                    }
+                  >
+                    {selectedOffer.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+                {selectedOffer.priority && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Priority</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {selectedOffer.priority}
+                    </p>
                   </div>
                 )}
-              </SheetContent>
-            </Sheet>
+              </div>
+
+              {/* Terms Footer */}
+              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-6">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ <strong>Note:</strong> Ensure customer is eligible for this
+                  offer before proceeding with payment link generation.
+                </p>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
@@ -1060,10 +1089,10 @@ const [selectedOffer, setSelectedOffer] = useState(null);
                   ₹
                   {pendingOrder
                     ? (
-                      (pendingOrder.amount *
-                        (config?.cancellation_penalty_percentage || 2)) /
-                      100
-                    ).toFixed(0)
+                        (pendingOrder.amount *
+                          (config?.cancellation_penalty_percentage || 2)) /
+                        100
+                      ).toFixed(0)
                     : 0}
                 </p>
                 <p className="text-red-700 text-sm">
