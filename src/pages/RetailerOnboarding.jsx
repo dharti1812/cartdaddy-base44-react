@@ -65,17 +65,17 @@ const verifyOTP = async (phone_otp, phone, user_type = "seller") => {
   }
 };
 
-const sendAlternateOTP = async (phone, role) => {
+const sendAlternateOTP = async (phone, role, name) => {
   try {
     const access_token = localStorage.getItem("access_token");
-    console.log(phone, role);
+    console.log(phone, role, name);
     const res = await fetch(`${API_BASE_URL}/api/send-otp/additional-phone`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${access_token}`,
       },
-      body: JSON.stringify({ phone, role }),
+      body: JSON.stringify({ phone, role, name }),
     });
     const result = await res.json();
     console.log(result, "hdar");
@@ -240,7 +240,7 @@ export default function SellerOnboarding() {
     phone: "",
     email: "",
     gst: "",
-    alternatePhones: [{ number: "", label: "manager" }],
+    alternatePhones: [{ number: "", label: "manager", name: "" }],
     bank: { acc: "", ifsc: "" },
     shopPhotos: [],
     documents: [],
@@ -511,7 +511,7 @@ export default function SellerOnboarding() {
     } else {
       console.warn("Token missing or invalid");
     }
-    setError(""); 
+    setError("");
     setSuccess("✅ Mobile verified");
     setOtp("");
     const nextStep = await UserApi.status(data.phone, "seller");
@@ -645,7 +645,7 @@ export default function SellerOnboarding() {
           businessName: result.trade_name_of_business,
           gstInfo: result,
         });
-        setError(""); 
+        setError("");
         setSuccess(
           "✅ GST verified - Business: " + result.trade_name_of_business
         );
@@ -690,7 +690,7 @@ export default function SellerOnboarding() {
       }
 
       setSuccess("✅ Bank verified successfully");
-setError("");
+      setError("");
       const nextStep = await UserApi.status(result.phone, "seller");
       setStep(nextStep.data.current_step);
     } catch (err) {
@@ -765,7 +765,7 @@ setError("");
 
       if (result.success) {
         console.log(result);
-        setError(""); 
+        setError("");
         setSuccess("✅ PAN verified successfully");
         const nextStep = await UserApi.status(result.phone, "seller");
         setStep(nextStep.data.current_step);
@@ -1372,6 +1372,18 @@ setError("");
                   >
                     <div className="flex gap-2 items-center">
                       <Input
+                        placeholder="Name"
+                        value={phone.name}
+                        onChange={(e) => {
+                          const updated = [...data.alternatePhones];
+                          updated[index].name = e.target.value;
+                          setData({ ...data, alternatePhones: updated });
+                        }}
+                        disabled={phone.verified}
+                        className="w-40"
+                      />
+
+                      <Input
                         placeholder="+91XXXXXXXXXX"
                         value={phone.number}
                         onChange={(e) => {
@@ -1379,9 +1391,10 @@ setError("");
                           updated[index].number = e.target.value;
                           setData({ ...data, alternatePhones: updated });
                         }}
-                        className="flex-1"
                         disabled={phone.verified}
+                        className="flex-1"
                       />
+
                       <select
                         value={phone.label}
                         onChange={(e) => {
@@ -1389,18 +1402,22 @@ setError("");
                           updated[index].label = e.target.value;
                           setData({ ...data, alternatePhones: updated });
                         }}
-                        className="border rounded px-3 py-1"
+                        disabled={phone.verified}
+                        className="w-28 border rounded px-3 py-1"
                       >
                         <option value="manager">Manager</option>
                         <option value="staff">Staff</option>
                       </select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemovePhone(index)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+
+                      {!phone.verified && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemovePhone(index)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      )}
                     </div>
 
                     {/* OTP Section */}
@@ -1413,7 +1430,8 @@ setError("");
                           setLoading(true);
                           const res = await sendAlternateOTP(
                             phone.number,
-                            phone.label
+                            phone.label,
+                            phone.name
                           );
                           setLoading(false);
                           if (res.success) {
@@ -1479,7 +1497,8 @@ setError("");
                             onClick={async () => {
                               const res = await sendAlternateOTP(
                                 phone.number,
-                                phone.label
+                                phone.label,
+                                phone.name
                               );
                               console.log(res);
                               if (res.success) {
