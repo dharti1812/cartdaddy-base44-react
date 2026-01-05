@@ -750,6 +750,38 @@ export default function AvailableOrders({
                     </div>
                   )}
 
+                  {order.payment_type === "needs_paylink" && (
+                    <>
+                      {/* Payment Alert */}
+                      <Alert className="bg-amber-50 border-amber-200">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        <AlertDescription className="text-amber-800 text-sm">
+                          <strong>Payment Link Required</strong> — You must generate and send a
+                          payment link to the customer to proceed with this order.
+                        </AlertDescription>
+                      </Alert>
+
+                      {/* Offer Details */}
+                      {order.offer_details && (
+                        <div
+                          className="p-3 rounded-md bg-green-100 border-2 border-green-400 cursor-pointer hover:bg-green-200 transition-colors"
+                          onClick={() => setSelectedOffer(order.offer_details)}
+                        >
+                          <div className="font-semibold text-green-900 flex items-center justify-between">
+                            <span>
+                              🎁 Offer{" "}
+                              <span className="text-sm text-green-700 underline">
+                                {order.offer_details.code}
+                              </span>{" "}
+                              Applied
+                            </span>
+                            <span className="text-xs text-green-600 font-medium">View Details →</span>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button
                       onClick={() =>
@@ -760,15 +792,14 @@ export default function AvailableOrders({
                       }
                       disabled={accepting === order.id}
                       className={`
-    relative w-full py-6 text-lg text-white font-semibold
-    overflow-hidden rounded-xl
-    transition-all duration-300
-    ${
-      awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
-        ? "bg-slate-900"
-        : "bg-gradient-to-r from-blue-600 to-blue-700"
-    }
-  `}
+                      relative w-full py-6 text-lg text-white font-semibold
+                      overflow-hidden rounded-xl
+                      transition-all duration-300
+                      ${awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
+                                            ? "bg-slate-900"
+                                            : "bg-gradient-to-r from-blue-600 to-blue-700"
+                                          }
+                    `}
                     >
                       {/* Running Border */}
                       {awaitingPaymentConfirmation &&
@@ -923,10 +954,7 @@ export default function AvailableOrders({
       </Dialog>
 
       <Sheet open={!!selectedOffer} onOpenChange={() => setSelectedOffer(null)}>
-        <SheetContent
-          side="right"
-          className="w-[400px] sm:w-[540px] overflow-y-auto"
-        >
+        <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="text-2xl font-bold text-green-700 flex items-center gap-2">
               🎁 Offer Details
@@ -940,25 +968,17 @@ export default function AvailableOrders({
             <div className="mt-6 space-y-6">
               {/* Offer Code */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg p-4">
-                <p className="text-xs text-green-600 font-semibold mb-1">
-                  OFFER CODE
-                </p>
-                <p className="text-2xl font-bold text-green-900">
-                  {selectedOffer.code}
-                </p>
+                <p className="text-xs text-green-600 font-semibold mb-1">OFFER CODE</p>
+                <p className="text-2xl font-bold text-green-900">{selectedOffer.code}</p>
               </div>
 
               {/* Bank Name */}
               {selectedOffer.bank_name && (
                 <div>
-                  <p className="text-xs text-gray-600 font-semibold mb-2">
-                    BANK
-                  </p>
+                  <p className="text-xs text-gray-600 font-semibold mb-2">BANK</p>
                   <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <Landmark className="w-6 h-6 text-blue-600" />
-                    <p className="text-lg font-bold text-blue-900">
-                      {selectedOffer.bank_name}
-                    </p>
+                    <p className="text-lg font-bold text-blue-900">{selectedOffer.bank_name}</p>
                   </div>
                 </div>
               )}
@@ -966,12 +986,8 @@ export default function AvailableOrders({
               {/* Title */}
               {selectedOffer.title && (
                 <div>
-                  <p className="text-xs text-gray-600 font-semibold mb-2">
-                    OFFER TITLE
-                  </p>
-                  <p className="text-xl font-bold text-gray-900">
-                    {selectedOffer.title}
-                  </p>
+                  <p className="text-xs text-gray-600 font-semibold mb-2">OFFER TITLE</p>
+                  <p className="text-xl font-bold text-gray-900">{selectedOffer.title}</p>
                 </div>
               )}
 
@@ -991,40 +1007,29 @@ export default function AvailableOrders({
                 </div>
               )}
 
+
               {/* Validity Period */}
               <div>
-                <p className="text-xs text-gray-600 font-semibold mb-2">
-                  VALIDITY PERIOD
-                </p>
+                <p className="text-xs text-gray-600 font-semibold mb-2">VALIDITY PERIOD</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                     <p className="text-xs text-purple-600 mb-1">Valid From</p>
                     <p className="text-sm font-bold text-purple-900">
-                      {selectedOffer.valid_from
-                        ? new Date(selectedOffer.valid_from).toLocaleDateString(
-                            "en-IN",
-                            {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            }
-                          )
-                        : "N/A"}
+                      {selectedOffer.valid_from ? new Date(selectedOffer.valid_from).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      }) : 'N/A'}
                     </p>
                   </div>
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                     <p className="text-xs text-orange-600 mb-1">Valid To</p>
                     <p className="text-sm font-bold text-orange-900">
-                      {selectedOffer.valid_to
-                        ? new Date(selectedOffer.valid_to).toLocaleDateString(
-                            "en-IN",
-                            {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            }
-                          )
-                        : "N/A"}
+                      {selectedOffer.valid_to ? new Date(selectedOffer.valid_to).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      }) : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -1034,22 +1039,14 @@ export default function AvailableOrders({
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                   <p className="text-xs text-gray-600 mb-1">Status</p>
-                  <Badge
-                    className={
-                      selectedOffer.is_active
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-400 text-white"
-                    }
-                  >
+                  <Badge className={selectedOffer.is_active ? "bg-green-500 text-white" : "bg-gray-400 text-white"}>
                     {selectedOffer.is_active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
                 {selectedOffer.priority && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <p className="text-xs text-gray-600 mb-1">Priority</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {selectedOffer.priority}
-                    </p>
+                    <p className="text-lg font-bold text-gray-900">{selectedOffer.priority}</p>
                   </div>
                 )}
               </div>
@@ -1057,8 +1054,7 @@ export default function AvailableOrders({
               {/* Terms Footer */}
               <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-6">
                 <p className="text-xs text-yellow-800">
-                  ⚠️ <strong>Note:</strong> Ensure customer is eligible for this
-                  offer before proceeding with payment link generation.
+                  ⚠️ <strong>Note:</strong> Ensure customer is eligible for this offer before proceeding with payment link generation.
                 </p>
               </div>
             </div>
