@@ -141,12 +141,18 @@ export default function DeliveryBoyPortal() {
       setStats(statsData);
 
       const allOrdersRes = await deliveryPartnerApi.getAvailableOrders();
-      const myDeliveriesRes = await deliveryPartnerApi.getMyDeliveries(partnerData.id);
+      const myDeliveriesRes = await deliveryPartnerApi.getMyDeliveries(
+        partnerData.id
+      );
       const completedDeliveriesRes =
         await deliveryPartnerApi.getMyCompletedDeliveries(partnerData.id);
 
-      const allOrders = Array.isArray(allOrdersRes) ? allOrdersRes : allOrdersRes?.data ?? [];
-      const myDeliveries = Array.isArray(myDeliveriesRes) ? myDeliveriesRes : myDeliveriesRes?.data ?? [];
+      const allOrders = Array.isArray(allOrdersRes)
+        ? allOrdersRes
+        : allOrdersRes?.data ?? [];
+      const myDeliveries = Array.isArray(myDeliveriesRes)
+        ? myDeliveriesRes
+        : myDeliveriesRes?.data ?? [];
       const completedDeliveries = Array.isArray(completedDeliveriesRes)
         ? completedDeliveriesRes
         : completedDeliveriesRes?.data ?? [];
@@ -740,14 +746,24 @@ export default function DeliveryBoyPortal() {
                                   {order.pickup_address?.street},{" "}
                                   {order.pickup_address?.city}
                                 </p>
+                                {order.distances?.delivery_boy_to_pickup_km && (
+                                  <p>
+                                    🚴{" "}
+                                    <span className="font-semibold">
+                                      You → Pickup:
+                                    </span>{" "}
+                                    {order.distances.delivery_boy_to_pickup_km}{" "}
+                                    km
+                                  </p>
+                                )}
                               </div>
                             </div>
-
+ 
                             {/* Route line */}
-                            <div className="h-7 border-l-2 border-dashed border-gray-400 ml-[13px] my-1"></div>
+                            {/* <div className="h-7 border-l-2 border-dashed border-gray-400 ml-[13px] my-1"></div>  */}
 
                             {/* DELIVERY */}
-                            <div className="flex items-start gap-3">
+                            <div className="flex items-start gap-3 mt-3">
                               <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
                                 D
                               </div>
@@ -766,6 +782,20 @@ export default function DeliveryBoyPortal() {
                                   </span>{" "}
                                   {order.customer_name} ({order.customer_phone})
                                 </p>
+                                {order.distances
+                                  ?.delivery_boy_to_delivery_km && (
+                                  <p>
+                                   🚴{" "}
+                                    <span className="font-semibold">
+                                    You → Delivery:
+                                    </span>{" "}
+                                    {
+                                      order.distances
+                                        .delivery_boy_to_delivery_km
+                                    }{" "}
+                                    km
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>
