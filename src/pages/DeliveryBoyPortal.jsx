@@ -37,6 +37,7 @@ import { API_BASE_URL } from "@/config";
 import DeliveryStatusModal from "@/components/DeliveryStatusModal";
 import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailableOrders";
 import DeliveryBoyProfileSettings from "@/components/DeliveryBoyProfileSettings";
+import { calculateDeliveryCharges } from "../components/utils/deliveryChargeCalculator";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -52,6 +53,7 @@ export default function DeliveryBoyPortal() {
   const [directions, setDirections] = useState([]);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [deliverySettings, setDeliverySettings] = useState(null);
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
@@ -182,6 +184,35 @@ export default function DeliveryBoyPortal() {
     audio.play().catch((err) => {
       console.error("Audio playback failed:", err);
     });
+  };
+  useEffect(() => {
+    fetchDeliverySettings();
+  }, []);
+  const fetchDeliverySettings = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const resSettings = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/delivery-settings`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      const settingsData = await resSettings.json();
+      console.log("Delivery Settings API Response:", settingsData);
+
+      if (Array.isArray(settingsData) && settingsData.length > 0) {
+        setDeliverySettings(settingsData[0]);
+      } else {
+        setDeliverySettings(null);
+      }
+    } catch (error) {
+      console.error("Error fetching delivery settings:", error);
+    }
   };
 
   const markAllAsRead = async () => {
@@ -559,7 +590,7 @@ export default function DeliveryBoyPortal() {
                     {showDropdown && (
                       <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-2 z-50">
                         {notifications.length === 0 ? (
-                          <p className="text-gray-500 text-sm text-center py-2">
+                          <p className="text-gray-500 text-sm text-center ">
                             No notifications
                           </p>
                         ) : (
@@ -689,168 +720,276 @@ export default function DeliveryBoyPortal() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {availableOrders.map((order) => (
-                      <Card
-                        key={order.id}
-                        className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
-                      >
-                        <CardContent className="p-4 space-y-4">
-                          {/* Header */}
+                    {availableOrders.map((order) => {
+                      let charges = null;
 
-                          <div className="flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-gray-900">
-                              {order.website_ref ||
-                                `Order #${String(order.id)}`}
-                            </h3>
-                            <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full capitalize">
-                              {order.payment_status}
-                            </span>
-                          </div>
+                      if (!deliverySettings) {
+                        console.warn("⚠️ Delivery settings not available");
+                      } else if (
+                        order?.distance_km != null &&
+                        order.amount != null
+                      ) {
+                        const totalDistance =
+                          (order?.distances?.delivery_boy_to_pickup_km || 0) +
+                          (order?.distances?.pickup_to_delivery_km || 0);
+                        console.log(
+                          "Total Distance:",
+                          order?.distances?.delivery_boy_to_pickup_km
+                        );
+                        charges = calculateDeliveryCharges(
+                          order?.amount || 0,
+                          totalDistance,
+                          deliverySettings
+                        );
+                      } else {
+                        console.warn(
+                          "⚠️ Order distance or amount is not defined"
+                        );
+                      }
 
-                          {/* Product Section */}
-                          <div className="border rounded-lg p-3 bg-white shadow-sm">
-                            <p className="font-semibold text-gray-800 mb-1">
-                              📦 Product Details
-                            </p>
-                            {order.items?.map((item, index) => (
-                              <div
-                                key={index}
-                                className="text-sm text-gray-700 leading-5"
-                              >
-                                <p className="font-semibold">{item.name}</p>
-                                <p>
-                                  Qty: {item.quantity} | Price: ₹{item.price}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
+                      // Delivery & fuel
+                      const deliveryCharge = charges?.baseCharge || 0;
+                      const fuelCost = charges?.fuelCost || 0;
 
-                          {/* Pickup → Delivery UI block */}
-                          <div className="bg-gray-50 rounded-xl p-4">
-                            {/* PICKUP */}
-                            <div className="flex items-start gap-3">
-                              <div className="w-7 h-7 bg-blue-600 text-white grid place-content-center rounded-full text-xs font-semibold">
-                                P
-                              </div>
-                              <div>
-                                <p className="font-semibold text-gray-800 text-sm">
-                                  Pickup Location
-                                </p>
-                                <p className="text-gray-700 text-sm">
-                                  <span className="font-semibold">
-                                    Retailer:
-                                  </span>{" "}
-                                  {order.retailer_name}
-                                </p>
-                                <p className="text-gray-700 text-sm">
-                                  {order.pickup_address?.street},{" "}
-                                  {order.pickup_address?.city}
-                                </p>
-                                {order.distances?.delivery_boy_to_pickup_km && (
-                                  <p>
-                                    🚴{" "}
-                                    <span className="font-semibold">
-                                      You → Pickup:
-                                    </span>{" "}
-                                    {order.distances.delivery_boy_to_pickup_km}{" "}
-                                    km
-                                  </p>
-                                )}
-                              </div>
-                            </div>
- 
-                            {/* Route line */}
-                            {/* <div className="h-7 border-l-2 border-dashed border-gray-400 ml-[13px] my-1"></div>  */}
+                      return (
+                        <Card
+                          key={order.id}
+                          className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
+                        >
+                          <CardContent className="p-4 space-y-4">
+                            {/* Header */}
 
-                            {/* DELIVERY */}
-                            <div className="flex items-start gap-3 mt-3">
-                              <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
-                                D
-                              </div>
-                              <div>
-                                <p className="font-semibold text-gray-800 text-sm">
-                                  Delivery Location
-                                </p>
-                                <p className="text-gray-700 text-sm">
-                                  {order.drop_address?.street},{" "}
-                                  {order.drop_address?.city} —{" "}
-                                  {order.drop_address?.pincode}
-                                </p>
-                                <p className="text-gray-700 text-sm">
-                                  <span className="font-semibold">
-                                    Customer:
-                                  </span>{" "}
-                                  {order.customer_name} ({order.customer_phone})
-                                </p>
-                                {order.distances
-                                  ?.delivery_boy_to_delivery_km && (
-                                  <p>
-                                   🚴{" "}
-                                    <span className="font-semibold">
-                                    You → Delivery:
-                                    </span>{" "}
-                                    {
-                                      order.distances
-                                        .delivery_boy_to_delivery_km
-                                    }{" "}
-                                    km
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Map */}
-
-                          <div className="rounded-lg overflow-hidden border shadow-sm">
-                            <LiveTrackingMapAvailableOrders
-                              orderId={order.id}
-                              deliveryBoyId={partner.id}
-                              pickupLat={
-                                order?.pickup_address?.latitude ?? null
-                              }
-                              pickupLng={
-                                order?.pickup_address?.longitude ?? null
-                              }
-                              dropLat={order?.drop_address?.latitude ?? null}
-                              dropLng={order?.drop_address?.longitude ?? null}
-                            />
-                          </div>
-
-                          {/* Distance + Amount */}
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-gray-700">
-                              Distance:{" "}
-                              <span className="font-bold">
-                                {order.distance_km} km away
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-bold text-lg text-gray-900">
+                                {order.website_ref ||
+                                  `Order #${String(order.id)}`}
+                              </h3>
+                              <span className=" py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full capitalize">
+                                {order.payment_status}
                               </span>
-                            </span>
-                            <span className="text-2xl font-bold text-gray-900">
-                              ₹{order.amount}
-                            </span>
-                          </div>
+                            </div>
 
-                          {/* Accept */}
-                          <Button
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg"
-                            onClick={async () => {
-                              try {
-                                const response =
-                                  await deliveryPartnerApi.acceptOrder(
-                                    order.id,
-                                    partner.id
-                                  );
-                                loadData();
-                              } catch (error) {
-                                console.log(error.message);
-                              }
-                            }}
-                          >
-                            Accept Delivery
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            {/* Product Section */}
+                            <div className="border rounded-lg p-3 bg-white shadow-sm">
+                              <p className="font-semibold text-gray-800 mb-1">
+                                📦 Product Details
+                              </p>
+                              {order.items?.map((item, index) => (
+                                <div
+                                  key={index}
+                                  className="text-sm text-gray-700 leading-5"
+                                >
+                                  <p className="font-semibold">{item.name}</p>
+                                  <p>
+                                    Qty: {item.quantity} | Price: ₹{item.price}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Pickup → Delivery UI block */}
+                            <div className="bg-gray-50 rounded-xl p-4">
+                              {/* PICKUP */}
+                              <div className="flex items-start gap-3">
+                                <div className="w-7 h-7 bg-blue-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                  P
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm">
+                                    Pickup Location
+                                  </p>
+                                  <p className="text-gray-700 text-sm">
+                                    <span className="font-semibold">
+                                      Retailer:
+                                    </span>{" "}
+                                    {order.retailer.retailer_name}
+                                  </p>
+                                  <p className="text-gray-700 text-sm">
+                                    {order.pickup_address?.street},{" "}
+                                    {order.pickup_address?.city}
+                                  </p>
+                                  {order.distances
+                                    ?.delivery_boy_to_pickup_km && (
+                                    <p>
+                                      🚴{" "}
+                                      <span className="font-semibold">
+                                        You → Pickup:
+                                      </span>{" "}
+                                      {
+                                        order.distances
+                                          .delivery_boy_to_pickup_km
+                                      }{" "}
+                                      km
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Route line */}
+                              {/* <div className="h-7 border-l-2 border-dashed border-gray-400 ml-[13px] my-1"></div>  */}
+
+                              {/* DELIVERY */}
+                              <div className="flex items-start gap-3 mt-3">
+                                <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                  D
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm">
+                                    Delivery Location
+                                  </p>
+                                  <p className="text-gray-700 text-sm">
+                                    {order.drop_address?.street},{" "}
+                                    {order.drop_address?.city} —{" "}
+                                    {order.drop_address?.pincode}
+                                  </p>
+                                  {order.delivery_status === "picked_up" && (
+                                    <p className="text-gray-700 text-sm">
+                                      <span className="font-semibold">
+                                        Customer:
+                                      </span>{" "}
+                                      {order.customer_name}
+                                    </p>
+                                  )}
+
+                                  {order.distances
+                                    ?.delivery_boy_to_delivery_km && (
+                                    <p>
+                                      🚴{" "}
+                                      <span className="font-semibold">
+                                        Pickup → Delivery:
+                                      </span>{" "}
+                                      {order.distances.pickup_to_delivery_km} km
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {charges?.delivery_charge > 0 && (
+                              <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
+                                <table className="w-full text-xs text-green-700">
+                                  <tbody>
+                                    <tr className="border-b">
+                                      <td className="  font-medium">
+                                        Your Location → Seller Point
+                                      </td>
+                                      <td className="  text-right font-semibold">
+                                        {order.distances
+                                          ?.delivery_boy_to_pickup_km ?? 0}{" "}
+                                        km
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b">
+                                      <td className="  font-medium">
+                                        Seller Point → Customer Point
+                                      </td>
+                                      <td className="  text-right font-semibold">
+                                        {order.distances
+                                          ?.pickup_to_delivery_km ?? 0}{" "}
+                                        km
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b bg-green-50">
+                                      <td className="  font-semibold text-green-900">
+                                        Total Distance
+                                      </td>
+                                      <td className="  text-right font-bold text-green-900">
+                                        {(
+                                          (order.distances
+                                            ?.delivery_boy_to_pickup_km || 0) +
+                                          (order.distances
+                                            ?.pickup_to_delivery_km || 0)
+                                        ).toFixed(2)}{" "}
+                                        km
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b">
+                                      <td className=" ">
+                                        Fuel Cost (₹
+                                        {deliverySettings?.fuel_cost_per_km ||
+                                          5}
+                                        /km)
+                                      </td>
+                                      <td className="  text-right font-medium">
+                                        ₹{Math.round(charges?.fuelCost ?? 0)}
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b">
+                                      <td className=" ">Delivery Charges</td>
+                                      <td className="  text-right font-medium">
+                                        ₹{charges?.baseCharge ?? 0}
+                                      </td>
+                                    </tr>
+
+                                    <tr className="bg-emerald-100">
+                                      <td className=" py-3 px-3 font-bold text-green-900">
+                                        You will Earn
+                                      </td>
+                                      <td className=" py-3 text-right font-bold text-emerald-700">
+                                        ₹{Math.round(fuelCost + deliveryCharge)}
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+
+                            {/* Map */}
+
+                            <div className="rounded-lg overflow-hidden border shadow-sm">
+                              <LiveTrackingMapAvailableOrders
+                                orderId={order.id}
+                                deliveryBoyId={partner.id}
+                                pickupLat={
+                                  order?.pickup_address?.latitude ?? null
+                                }
+                                pickupLng={
+                                  order?.pickup_address?.longitude ?? null
+                                }
+                                dropLat={order?.drop_address?.latitude ?? null}
+                                dropLng={order?.drop_address?.longitude ?? null}
+                              />
+                            </div>
+
+                            {/* Distance + Amount */}
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-700">
+                                Distance:{" "}
+                                <span className="font-bold">
+                                  {order.distance_km} km away
+                                </span>
+                              </span>
+                              <span className="text-2xl font-bold text-gray-900">
+                                ₹{order.amount}
+                              </span>
+                            </div>
+
+                            {/* Accept */}
+                            <Button
+                              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold  rounded-lg"
+                              onClick={async () => {
+                                try {
+                                  const response =
+                                    await deliveryPartnerApi.acceptOrder(
+                                      order.id,
+                                      partner.id
+                                    );
+                                  loadData();
+                                } catch (error) {
+                                  console.log(error.message);
+                                }
+                              }}
+                            >
+                              Accept Delivery
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </TabsContent>
@@ -864,131 +1003,242 @@ export default function DeliveryBoyPortal() {
                 ) : (
                   // If deliveries exist
                   <div className="space-y-4">
-                    {myActiveDeliveries.map((order) => (
-                      <Card key={order.id} className="border-2 border-blue-500">
-                        <CardContent className="p-4">
-                          <h3 className="font-bold text-lg mb-2">
-                            {order.website_ref || `Order #${order.id}`}
-                          </h3>
+                    {myActiveDeliveries.map((order) => {
+                      let charges = null;
 
-                          <p className="text-gray-700 text-sm flex items-center gap-2">
-                            <Store className="w-4 h-4 text-gray-500" />
-                            <span className="font-semibold">
-                              Retailer:
-                            </span>{" "}
-                            {order.seller_id === 9
-                              ? "Admin"
-                              : order.retailer_name || "Not Assigned"}
-                          </p>
-                          <p className="text-gray-700 text-sm">
-                            <span className="font-semibold">
-                              Pickup Address:
-                            </span>{" "}
-                            {order.pickup_address
-                              ? `${order.pickup_address.street}, ${order.pickup_address.city}`
-                              : "Not Assigned"}
-                          </p>
+                      if (!deliverySettings) {
+                        console.warn("⚠️ Delivery settings not available");
+                      } else if (
+                        order?.distance_km != null &&
+                        order.amount != null
+                      ) {
+                        const totalDistance =
+                          (order?.distances?.delivery_boy_to_pickup_km || 0) +
+                          (order?.distances?.pickup_to_delivery_km || 0);
+                        console.log(
+                          "Total Distance:",
+                          order?.distances?.delivery_boy_to_pickup_km
+                        );
+                        charges = calculateDeliveryCharges(
+                          order?.amount || 0,
+                          totalDistance,
+                          deliverySettings
+                        );
+                      } else {
+                        console.warn(
+                          "⚠️ Order distance or amount is not defined"
+                        );
+                      }
 
-                          <div className="border rounded-lg p-3 bg-white shadow-sm mt-2">
-                            <p className="font-semibold text-gray-800 mb-1">
-                              📦 Product Details
+                      // Delivery & fuel
+                      const deliveryCharge = charges?.baseCharge || 0;
+                      const fuelCost = charges?.fuelCost || 0;
+                      return (
+                        <Card
+                          key={order.id}
+                          className="border-2 border-blue-500"
+                        >
+                          <CardContent className="p-4">
+                            <h3 className="font-bold text-lg mb-2">
+                              {order.website_ref || `Order #${order.id}`}
+                            </h3>
+
+                            <p className="text-gray-700 text-sm flex items-center gap-2">
+                              <Store className="w-4 h-4 text-gray-500" />
+                              <span className="font-semibold">
+                                Retailer:
+                              </span>{" "}
+                              {order.seller_id === 9
+                                ? "Admin"
+                                : order.retailer_name || "Not Assigned"}
                             </p>
-                            {order.items?.map((item, index) => (
-                              <div
-                                key={index}
-                                className="text-sm text-gray-700 leading-5"
-                              >
-                                <p className="font-semibold">{item.name}</p>
-                                <p>
-                                  Qty: {item.quantity} | Price: ₹{item.price}
-                                </p>
-                                {item.pickup_otp !== null && (
-                                  <div className="mt-2 bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold w-max shadow-sm">
-                                    Pickup OTP:{" "}
-                                    <span className="ml-1 text-lg">
-                                      {item.pickup_otp}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                            <p className="text-gray-700 text-sm">
+                              <span className="font-semibold">
+                                Pickup Address:
+                              </span>{" "}
+                              {order.pickup_address
+                                ? `${order.pickup_address.street}, ${order.pickup_address.city}`
+                                : "Not Assigned"}
+                            </p>
 
-                          <div className="bg-gray-50 rounded-xl p-4">
-                            {/* DELIVERY */}
-                            <div className="flex items-start gap-3">
-                              <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
-                                D
-                              </div>
-                              <div>
-                                <p className="font-semibold text-gray-800 text-sm">
-                                  Delivery Location
-                                </p>
-                                <p className="text-gray-700 text-sm">
-                                  {order.drop_address?.street},{" "}
-                                  {order.drop_address?.city} —{" "}
-                                  {order.drop_address?.pincode}
-                                </p>
-                                <div className="flex items-center text-gray-700 text-sm gap-3">
-                                  <div>
-                                    <span className="font-semibold">
-                                      Customer:
-                                    </span>{" "}
-                                    <span>{order.customer_name}</span>
-                                  </div>
+                            <div className="border rounded-lg p-3 bg-white shadow-sm mt-2">
+                              <p className="font-semibold text-gray-800 mb-1">
+                                📦 Product Details
+                              </p>
+                              {order.items?.map((item, index) => (
+                                <div
+                                  key={index}
+                                  className="text-sm text-gray-700 leading-5"
+                                >
+                                  <p className="font-semibold">{item.name}</p>
+                                  <p>
+                                    Qty: {item.quantity} | Price: ₹{item.price}
+                                  </p>
+                                  {item.pickup_otp !== null && (
+                                    <div className="mt-2 bg-green-100 text-green-800 px-4  rounded-full text-sm font-semibold w-max shadow-sm">
+                                      Pickup OTP:{" "}
+                                      <span className="ml-1 text-lg">
+                                        {item.pickup_otp}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
 
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => callCustomer(order)}
-                                    className="flex items-center gap-2 whitespace-nowrap"
-                                  >
-                                    <Phone className="w-4 h-4" />
-                                    Call to Customer
-                                  </Button>
+                            <div className="bg-gray-50 rounded-xl p-4">
+                              {/* DELIVERY */}
+                              <div className="flex items-start gap-3">
+                                <div className="w-7 h-7 bg-red-600 text-white grid place-content-center rounded-full text-xs font-semibold">
+                                  D
+                                </div>
+                                <div>
+                                  <p className="font-semibold text-gray-800 text-sm">
+                                    Delivery Location
+                                  </p>
+                                  <p className="text-gray-700 text-sm">
+                                    {order.drop_address?.street},{" "}
+                                    {order.drop_address?.city} —{" "}
+                                    {order.drop_address?.pincode}
+                                  </p>
+                                  <div className="flex items-center text-gray-700 text-sm gap-3">
+                                    {order.delivery_status === "picked_up" && (
+                                      <>
+                                        <p className="text-gray-700 text-sm">
+                                          <span className="font-semibold">
+                                            Customer:
+                                          </span>{" "}
+                                          {order.customer_name}
+                                        </p>
+
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => callCustomer(order)}
+                                          className="flex items-center gap-2 whitespace-nowrap"
+                                        >
+                                          <Phone className="w-4 h-4" />
+                                          Call to Customer
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="mt-3">
-                            <LiveTrackingMapAvailableOrders
-                              orderId={order.id}
-                              deliveryBoyId={partner.id}
-                              pickupLat={
-                                order?.pickup_address?.latitude ?? null
-                              }
-                              pickupLng={
-                                order?.pickup_address?.longitude ?? null
-                              }
-                              dropLat={order?.drop_address?.latitude ?? null}
-                              dropLng={order?.drop_address?.longitude ?? null}
-                            />
-                          </div>
+                            {charges?.delivery_charge > 0 && (
+                              <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
+                                <table className="w-full text-xs text-green-700">
+                                  <tbody>
+                                    <tr className="border-b">
+                                      <td className="  font-medium">
+                                        Your Location → Seller Point
+                                      </td>
+                                      <td className="  text-right font-semibold">
+                                        {order.distances
+                                          ?.delivery_boy_to_pickup_km ?? 0}{" "}
+                                        km
+                                      </td>
+                                    </tr>
 
-                          <p className="text-sm text-gray-600 mb-4">
-                            📍 {order.drop_address?.street},{" "}
-                            {order.drop_address?.city}
-                          </p>
-                          <p className="text-sm text-gray-600 mb-4">
-                            <span>Distance:</span>
-                            <span className="font-medium">
-                              {order.distance_km} km
-                            </span>
-                          </p>
+                                    <tr className="border-b">
+                                      <td className="  font-medium">
+                                        Seller Point → Customer Point
+                                      </td>
+                                      <td className="  text-right font-semibold">
+                                        {order.distances
+                                          ?.pickup_to_delivery_km ?? 0}{" "}
+                                        km
+                                      </td>
+                                    </tr>
 
-                          <Badge
-                            className="bg-blue-500 text-white cursor-pointer"
-                            onClick={() => setSelectedOrder(order)}
-                          >
-                            Status:{" "}
-                            {order.delivery_status === "accepted_db"
-                              ? "Accepted"
-                              : order.delivery_status}
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
+                                    <tr className="border-b bg-green-50">
+                                      <td className="  font-semibold text-green-900">
+                                        Total Distance
+                                      </td>
+                                      <td className="  text-right font-bold text-green-900">
+                                        {(
+                                          (order.distances
+                                            ?.delivery_boy_to_pickup_km || 0) +
+                                          (order.distances
+                                            ?.pickup_to_delivery_km || 0)
+                                        ).toFixed(2)}{" "}
+                                        km
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b">
+                                      <td className=" ">
+                                        Fuel Cost (₹
+                                        {deliverySettings?.fuel_cost_per_km ||
+                                          5}
+                                        /km)
+                                      </td>
+                                      <td className="  text-right font-medium">
+                                        ₹{Math.round(charges?.fuelCost ?? 0)}
+                                      </td>
+                                    </tr>
+
+                                    <tr className="border-b">
+                                      <td className=" ">Delivery Charges</td>
+                                      <td className="  text-right font-medium">
+                                        ₹{charges?.baseCharge ?? 0}
+                                      </td>
+                                    </tr>
+
+                                    <tr className="bg-emerald-100">
+                                      <td className=" py-3 px-3 font-bold text-green-900">
+                                        You will Earn
+                                      </td>
+                                      <td className=" py-3 text-right font-bold text-emerald-700">
+                                        ₹{Math.round(fuelCost + deliveryCharge)}
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+
+                            <div className="mt-3">
+                              <LiveTrackingMapAvailableOrders
+                                orderId={order.id}
+                                deliveryBoyId={partner.id}
+                                pickupLat={
+                                  order?.pickup_address?.latitude ?? null
+                                }
+                                pickupLng={
+                                  order?.pickup_address?.longitude ?? null
+                                }
+                                dropLat={order?.drop_address?.latitude ?? null}
+                                dropLng={order?.drop_address?.longitude ?? null}
+                              />
+                            </div>
+
+                            <p className="text-sm text-gray-600 mb-4">
+                              📍 {order.drop_address?.street},{" "}
+                              {order.drop_address?.city}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-4">
+                              <span>Distance:</span>
+                              <span className="font-medium">
+                                {order.distance_km} km
+                              </span>
+                            </p>
+
+                            <Badge
+                              className="bg-blue-500 text-white cursor-pointer"
+                              onClick={() => setSelectedOrder(order)}
+                            >
+                              Status:{" "}
+                              {order.delivery_status === "accepted_db"
+                                ? "Accepted"
+                                : order.delivery_status}
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
 

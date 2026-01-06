@@ -236,7 +236,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
                 className="w-full bg-purple-500"
                 onClick={() => updateStatus("reached_to_customer")}
               >
-                Reached to Customer
+                Reached Customer
               </Button>
             )}
 

@@ -398,38 +398,13 @@ export default function AvailableOrders({
           const isCOD = order.is_cod || order.payment_method === "cod";
           const isQueued = order.status === "queued" || order.is_queued;
 
-          // Base product amount
-          const productCost = amount;
-
-          // Delivery & fuel
+        
           const deliveryCharge = charges?.baseCharge || 0;
           const fuelCost = charges?.fuelCost || 0;
 
-          // Platform commission (percent OR fixed)
-          const commissionItem = order.items?.find(
-            (item) =>
-              item.commission_type === "percent" ||
-              item.commission_type === "fixed"
-          );
+         
 
-          let platformFeeAmount = 0;
-          let platformFeeLabel = "";
-
-          if (commissionItem) {
-            if (commissionItem.commission_type === "percent") {
-              platformFeeAmount =
-                (productCost * commissionItem.commission_value) / 100;
-              platformFeeLabel = `Platform Fee`;
-            } else if (commissionItem.commission_type === "fixed") {
-              platformFeeAmount = commissionItem.commission_value;
-              platformFeeLabel = `Platform Fee`;
-            }
-          }
-
-          // Settlement calculation
-          const settlementAmount =
-            productCost - platformFeeAmount - deliveryCharge - fuelCost;
-          const roundedSettlementAmount = Math.round(settlementAmount);
+          
           return (
             <Card
               key={order.id}
