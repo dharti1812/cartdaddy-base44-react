@@ -751,17 +751,17 @@ export default function AvailableOrders({
                   {order.payment_type === "needs_paylink" && (
                     <>
                       {/* Payment Alert */}
-                      <Alert className="bg-amber-50 border-amber-200">
+                      {/* <Alert className="bg-amber-50 border-amber-200">
                         <AlertCircle className="w-4 h-4 text-amber-600" />
                         <AlertDescription className="text-amber-800 text-sm">
                           <strong>Payment Link Required</strong> — You must
                           generate and send a payment link to the customer to
                           proceed with this order.
                         </AlertDescription>
-                      </Alert>
+                      </Alert> */}
 
                       {/* Offer Details */}
-                      {order.offer_details && (
+                      {/* {order.offer_details && (
                         <div
                           className="p-3 rounded-md bg-green-100 border-2 border-green-400 cursor-pointer hover:bg-green-200 transition-colors"
                           onClick={() => setSelectedOffer(order.offer_details)}
@@ -779,7 +779,7 @@ export default function AvailableOrders({
                             </span>
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </>
                   )}
 
@@ -793,33 +793,24 @@ export default function AvailableOrders({
                       }
                       disabled={accepting === order.id}
                       className={`
-                      relative w-full py-6 text-lg text-white font-semibold
-                      overflow-hidden rounded-xl
-                      transition-all duration-300
-                      ${
-                        awaitingPaymentConfirmation &&
-                        paymentConfirmedOrder?.id === order.id
-                          ? "bg-slate-900"
-                          : "bg-gradient-to-r from-blue-600 to-blue-700"
-                      }
-                    `}
+      relative w-full py-6 text-lg text-white font-semibold
+      overflow-hidden rounded-xl
+      transition-all duration-300
+      ${
+        awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
+          ? "bg-green-600 hover:bg-green-700"
+          : "bg-gradient-to-r from-blue-600 to-blue-700"
+      }
+    `}
                     >
                       {/* Running Border */}
                       {awaitingPaymentConfirmation &&
                         paymentConfirmedOrder?.id === order.id && (
-                          <span className="absolute inset-0 rounded-xl border-2 border-transparent animate-running-border" />
+                          <span className="absolute inset-0 rounded-xl border-2 border-green-400 animate-running-border" />
                         )}
 
                       {/* Button Content */}
-                      <span
-                        className={`relative z-10 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-semibold transition
-                          ${
-                            awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
-                              ? "bg-green-600 text-white"
-                              : "bg-black text-white"
-                          }
-                        `}
-                      >
+                      <span className="relative z-10 flex items-center justify-center gap-2 font-semibold">
                         {awaitingPaymentConfirmation &&
                         paymentConfirmedOrder?.id === order.id ? (
                           <>
