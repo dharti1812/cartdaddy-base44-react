@@ -787,7 +787,7 @@ export default function DeliveryBoyPortal() {
                               ))}
                             </div>
 
-                            {/* Pickup → Delivery UI block */}
+                          
                             <div className="bg-gray-50 rounded-xl p-4">
                               {/* PICKUP */}
                               <div className="flex items-start gap-3">
@@ -796,7 +796,8 @@ export default function DeliveryBoyPortal() {
                                 </div>
                                 <div>
                                   <p className="font-semibold text-gray-800 text-sm">
-                                    Pickup Location
+                                    Pickup Location 
+                                    
                                   </p>
                                   <p className="text-gray-700 text-sm">
                                     <span className="font-semibold">
