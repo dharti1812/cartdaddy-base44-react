@@ -31,7 +31,7 @@ export default function JourneysPage() {
   // pagination
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const perPage = 10;
+  const perPage = 25;
 
   // search
   const [search, setSearch] = useState("");
