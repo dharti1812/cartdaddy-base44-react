@@ -131,15 +131,6 @@ export default function JourneysPage() {
           <CardHeader className="border-b">
             <div className="flex justify-between items-center">
               <CardTitle>Recipients</CardTitle>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  className="pl-10"
-                  placeholder="Search name or mobile"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
             </div>
           </CardHeader>
 
