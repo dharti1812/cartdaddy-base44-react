@@ -52,6 +52,11 @@ const adminNavigationItems = [
     url: createPageUrl("Verifications"),
     icon: UserCheck,
   },
+    {
+    title: "Journeys",
+    url: createPageUrl("Journeys"),
+    icon: UserCheck,
+  },
   {
     title: "Customer CRM",
     url: createPageUrl("CustomerCRM"),

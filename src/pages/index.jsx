@@ -57,6 +57,8 @@ import DeliveryBoyLogin from "./DeliveryBoyLogin";
 
 import Verifications from "./Verifications";
 
+import Journeys from "./Journeys";
+
 import SuperAdminDashboard from "./SuperAdminDashboard";
 
 import CustomerCRM from "./CustomerCRM";
@@ -134,6 +136,8 @@ const PAGES = {
     DeliveryBoyLogin: DeliveryBoyLogin,
 
     Verifications: Verifications,
+
+    Journeys: Journeys,
 
     SuperAdminDashboard: SuperAdminDashboard,
 
@@ -262,6 +266,8 @@ function PagesContent() {
                 <Route path="/DeliveryBoyLogin" element={<DeliveryBoyLogin />} />
 
                 <Route path="/Verifications" element={<Verifications />} />
+
+                <Route path="/Journeys" element={<Journeys />} />
 
                 <Route path="/SuperAdminDashboard" element={<SuperAdminDashboard />} />
 
