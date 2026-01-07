@@ -267,7 +267,7 @@ function PagesContent() {
 
                 <Route path="/Verifications" element={<Verifications />} />
 
-                <Route path="/Journeys" element={<Journeys />} />
+                <Route path="/Recipients" element={<Journeys />} />
 
                 <Route path="/SuperAdminDashboard" element={<SuperAdminDashboard />} />
 

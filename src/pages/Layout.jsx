@@ -8,6 +8,7 @@ import {
   Users,
   Navigation,
   BarChart3,
+  Gift,
   Settings,
   Menu,
   Shield,
@@ -53,9 +54,9 @@ const adminNavigationItems = [
     icon: UserCheck,
   },
     {
-    title: "Journeys",
-    url: createPageUrl("Journeys"),
-    icon: UserCheck,
+    title: "Recipients",
+    url: createPageUrl("Recipients"),
+    icon: Gift,
   },
   {
     title: "Customer CRM",

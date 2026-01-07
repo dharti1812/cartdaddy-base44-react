@@ -1,18 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { journeyApi } from "@/components/utils/journeyApi";
-import {
-  Plus,
-  Search,
-  Phone,
-  Calendar,
-  CheckCircle,
-  XCircle,
-  Download,
-} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,328 +17,251 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+  Phone,
+  Calendar,
+  Download,
+  Search
+} from "lucide-react";
+import { journeyApi } from "@/components/utils/journeyApi";
 
 export default function JourneysPage() {
   const [journeys, setJourneys] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [formData, setFormData] = useState({
-    mobile: "",
-    name: "",
-    additional_mobiles: [],
-    dob: "",
-    doa: "",
-    isVerified: false,
-  });
+
+  // pagination
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const perPage = 10;
+
+  // search
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    loadJourneys();
-  }, []);
+    loadJourneys(page);
+  }, [page]);
 
-  const downloadVCard = (journey) => {
-    const vCard = `BEGIN:VCARD
-VERSION:3.0
-FN:${journey.name}
-TEL;TYPE=CELL:${journey.mobile}
-${
-  journey.additional_mobiles
-    ?.map((mobile) => `TEL;TYPE=CELL:${mobile}`)
-    .join("\n") || ""
-}
-${journey.dob ? `BDAY:${journey.dob.replace(/-/g, "")}` : ""}
-${journey.doa ? `X-ANNIVERSARY:${journey.doa.replace(/-/g, "")}` : ""}
-END:VCARD`;
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
-    const blob = new Blob([vCard], { type: "text/vcard" });
-    const url = window.URL.createObjectURL(blob);
+  const loadJourneys = async (pageNo = 1) => {
+    setLoading(true);
+    try {
+      const data = await journeyApi.list(pageNo, perPage, search);
+
+      if (data.status === "success") {
+        setJourneys(data.data);
+        setPage(data.meta.current_page);
+        setLastPage(data.meta.last_page);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDMY = (date) => {
+    if (!date) return "-";
+    const d = new Date(date);
+    return `${String(d.getDate()).padStart(2, "0")}/${String(
+      d.getMonth() + 1
+    ).padStart(2, "0")}/${d.getFullYear()}`;
+  };
+
+  const downloadVCard = async (journey) => {
+    const firstName = journey.name?.split(" ")[0] || journey.name;
+    const lastName = journey.name?.split(" ").slice(1).join(" ") || "";
+
+    const mobiles = Array.isArray(journey.additional_mobiles)
+      ? journey.additional_mobiles
+      : [];
+
+    const formatIndianNumber = (number) => {
+      if (!number) return "";
+      return number.startsWith("+") ? number : `+91${number}`;
+    };
+
+
+    const lines = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `N:${lastName};${firstName};;;`,
+      `FN:${journey.name}`,
+      `TEL;TYPE=CELL,VOICE:${formatIndianNumber(journey.mobile)}`,
+      ...mobiles.map(m => `TEL;TYPE=CELL,VOICE:${formatIndianNumber(m)}`),
+      journey.dob ? `BDAY:${journey.dob.replace(/-/g, "")}` : null,
+      journey.doa ? `X-ANNIVERSARY:${journey.doa.replace(/-/g, "")}` : null,
+      "END:VCARD"
+    ].filter(Boolean);
+
+
+    const vCard = lines.join("\r\n");
+
+    const blob = new Blob([vCard], { type: "text/vcard;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
     link.href = url;
     link.download = `${journey.name.replace(/\s+/g, "_")}.vcf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
+
+    await journeyApi.recordVCardDownload(journey.id);
+
+    loadJourneys(page);
   };
-    
-    const formatDMY = (date) => {
-        if (!date) return "-";
-
-        const d = new Date(date);
-
-        const day = String(d.getDate()).padStart(2, "0");
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const year = d.getFullYear();
-
-        return `${day}/${month}/${year}`;
-    };
-
-
-  const loadJourneys = async () => {
-    setLoading(true);
-    try {
-      const result = await journeyApi.list();
-
-      if (result.status === "success") {
-        setJourneys(result.data);
-      } else {
-        console.error("API error:", result);
-      }
-    } catch (error) {
-      console.error("Error loading journeys:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreate = async () => {
-    try {
-      // Replace with actual API call
-      console.log("Creating journey:", formData);
-      setShowCreateDialog(false);
-      loadJourneys();
-    } catch (error) {
-      console.error("Error creating journey:", error);
-    }
-  };
-
-  const filteredJourneys = journeys.filter(
-    (j) =>
-      !searchTerm ||
-      j.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      j.mobile?.includes(searchTerm)
-  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFEB3B] mx-auto mb-4"></div>
-          <p className="text-white text-xl">Loading Journeys...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#064d54] text-white">
+        Loading Recipients...
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-8 bg-gradient-to-br from-[#075E66] to-[#064d54] min-h-screen">
+    <div className="p-6 min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54]">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-white">Journeys</h1>
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            className="bg-[#FFEB3B] text-black hover:bg-[#FFEB3B] hover:opacity-90 font-bold"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Journey
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold text-white">Recipients</h1>
 
-        <Card className="border-none shadow-lg">
+        <Card className="shadow-xl">
           <CardHeader className="border-b">
             <div className="flex justify-between items-center">
-              <CardTitle>All Journeys ({filteredJourneys.length})</CardTitle>
+              <CardTitle>Recipients</CardTitle>
               <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search by name or mobile..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  placeholder="Search name or mobile"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
           </CardHeader>
+
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-100">
-                    <TableHead className="font-bold text-black">ID</TableHead>
-                    <TableHead className="font-bold text-black">
-                      Mobile
-                    </TableHead>
-                    <TableHead className="font-bold text-black">Name</TableHead>
-                    <TableHead className="font-bold text-black">
-                      Additional Mobiles
-                    </TableHead>
-                    <TableHead className="font-bold text-black">DOB</TableHead>
-                    <TableHead className="font-bold text-black">DOA</TableHead>
-                    <TableHead className="font-bold text-black">
-                      Verified
-                    </TableHead>
-                    <TableHead className="font-bold text-black">
-                      Created Date
-                    </TableHead>
-                    
-                    <TableHead className="font-bold text-black">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredJourneys.map((journey) => (
-                    <TableRow key={journey.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {journey.id}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-gray-500" />
-                          {journey.mobile}
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-100">
+                  <TableHead>#</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Mobile</TableHead>
+                  <TableHead>Additional Mobiles</TableHead>
+                  <TableHead>DOB</TableHead>
+                  <TableHead>DOA</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {journeys.map((journey, index) => (
+                  <TableRow key={journey.id}>
+                    <TableCell>{index + 1}</TableCell>
+                    <TableCell className="font-semibold">{journey.name}</TableCell>
+                    <TableCell className="flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-gray-500" />
+                      {journey.mobile}
+                      {journey.vcard_download_count > 0 && (
+                        <Badge className="ml-2 bg-blue-100 text-blue-700 text-xs">
+                          Downloaded ({journey.vcard_download_count})
+                        </Badge>
+                      )}
+
+                    </TableCell>
+
+                    <TableCell>
+                      {Array.isArray(journey.additional_mobiles) &&
+                        journey.additional_mobiles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {journey.additional_mobiles.map((mobile, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="outline"
+                              className="text-xs flex items-center gap-1"
+                            >
+                              <Phone className="w-3 h-3 text-gray-500" />
+                              {mobile}
+                            </Badge>
+                          ))}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {journey.name}
-                      </TableCell>
-                      <TableCell>
-                        {journey.additional_mobiles?.length > 0 ? (
-                          <div className="space-y-1">
-                            {journey.additional_mobiles.map((mobile, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {mobile}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {journey.dob ? (
-                            <div className="flex items-center gap-2 text-sm">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                {formatDMY(journey.dob)}
-                            </div>
-                        ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                        )}
+                      ) : (
+                        <span className="text-gray-400 text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {journey.dob ? (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          {formatDMY(journey.dob)}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
 
-                      <TableCell>
-                        {journey.doa ? (
-                            <div className="flex items-center gap-2 text-sm">
-                                <Calendar className="w-4 h-4 text-gray-500" />
-                                {formatDMY(journey.doa)}
-                            </div>
-                        ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                        )}
+                    <TableCell>
+                      {journey.doa ? (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          {formatDMY(journey.doa)}
+                        </div>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
 
-                      <TableCell>
-                        {journey.isVerified ? (
-                          <Badge className="bg-green-500 text-white">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Verified
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-gray-400 text-white">
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Not Verified
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                            {new Date(journey.created_date).toLocaleDateString("en-GB")}
-                        </TableCell>
+                    <TableCell>
+                      {formatDMY(journey.created_at)}
+                    </TableCell>
 
-                      
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => downloadVCard(journey)}
-                          className="gap-2"
-                        >
-                          <Download className="w-4 h-4" />
-                          vCard
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => downloadVCard(journey)}
+                        className="gap-2"
+                      >
+                      <Download className="w-4 h-4" />
+                        Download
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            <div className="flex justify-between items-center p-4 border-t">
+              <span className="text-sm text-gray-600">
+                Page {page} of {lastPage}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Prev
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={page === lastPage}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Journey</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Mobile *</Label>
-              <Input
-                value={formData.mobile}
-                onChange={(e) =>
-                  setFormData({ ...formData, mobile: e.target.value })
-                }
-                placeholder="9876543210"
-              />
-            </div>
-            <div>
-              <Label>Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Full name"
-              />
-            </div>
-            <div>
-              <Label>Date of Birth</Label>
-              <Input
-                type="date"
-                value={formData.dob}
-                onChange={(e) =>
-                  setFormData({ ...formData, dob: e.target.value })
-                }
-              />
-            </div>
-            <div>
-              <Label>Date of Anniversary</Label>
-              <Input
-                type="date"
-                value={formData.doa}
-                onChange={(e) =>
-                  setFormData({ ...formData, doa: e.target.value })
-                }
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              className="bg-[#075E66] text-white"
-              disabled={!formData.mobile || !formData.name}
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
