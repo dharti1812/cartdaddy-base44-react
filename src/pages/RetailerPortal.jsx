@@ -322,7 +322,7 @@ export default function SellerPortal() {
       </div>
     );
   }
-
+  // Test comment
   if (!locationEnabled) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
