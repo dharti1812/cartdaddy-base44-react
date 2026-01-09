@@ -11,101 +11,100 @@ export default function LiveTrackingMapAvailableOrders({
   dropLng,
 }) {
   const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
+  const mapRefInstance = useRef(null);
 
   const pickupMarkerRef = useRef(null);
   const dropMarkerRef = useRef(null);
   const deliveryMarkerRef = useRef(null);
 
-  const directionsRendererRef = useRef(null);
+  const directionsServiceRef = useRef(null);
+  const directionsRendererToShopRef = useRef(null);
+  const directionsRendererToCustomerRef = useRef(null);
 
   const [eta, setEta] = useState(null);
-  const [reachedShop, setReachedShop] = useState(false);
+  const [reachedPickup, setReachedPickup] = useState(false);
 
-  const distanceThreshold = 5; // meters
+  const MOVE_THRESHOLD = 15; // meters
+  const PICKUP_RADIUS = 60; // meters
 
-  // ---------- Calculate distance between two points ----------
+  // ---------- Distance calculation ----------
   const getDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371e3; // meters
-    const toRad = (deg) => (deg * Math.PI) / 180;
+    const R = 6371e3;
+    const toRad = (d) => (d * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
     const a =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLng / 2) ** 2;
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // ---------- Animate Marker ----------
+  // ---------- Animate marker ----------
   const animateMarker = (marker, from, to) => {
     const frames = 60;
-    let count = 0;
-
-    const deltaLat = (to.lat - from.lat) / frames;
-    const deltaLng = (to.lng - from.lng) / frames;
+    let i = 0;
+    const dLat = (to.lat - from.lat) / frames;
+    const dLng = (to.lng - from.lng) / frames;
 
     const interval = setInterval(() => {
-      count++;
-      marker.setPosition({
-        lat: from.lat + deltaLat * count,
-        lng: from.lng + deltaLng * count,
-      });
-      if (count === frames) clearInterval(interval);
-    }, 16); // ~60 FPS
+      i++;
+      marker.setPosition({ lat: from.lat + dLat * i, lng: from.lng + dLng * i });
+      if (i === frames) clearInterval(interval);
+    }, 16);
   };
 
-  // ---------- Initialize Map ----------
+  // ---------- Initialize map ----------
   useEffect(() => {
-    if (!mapRef.current || mapInstanceRef.current) return;
+    if (!mapRef.current || mapRefInstance.current) return;
 
     const map = new window.google.maps.Map(mapRef.current, {
-      center: { lat: pickupLat, lng: pickupLng },
-      zoom: 13,
+      center: { lat: Number(pickupLat), lng: Number(pickupLng) },
+      zoom: 14,
       disableDefaultUI: true,
       zoomControl: true,
     });
 
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+    directionsServiceRef.current = new window.google.maps.DirectionsService();
+
+    // Directions Renderer for Delivery Boy -> Shop
+    directionsRendererToShopRef.current = new window.google.maps.DirectionsRenderer({
       suppressMarkers: true,
-      polylineOptions: {
-        strokeColor: "#0066FF",
-        strokeWeight: 5,
-      },
+      polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // orange
     });
+    directionsRendererToShopRef.current.setMap(map);
 
-    directionsRendererRef.current.setMap(map);
-    mapInstanceRef.current = map;
+    // Directions Renderer for Shop -> Customer
+    directionsRendererToCustomerRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // blue
+    });
+    directionsRendererToCustomerRef.current.setMap(map);
 
-    // Pickup Marker
+    mapRefInstance.current = map;
+
+    // Pickup marker (Shop)
     pickupMarkerRef.current = new window.google.maps.Marker({
-      position: { lat: pickupLat, lng: pickupLng },
+      position: { lat: Number(pickupLat), lng: Number(pickupLng) },
       map,
-      title: "Pickup",
       icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+      title: "Shop",
     });
 
-    // Drop Marker
+    // Drop marker (Customer)
     dropMarkerRef.current = new window.google.maps.Marker({
-      position: { lat: dropLat, lng: dropLng },
+      position: { lat: Number(dropLat), lng: Number(dropLng) },
       map,
-      title: "Drop",
       icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+      title: "Customer",
     });
 
-    console.log("Google Map initialized");
+    console.log("🗺️ Map initialized");
   }, []);
 
   // ---------- Live Tracking ----------
   useEffect(() => {
-    if (!orderId || !mapInstanceRef.current) return;
-
-    const map = mapInstanceRef.current;
-    const directionsService = new window.google.maps.DirectionsService();
-
-    let lastLat = null;
-    let lastLng = null;
+    if (!orderId || !mapRefInstance.current) return;
+    const map = mapRefInstance.current;
 
     const fetchTracking = async () => {
       try {
@@ -115,66 +114,67 @@ export default function LiveTrackingMapAvailableOrders({
         const d = res.data.delivery_boy;
         if (!d) return;
 
-        console.log(
-          "Delivery Boy coords:",
-          d.latitude,
-          d.longitude,
-          "Time:",
-          new Date().toLocaleTimeString()
-        );
+        const lat = Number(d.latitude);
+        const lng = Number(d.longitude);
+        if (isNaN(lat) || isNaN(lng)) return;
 
-        const moved =
-          lastLat === null ||
-          lastLng === null ||
-          getDistance(d.latitude, d.longitude, lastLat, lastLng) > distanceThreshold;
+        const currentPos = { lat, lng };
+        console.log("📍 Delivery Boy:", lat, lng);
 
-        if (!moved) {
-          console.log("Delivery boy has NOT moved, skipping update");
-          return;
-        }
-
-        lastLat = d.latitude;
-        lastLng = d.longitude;
-
-        const deliveryLatLng = { lat: d.latitude, lng: d.longitude };
-        const destLatLng = reachedShop
-          ? { lat: dropLat, lng: dropLng }
-          : { lat: pickupLat, lng: pickupLng };
-
-        // Check if reached pickup
-        const distToPickup = getDistance(d.latitude, d.longitude, pickupLat, pickupLng);
-        if (distToPickup < 60 && !reachedShop) setReachedShop(true);
-
-        // Add or update delivery boy marker
+        // ---------- Animate delivery boy marker ----------
         if (!deliveryMarkerRef.current) {
           deliveryMarkerRef.current = new window.google.maps.Marker({
-            position: deliveryLatLng,
+            position: currentPos,
             map,
-            title: "Delivery Boy",
             icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+            title: "Delivery Boy",
           });
-          map.panTo(deliveryLatLng);
+          map.setCenter(currentPos);
         } else {
           const prev = deliveryMarkerRef.current.getPosition();
-          animateMarker(deliveryMarkerRef.current, { lat: prev.lat(), lng: prev.lng() }, deliveryLatLng);
-          map.panTo(deliveryLatLng);
+          const movedDist = getDistance(prev.lat(), prev.lng(), lat, lng);
+          if (movedDist >= MOVE_THRESHOLD) {
+            animateMarker(deliveryMarkerRef.current, { lat: prev.lat(), lng: prev.lng() }, currentPos);
+            map.panTo(currentPos);
+          }
         }
 
-        // Directions & ETA
-        directionsService.route(
+        // ---------- Check if pickup reached ----------
+        const distToPickup = getDistance(lat, lng, Number(pickupLat), Number(pickupLng));
+        if (distToPickup <= PICKUP_RADIUS && !reachedPickup) {
+          console.log("✅ Pickup reached");
+          setReachedPickup(true);
+        }
+
+        // ---------- Route Delivery Boy -> Shop ----------
+        directionsServiceRef.current.route(
           {
-            origin: deliveryLatLng,
-            destination: destLatLng,
+            origin: currentPos,
+            destination: { lat: Number(pickupLat), lng: Number(pickupLng) },
             travelMode: window.google.maps.TravelMode.DRIVING,
           },
           (result, status) => {
-            if (status === "OK") {
-              directionsRendererRef.current.setDirections(result);
-              const duration = result.routes[0].legs[0].duration?.value;
-              if (duration) setEta(Math.ceil(duration / 60));
-            }
+            if (status === "OK") directionsRendererToShopRef.current.setDirections(result);
           }
         );
+
+        // ---------- Route Shop -> Customer (show only after pickup) ----------
+        if (reachedPickup) {
+          directionsServiceRef.current.route(
+            {
+              origin: { lat: Number(pickupLat), lng: Number(pickupLng) },
+              destination: { lat: Number(dropLat), lng: Number(dropLng) },
+              travelMode: window.google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+              if (status === "OK") {
+                directionsRendererToCustomerRef.current.setDirections(result);
+                const sec = result.routes[0].legs[0].duration?.value;
+                if (sec) setEta(Math.ceil(sec / 60));
+              }
+            }
+          );
+        }
       } catch (err) {
         console.error("Error fetching tracking:", err);
       }
@@ -183,7 +183,7 @@ export default function LiveTrackingMapAvailableOrders({
     fetchTracking();
     const interval = setInterval(fetchTracking, 7000);
     return () => clearInterval(interval);
-  }, [orderId, reachedShop]);
+  }, [orderId, reachedPickup]);
 
   return (
     <div className="mt-3">
@@ -192,11 +192,7 @@ export default function LiveTrackingMapAvailableOrders({
           ⏱ ETA: <b>{eta} min</b>
         </div>
       )}
-      <div
-        ref={mapRef}
-        style={{ width: "100%", height: "380px" }}
-        className="rounded-xl border"
-      />
+      <div ref={mapRef} style={{ width: "100%", height: "380px" }} className="rounded-xl border" />
     </div>
   );
 }
