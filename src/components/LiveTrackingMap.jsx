@@ -2,42 +2,72 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "@/config";
 
-const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY;
+const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+/* ---------- Smooth Marker Animation ---------- */
+const animateMarker = (marker, from, to, map) => {
+  const frames = 60;
+  let count = 0;
+
+  const deltaLat = (to.lat - from.lat) / frames;
+  const deltaLng = (to.lng - from.lng) / frames;
+
+  const interval = setInterval(() => {
+    count++;
+
+    const newPos = {
+      lat: from.lat + deltaLat * count,
+      lng: from.lng + deltaLng * count,
+    };
+
+    marker.setPosition(newPos);
+
+    if (count === frames) clearInterval(interval);
+  }, 16); // ~60 FPS
+};
 
 export default function LiveTrackingMap({ orderId }) {
   const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null); // reference to HERE map object
-  const [error, setError] = useState("");
-  const [eta, setEta] = useState(null); // in minutes
-
+  const mapInstanceRef = useRef(null);
   const deliveryMarkerRef = useRef(null);
   const customerMarkerRef = useRef(null);
-  const routeLineRef = useRef(null);
+  const directionsRendererRef = useRef(null);
 
-  // Initialize map once
+  const [eta, setEta] = useState(null);
+  const [error, setError] = useState("");
+
+  /* ---------- Initialize Google Map ---------- */
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
-    const H = window.H; // HERE SDK loaded via script
-    const platform = new H.service.Platform({ apikey: HERE_API_KEY });
-    const defaultLayers = platform.createDefaultLayers();
-
-    const map = new H.Map(mapRef.current, defaultLayers.vector.normal.map, {
-      center: { lat: 19.076, lng: 72.8777 }, // default center
-      zoom: 12,
-      pixelRatio: window.devicePixelRatio || 1,
+    const map = new window.google.maps.Map(mapRef.current, {
+      center: { lat: 19.076, lng: 72.8777 },
+      zoom: 15,
+      disableDefaultUI: true,
+      zoomControl: true,
     });
 
-    // Enable interactions
-    new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-    H.ui.UI.createDefault(map, defaultLayers);
+    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: "#2563eb",
+        strokeWeight: 5,
+      },
+    });
 
-    mapInstanceRef.current = { map, H, platform };
+    directionsRendererRef.current.setMap(map);
+    mapInstanceRef.current = map;
+    console.log("Map initialized");
   }, []);
 
-  // Fetch tracking and update map every 10 seconds
+  /* ---------- Fetch & Update Tracking ---------- */
   useEffect(() => {
     if (!orderId || !mapInstanceRef.current) return;
+
+    const map = mapInstanceRef.current;
+    const directionsService = new window.google.maps.DirectionsService();
+
+    const distanceThreshold = 0.00005; // ~5 meters
 
     const fetchAndUpdate = async () => {
       try {
@@ -45,100 +75,131 @@ export default function LiveTrackingMap({ orderId }) {
           `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`
         );
 
-        const data = res.data;
-        const { delivery_boy, destination } = data;
+        const { delivery_boy, destination } = res.data;
         const customer = destination?.customer;
 
         if (!delivery_boy || !customer) {
-          setError("Delivery boy or customer location not available");
+          setError("Location data not available");
+          console.log("No delivery boy or customer data");
           return;
         }
         setError("");
 
-        const { H, map } = mapInstanceRef.current;
+        const deliveryLatLng = {
+          lat: Number(delivery_boy.latitude),
+          lng: Number(delivery_boy.longitude),
+        };
 
-        // Remove old markers/route
-        if (deliveryMarkerRef.current) map.removeObject(deliveryMarkerRef.current);
-        if (customerMarkerRef.current) map.removeObject(customerMarkerRef.current);
-        if (routeLineRef.current) map.removeObject(routeLineRef.current);
+        const customerLatLng = {
+          lat: Number(customer.latitude),
+          lng: Number(customer.longitude),
+        };
 
-        // Green marker for shop/delivery boy
-        const shopIcon = new H.map.Icon(
-          `<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="green" stroke="white" stroke-width="2"/>
-          </svg>`
-        );
-        deliveryMarkerRef.current = new H.map.Marker(
-          { lat: delivery_boy.latitude, lng: delivery_boy.longitude },
-          { icon: shopIcon }
-        );
-        map.addObject(deliveryMarkerRef.current);
-
-        // Red marker for customer
-        const customerIcon = new H.map.Icon(
-          `<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="12" cy="12" r="10" fill="red" stroke="white" stroke-width="2"/>
-          </svg>`
-        );
-        customerMarkerRef.current = new H.map.Marker(
-          { lat: customer.latitude, lng: customer.longitude },
-          { icon: customerIcon }
-        );
-        map.addObject(customerMarkerRef.current);
-
-        // Fetch route from HERE Routing API
-        const routeRes = await axios.get(
-          `https://router.hereapi.com/v8/routes?transportMode=car&origin=${delivery_boy.latitude},${delivery_boy.longitude}&destination=${customer.latitude},${customer.longitude}&return=polyline,summary&apikey=${HERE_API_KEY}`
+        console.log(
+          "GPS:",
+          "Delivery Boy:",
+          deliveryLatLng,
+          "Customer:",
+          customerLatLng,
+          "Time:",
+          new Date().toLocaleTimeString()
         );
 
-        const section = routeRes.data.routes[0].sections[0];
-
-        // Draw route line
-        const lineString = H.geo.LineString.fromFlexiblePolyline(section.polyline);
-        routeLineRef.current = new H.map.Polyline(lineString, {
-          style: { strokeColor: "blue", lineWidth: 5 },
-        });
-        map.addObject(routeLineRef.current);
-
-        // Zoom map to fit route
-        map.getViewModel().setLookAtData({
-          bounds: routeLineRef.current.getBoundingBox(),
-        });
-
-        // Set ETA in minutes
-        const travelTimeInSeconds = section.summary?.duration;
-        if (travelTimeInSeconds) {
-          setEta(Math.ceil(travelTimeInSeconds / 60));
+        /* ---------- Delivery Boy Marker ---------- */
+        if (!deliveryMarkerRef.current) {
+          deliveryMarkerRef.current = new window.google.maps.Marker({
+            map,
+            position: deliveryLatLng,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#16a34a",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+            },
+          });
+          map.panTo(deliveryLatLng);
+          console.log("Marker initialized and map panned");
         } else {
-          setEta(null);
+          const prevPos = deliveryMarkerRef.current.getPosition();
+          const hasMoved =
+            Math.abs(prevPos.lat() - deliveryLatLng.lat) > distanceThreshold ||
+            Math.abs(prevPos.lng() - deliveryLatLng.lng) > distanceThreshold;
+
+          if (hasMoved) {
+            console.log("Delivery boy moved, animating marker");
+            animateMarker(
+              deliveryMarkerRef.current,
+              { lat: prevPos.lat(), lng: prevPos.lng() },
+              deliveryLatLng,
+              map
+            );
+            map.panTo(deliveryLatLng);
+          } else {
+            console.log("Delivery boy has NOT moved, no marker update");
+          }
         }
+
+        /* ---------- Customer Marker ---------- */
+        if (!customerMarkerRef.current) {
+          customerMarkerRef.current = new window.google.maps.Marker({
+            map,
+            position: customerLatLng,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#dc2626",
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: "#fff",
+            },
+          });
+        }
+
+        /* ---------- Route & ETA ---------- */
+        directionsService.route(
+          {
+            origin: deliveryLatLng,
+            destination: customerLatLng,
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === "OK") {
+              directionsRendererRef.current.setDirections(result);
+              const duration = result.routes[0].legs[0].duration?.value;
+              if (duration) {
+                setEta(Math.ceil(duration / 60));
+              }
+            }
+          }
+        );
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching tracking data:", err);
         setError("Unable to fetch tracking data");
       }
     };
 
-    // Fetch immediately
     fetchAndUpdate();
-
-    // Refresh every 10 seconds
     const interval = setInterval(fetchAndUpdate, 10000);
     return () => clearInterval(interval);
   }, [orderId]);
 
   return (
     <div className="mt-3">
-      {error && <div className="text-red-600 text-sm mb-2">{error}</div>}
+      {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
+
       {eta && (
-        <div className="text-sm text-gray-700 mb-2">
+        <p className="text-sm text-gray-700 mb-2">
           ⏱ Estimated Time to Customer: <strong>{eta} min</strong>
-        </div>
+        </p>
       )}
+
       <div
         ref={mapRef}
-        style={{ width: "100%", height: "400px" }}
         className="rounded-lg border border-gray-300"
-      ></div>
+        style={{ width: "100%", height: "400px" }}
+      />
     </div>
   );
 }

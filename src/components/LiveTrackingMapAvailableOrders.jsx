@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "@/config";
 
-const HERE_API_KEY = import.meta.env.VITE_HERE_API_KEY;
-
 export default function LiveTrackingMapAvailableOrders({
   orderId,
   deliveryBoyId,
@@ -19,17 +17,16 @@ export default function LiveTrackingMapAvailableOrders({
   const dropMarkerRef = useRef(null);
   const deliveryMarkerRef = useRef(null);
 
-  const staticRouteRef = useRef(null);
-  const liveRouteRef = useRef(null);
+  const directionsRendererRef = useRef(null);
 
   const [eta, setEta] = useState(null);
   const [reachedShop, setReachedShop] = useState(false);
 
-  // -----------------------------
-  // Distance Calculation
-  // -----------------------------
+  const distanceThreshold = 5; // meters
+
+  // ---------- Calculate distance between two points ----------
   const getDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371e3;
+    const R = 6371e3; // meters
     const toRad = (deg) => (deg * Math.PI) / 180;
     const dLat = toRad(lat2 - lat1);
     const dLng = toRad(lng2 - lng1);
@@ -41,178 +38,146 @@ export default function LiveTrackingMapAvailableOrders({
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // -----------------------------
-  // SVG ICONS
-  // -----------------------------
-  const pickupIcon = `
-    <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="15" cy="15" r="13" fill="#28a745" stroke="white" stroke-width="3"/>
-    </svg>
-  `;
+  // ---------- Animate Marker ----------
+  const animateMarker = (marker, from, to) => {
+    const frames = 60;
+    let count = 0;
 
-  const dropIcon = `
-    <svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="15" cy="15" r="13" fill="#dc3545" stroke="white" stroke-width="3"/>
-    </svg>
-  `;
+    const deltaLat = (to.lat - from.lat) / frames;
+    const deltaLng = (to.lng - from.lng) / frames;
 
-  const riderIcon = `
-    <svg width="38" height="38" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="30" fill="#007bff" stroke="white" stroke-width="4"/>
-      <path d="M20 40 L28 24 H36 L44 40 Z" fill="white"/>
-      <circle cx="26" cy="44" r="4" fill="white"/>
-      <circle cx="38" cy="44" r="4" fill="white"/>
-    </svg>
-  `;
+    const interval = setInterval(() => {
+      count++;
+      marker.setPosition({
+        lat: from.lat + deltaLat * count,
+        lng: from.lng + deltaLng * count,
+      });
+      if (count === frames) clearInterval(interval);
+    }, 16); // ~60 FPS
+  };
 
-  // -----------------------------
-  // Reverse Geocode Helper
-  // -----------------------------
- let lastReverseCall = 0;
-
-const reverseGeocode = async (lat, lng) => {
-  const now = Date.now();
-  if (now - lastReverseCall < 5000) return "";
-  lastReverseCall = now;
-
-  try {
-    const url = `https://geocode.search.hereapi.com/v1/revgeocode?at=${lat},${lng}&lang=en-US&apiKey=${HERE_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.items?.length) return data.items[0].address.label;
-    return "Address not found";
-  } catch {
-    return "Address not found";
-  }
-};
-
-
-
-   const attachAddressBubble = () => {};
-
-  // -----------------------------
-  // Map Setup
-  // -----------------------------
+  // ---------- Initialize Map ----------
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
-    const H = window.H;
-    const platform = new H.service.Platform({ apikey: HERE_API_KEY });
-    const defaultLayers = platform.createDefaultLayers();
-
-    const map = new H.Map(mapRef.current, defaultLayers.vector.normal.map, {
+    const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: pickupLat, lng: pickupLng },
       zoom: 13,
+      disableDefaultUI: true,
+      zoomControl: true,
     });
 
-    new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-    const ui = H.ui.UI.createDefault(map, defaultLayers);
+    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: "#0066FF",
+        strokeWeight: 5,
+      },
+    });
 
-    mapInstanceRef.current = { H, map, platform, ui };
-    return () => map.dispose();
+    directionsRendererRef.current.setMap(map);
+    mapInstanceRef.current = map;
+
+    // Pickup Marker
+    pickupMarkerRef.current = new window.google.maps.Marker({
+      position: { lat: pickupLat, lng: pickupLng },
+      map,
+      title: "Pickup",
+      icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+    });
+
+    // Drop Marker
+    dropMarkerRef.current = new window.google.maps.Marker({
+      position: { lat: dropLat, lng: dropLng },
+      map,
+      title: "Drop",
+      icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+    });
+
+    console.log("Google Map initialized");
   }, []);
 
-  // -----------------------------
-  // Static Route + Pickup / Drop Markers
-  // -----------------------------
-  useEffect(() => {
-    if (!mapInstanceRef.current || staticRouteRef.current) return;
-    const { H, map } = mapInstanceRef.current;
-
-    const pickupSvg = new H.map.Icon(
-      `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(pickupIcon)}`
-    );
-    const dropSvg = new H.map.Icon(
-      `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(dropIcon)}`
-    );
-
-    axios
-      .get(
-        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${pickupLat},${pickupLng}&destination=${dropLat},${dropLng}&return=polyline&apikey=${HERE_API_KEY}`
-      )
-      .then(async (res) => {
-        const poly = res.data.routes[0].sections[0].polyline;
-        const line = H.geo.LineString.fromFlexiblePolyline(poly);
-
-        staticRouteRef.current = new H.map.Polyline(line, {
-          style: { strokeColor: "#7E7E7E", lineWidth: 4 },
-        });
-
-        map.addObject(staticRouteRef.current);
-
-        // Pickup marker
-        pickupMarkerRef.current = new H.map.Marker(
-          { lat: pickupLat, lng: pickupLng },
-          { icon: pickupSvg }
-        );
-        map.addObject(pickupMarkerRef.current);
-        attachAddressBubble(pickupMarkerRef.current);
-
-        // Drop marker
-        dropMarkerRef.current = new H.map.Marker(
-          { lat: dropLat, lng: dropLng },
-          { icon: dropSvg }
-        );
-        map.addObject(dropMarkerRef.current);
-        attachAddressBubble(dropMarkerRef.current);
-      });
-  }, [pickupLat, pickupLng, dropLat, dropLng]);
-
-  // -----------------------------
-  // Live Tracking + Navigation
-  // -----------------------------
+  // ---------- Live Tracking ----------
   useEffect(() => {
     if (!orderId || !mapInstanceRef.current) return;
 
+    const map = mapInstanceRef.current;
+    const directionsService = new window.google.maps.DirectionsService();
+
+    let lastLat = null;
+    let lastLng = null;
+
     const fetchTracking = async () => {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
-      );
+      try {
+        const res = await axios.get(
+          `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
+        );
+        const d = res.data.delivery_boy;
+        if (!d) return;
 
-      const d = res.data.delivery_boy;
-      if (!d) return;
+        console.log(
+          "Delivery Boy coords:",
+          d.latitude,
+          d.longitude,
+          "Time:",
+          new Date().toLocaleTimeString()
+        );
 
-      const { H, map } = mapInstanceRef.current;
+        const moved =
+          lastLat === null ||
+          lastLng === null ||
+          getDistance(d.latitude, d.longitude, lastLat, lastLng) > distanceThreshold;
 
-      if (deliveryMarkerRef.current) map.removeObject(deliveryMarkerRef.current);
-      if (liveRouteRef.current) map.removeObject(liveRouteRef.current);
+        if (!moved) {
+          console.log("Delivery boy has NOT moved, skipping update");
+          return;
+        }
 
-      const riderSvg = new H.map.Icon(
-        `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(riderIcon)}`
-      );
+        lastLat = d.latitude;
+        lastLng = d.longitude;
 
-      deliveryMarkerRef.current = new H.map.Marker(
-        { lat: d.latitude, lng: d.longitude },
-        { icon: riderSvg }
-      );
-      map.addObject(deliveryMarkerRef.current);
-      attachAddressBubble(deliveryMarkerRef.current);
+        const deliveryLatLng = { lat: d.latitude, lng: d.longitude };
+        const destLatLng = reachedShop
+          ? { lat: dropLat, lng: dropLng }
+          : { lat: pickupLat, lng: pickupLng };
 
-      const distance = getDistance(d.latitude, d.longitude, pickupLat, pickupLng);
-      if (distance < 60 && !reachedShop) setReachedShop(true);
+        // Check if reached pickup
+        const distToPickup = getDistance(d.latitude, d.longitude, pickupLat, pickupLng);
+        if (distToPickup < 60 && !reachedShop) setReachedShop(true);
 
-      const destLat = reachedShop ? dropLat : pickupLat;
-      const destLng = reachedShop ? dropLng : pickupLng;
+        // Add or update delivery boy marker
+        if (!deliveryMarkerRef.current) {
+          deliveryMarkerRef.current = new window.google.maps.Marker({
+            position: deliveryLatLng,
+            map,
+            title: "Delivery Boy",
+            icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+          });
+          map.panTo(deliveryLatLng);
+        } else {
+          const prev = deliveryMarkerRef.current.getPosition();
+          animateMarker(deliveryMarkerRef.current, { lat: prev.lat(), lng: prev.lng() }, deliveryLatLng);
+          map.panTo(deliveryLatLng);
+        }
 
-      const routeRes = await axios.get(
-        `https://router.hereapi.com/v8/routes?transportMode=car&origin=${d.latitude},${d.longitude}&destination=${destLat},${destLng}&return=polyline,summary&apikey=${HERE_API_KEY}`
-      );
-
-      const poly = routeRes.data.routes[0].sections[0].polyline;
-      const line = H.geo.LineString.fromFlexiblePolyline(poly);
-
-      liveRouteRef.current = new H.map.Polyline(line, {
-        style: { strokeColor: "#0066FF", lineWidth: 5 },
-      });
-      map.addObject(liveRouteRef.current);
-
-      map.getViewModel().setLookAtData({
-        bounds: liveRouteRef.current.getBoundingBox(),
-      });
-
-      const sec = routeRes.data.routes[0].sections[0].summary.duration;
-      setEta(Math.ceil(sec / 60));
+        // Directions & ETA
+        directionsService.route(
+          {
+            origin: deliveryLatLng,
+            destination: destLatLng,
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === "OK") {
+              directionsRendererRef.current.setDirections(result);
+              const duration = result.routes[0].legs[0].duration?.value;
+              if (duration) setEta(Math.ceil(duration / 60));
+            }
+          }
+        );
+      } catch (err) {
+        console.error("Error fetching tracking:", err);
+      }
     };
 
     fetchTracking();
