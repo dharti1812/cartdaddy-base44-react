@@ -147,7 +147,7 @@ export default function AvailableOrders({
       // If not scanned in 6 seconds → show message
       toast.error("Unable to scan this IMEI. Please enter manually.");
       stopScanner();
-    }, 60000);
+    }, 6000);
 
     return () => clearTimeout(timeout);
   }, [scannerActive]);
