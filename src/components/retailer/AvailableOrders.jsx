@@ -82,33 +82,30 @@ export default function AvailableOrders({
           target: document.getElementById("imei-scanner"),
           constraints: {
             facingMode: "environment",
+            width: { min: 500 },
+            height: { min: 360 },
           },
 
           area: {
-            top: "40%",
-            bottom: "40%",
-            left: "10%",
-            right: "10%",
+            top: "10%",
+            bottom: "10%",
+            left: "5%",
+            right: "5%",
           },
         },
 
         locator: {
-          patchSize: "x-large",
+          patchSize: "medium",
           halfSample: false,
         },
 
         decoder: {
-          readers: [
-            "code_128_reader",
-            "code_39_reader",
-            "ean_reader",
-            "ean_13_reader",
-          ],
+          readers: ["code_128_reader"],
           multiple: false,
         },
 
         locate: true,
-        frequency: 10,
+        frequency: 15,
         numOfWorkers: 0, // VERY IMPORTANT
       },
       (err) => {
@@ -1298,9 +1295,10 @@ export default function AvailableOrders({
           <div className="space-y-4 py-4">
             {/* CAMERA */}
             {scannerActive && (
-              <div className="relative w-[400px] h-[160px] overflow-hidden rounded-md bg-black">
-                <div id="imei-scanner" className="w-full h-full" />
-              </div>
+              <div
+                id="imei-scanner"
+                className="w-full h-[160px] border rounded-md bg-black"
+              ></div>
             )}
 
             {/* MANUAL INPUT */}
