@@ -81,31 +81,36 @@ export default function AvailableOrders({
           type: "LiveStream",
           target: document.getElementById("imei-scanner"),
           constraints: {
-            facingMode: "environment",
-            width: { min: 500 },
-            height: { min: 360 },
-          },
+  facingMode: "environment",
+  width: { ideal: 400 },
+  height: { ideal: 160 },
+},
 
           area: {
-            top: "10%",
-            bottom: "10%",
-            left: "5%",
-            right: "5%",
-          },
+  top: "45%",
+  bottom: "45%",
+  left: "25%",
+  right: "25%",
+},
         },
 
         locator: {
-          patchSize: "medium",
+          patchSize: "x-large",
           halfSample: false,
         },
 
         decoder: {
-          readers: ["code_128_reader"],
+          readers: [
+    "code_128_reader",
+    "code_39_reader",
+    "ean_reader",
+    "ean_13_reader",
+  ],
           multiple: false,
         },
 
         locate: true,
-        frequency: 15,
+        frequency: 10,
         numOfWorkers: 0, // VERY IMPORTANT
       },
       (err) => {
@@ -1295,10 +1300,17 @@ export default function AvailableOrders({
           <div className="space-y-4 py-4">
             {/* CAMERA */}
             {scannerActive && (
-              <div
-                id="imei-scanner"
-                className="w-full h-[160px] border rounded-md bg-black"
-              ></div>
+              <div className="relative">
+  <div
+    id="imei-scanner"
+    className="w-full h-[160px] bg-black rounded-md"
+  />
+
+  {/* Scan Box Overlay */}
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <div className="w-[80%] h-[50px] border-2 border-green-400 rounded-md animate-pulse" />
+  </div>
+</div>
             )}
 
             {/* MANUAL INPUT */}
