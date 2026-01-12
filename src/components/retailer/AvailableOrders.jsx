@@ -81,17 +81,15 @@ export default function AvailableOrders({
           type: "LiveStream",
           target: document.getElementById("imei-scanner"),
           constraints: {
-  facingMode: "environment",
-  width: { ideal: 400 },
-  height: { ideal: 160 },
-},
+            facingMode: "environment",
+          },
 
           area: {
-  top: "45%",
-  bottom: "45%",
-  left: "25%",
-  right: "25%",
-},
+            top: "40%",
+            bottom: "40%",
+            left: "10%",
+            right: "10%",
+          },
         },
 
         locator: {
@@ -101,11 +99,11 @@ export default function AvailableOrders({
 
         decoder: {
           readers: [
-    "code_128_reader",
-    "code_39_reader",
-    "ean_reader",
-    "ean_13_reader",
-  ],
+            "code_128_reader",
+            "code_39_reader",
+            "ean_reader",
+            "ean_13_reader",
+          ],
           multiple: false,
         },
 
@@ -1300,17 +1298,9 @@ export default function AvailableOrders({
           <div className="space-y-4 py-4">
             {/* CAMERA */}
             {scannerActive && (
-              <div className="relative">
-  <div
-    id="imei-scanner"
-    className="w-full h-[160px] bg-black rounded-md"
-  />
-
-  {/* Scan Box Overlay */}
-  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-    <div className="w-[80%] h-[50px] border-2 border-green-400 rounded-md animate-pulse" />
-  </div>
-</div>
+              <div className="relative w-[400px] h-[160px] overflow-hidden rounded-md bg-black">
+                <div id="imei-scanner" className="w-full h-full" />
+              </div>
             )}
 
             {/* MANUAL INPUT */}
