@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Quagga from "quagga";
 
 import {
   Dialog,
@@ -61,7 +62,109 @@ export default function AvailableOrders({
     useState(false);
   const [paymentConfirmedOrder, setPaymentConfirmedOrder] = useState(null);
   const [selectedOffer, setSelectedOffer] = useState(null);
+  const [showImeiDialog, setShowImeiDialog] = useState(false);
+  const [imeiValue, setImeiValue] = useState("");
+  const [imeiOrder, setImeiOrder] = useState(null);
+  const [scannerActive, setScannerActive] = useState(true);
+  const scannerRef = useRef(null);
+  const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
+  useEffect(() => {
+    if (!showImeiDialog || !scannerActive) return;
+
+    let stableCount = 0;
+
+    Quagga.init(
+      {
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.getElementById("imei-scanner"),
+          constraints: {
+            facingMode: "environment",
+            width: { min: 500 },
+            height: { min: 360 },
+          },
+
+          area: {
+            top: "10%",
+            bottom: "10%",
+            left: "5%",
+            right: "5%",
+          },
+        },
+
+        locator: {
+          patchSize: "medium",
+          halfSample: false,
+        },
+
+        decoder: {
+          readers: ["code_128_reader"],
+          multiple: false,
+        },
+
+        locate: true,
+        frequency: 15,
+        numOfWorkers: 0, // VERY IMPORTANT
+      },
+      (err) => {
+        if (err) {
+          console.error("❌ Quagga init failed", err);
+          return;
+        }
+        Quagga.start();
+      }
+    );
+
+    let detected = false;
+
+    Quagga.onDetected((result) => {
+      if (detected) return;
+
+      const code = result?.codeResult?.code || "";
+      const imei = code.replace(/\D/g, "");
+
+      if (imei.length === 15) {
+        detected = true;
+        setImeiValue(imei);
+        stopScanner();
+      }
+    });
+
+    return () => {
+      try {
+        Quagga.offDetected();
+        Quagga.stop();
+      } catch {}
+    };
+  }, [showImeiDialog, scannerActive]);
+
+  useEffect(() => {
+    if (!scannerActive) return;
+
+    const timeout = setTimeout(() => {
+      // If not scanned in 6 seconds → show message
+      toast.error("Unable to scan this IMEI. Please enter manually.");
+      stopScanner();
+    }, 60000);
+
+    return () => clearTimeout(timeout);
+  }, [scannerActive]);
+
+  const stopScanner = () => {
+    try {
+      Quagga.stop();
+      Quagga.offDetected();
+    } catch (e) {}
+
+    setScannerActive(false);
+  };
+
+  const handleScanAgain = () => {
+    setImeiValue("");
+    setScannerActive(true);
+  };
   const handleAccept = async (order) => {
     setAccepting(order.id);
 
@@ -399,7 +502,7 @@ export default function AvailableOrders({
           const isQueued = order.status === "queued" || order.is_queued;
           // Base product amount
           const productCost = amount;
-        
+
           const deliveryCharge = charges?.baseCharge || 0;
           const fuelCost = charges?.fuelCost || 0;
 
@@ -429,7 +532,6 @@ export default function AvailableOrders({
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
           const roundedSettlementAmount = Math.round(settlementAmount);
 
-          
           return (
             <Card
               key={order.id}
@@ -785,23 +887,32 @@ export default function AvailableOrders({
 
                   <div className="grid grid-cols-1 gap-3 pt-2">
                     <Button
-                      onClick={() =>
-                        awaitingPaymentConfirmation &&
-                        paymentConfirmedOrder?.id === order.id
-                          ? handlePaymentReceivedAndNotify(order)
-                          : handleAccept(order)
-                      }
+                      onClick={() => {
+                        // 🔥 CASE 1: IMEI not added yet → ask IMEI
+                        if (
+                          awaitingPaymentConfirmation &&
+                          paymentConfirmedOrder?.id === order.id &&
+                          !imeiAddedOrders.includes(order.id)
+                        ) {
+                          setImeiOrder(order);
+                          setShowImeiDialog(true);
+                          return;
+                        }
+
+                        // 🔥 CASE 2: Normal order accept
+                        handleAccept(order);
+                      }}
                       disabled={accepting === order.id}
                       className={`
-      relative w-full py-6 text-lg text-white font-semibold
-      overflow-hidden rounded-xl
-      transition-all duration-300
-      ${
-        awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
-          ? "bg-green-600 hover:bg-green-700"
-          : "bg-gradient-to-r from-blue-600 to-blue-700"
-      }
-    `}
+    relative w-full py-6 text-lg text-white font-semibold
+    overflow-hidden rounded-xl
+    transition-all duration-300
+    ${
+      awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
+        ? "bg-green-600 hover:bg-green-700"
+        : "bg-gradient-to-r from-blue-600 to-blue-700"
+    }
+  `}
                     >
                       {/* Running Border */}
                       {awaitingPaymentConfirmation &&
@@ -809,16 +920,20 @@ export default function AvailableOrders({
                           <span className="absolute inset-0 rounded-xl border-2 border-green-400 animate-running-border" />
                         )}
 
-                      {/* Button Content */}
+                      {/* Button Text */}
                       <span className="relative z-10 flex items-center justify-center gap-2 font-semibold">
                         {awaitingPaymentConfirmation &&
                         paymentConfirmedOrder?.id === order.id ? (
-                          <>
-                            <span className="text-lg animate-bounce">⚡</span>
-                            Confirm Payment Received & Notify Delivery Boy
-                          </>
+                          imeiAddedOrders.includes(order.id) ? (
+                            "Add IMEI"
+                          ) : (
+                            <>
+                              <span className="text-lg animate-bounce">⚡</span>
+                              Payment Received &amp; Add IMEI
+                            </>
+                          )
                         ) : (
-                          "Accept Order - Notify Delivery Boys"
+                          "Accept Order"
                         )}
                       </span>
                     </Button>
@@ -1161,6 +1276,114 @@ export default function AvailableOrders({
               className="flex-1"
             >
               {submitting ? "Cancelling..." : "Yes, Cancel Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* IMEI Dialog */}
+      <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              📱 Enter / Scan IMEI
+            </DialogTitle>
+            <DialogDescription>
+              You can scan IMEI or enter it manually
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* CAMERA */}
+            {scannerActive && (
+              <div
+                id="imei-scanner"
+                className="w-full h-[160px] border rounded-md bg-black"
+              ></div>
+            )}
+
+            {/* MANUAL INPUT */}
+            <div className="space-y-2">
+              <Label>IMEI Number</Label>
+              <Input
+                placeholder="Enter IMEI manually"
+                value={imeiValue}
+                maxLength={15}
+                onChange={(e) =>
+                  setImeiValue(e.target.value.replace(/\D/g, ""))
+                }
+              />
+            </div>
+
+            {/* SCAN*/}
+            {!scannerActive && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleScanAgain}
+              >
+                🔁 Scan
+              </Button>
+            )}
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                stopScanner();
+                setShowImeiDialog(false);
+                setImeiValue("");
+                setImeiOrder(null);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              disabled={imeiValue.length !== 15 || submitting} // optional: disable during validation
+              onClick={async () => {
+                if (!imeiOrder) return;
+
+                setSubmitting(true); // optional: state to show loader
+
+                try {
+                  // 1️⃣ Call backend to verify IMEI
+                  const result = await OrderApi.storeImei({
+                    imei: imeiValue,
+                    order_id: imeiOrder.id,
+                  });
+
+                  if (!result.success) {
+                    alert(result.message || "IMEI not found"); // you can use toast or modal instead
+                    return;
+                  }
+
+                  // ✅ IMEI exists, proceed
+                  stopScanner();
+                  setShowImeiDialog(false);
+
+                  if (
+                    awaitingPaymentConfirmation &&
+                    paymentConfirmedOrder?.id === imeiOrder.id
+                  ) {
+                    await handlePaymentReceivedAndNotify(imeiOrder);
+                    setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
+                  } else {
+                    await handleAccept(imeiOrder);
+                  }
+
+                  setImeiValue("");
+                  setImeiOrder(null);
+                } catch (err) {
+                  alert(err.message || "Failed to validate IMEI");
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              Confirm & Continue
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -738,7 +738,7 @@ export default function DeliveryBoyPortal() {
                         );
                         charges = calculateDeliveryCharges(
                           order?.amount || 0,
-                          totalDistance,
+                          order?.distances?.pickup_to_delivery_km || 0,
                           deliverySettings
                         );
                       } else {

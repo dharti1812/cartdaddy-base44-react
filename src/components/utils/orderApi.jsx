@@ -144,4 +144,33 @@ export const OrderApi = {
     if (!res.ok) throw new Error("Failed to update order");
     return res.json();
   },
+
+ validateImei: async ({ imei, order_id }) => {
+  try {
+ 
+    const response = await fetch(`${API_BASE_URL}/api/store-imei`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        imei: imei,
+        order_id: order_id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "IMEI validation failed");
+    }
+
+    return data; 
+   
+  } catch (err) {
+    throw err;
+  }
+},
+
 };
