@@ -787,7 +787,6 @@ export default function DeliveryBoyPortal() {
                               ))}
                             </div>
 
-                          
                             <div className="bg-gray-50 rounded-xl p-4">
                               {/* PICKUP */}
                               <div className="flex items-start gap-3">
@@ -796,8 +795,7 @@ export default function DeliveryBoyPortal() {
                                 </div>
                                 <div>
                                   <p className="font-semibold text-gray-800 text-sm">
-                                    Pickup Location 
-                                    
+                                    Pickup Location
                                   </p>
                                   <p className="text-gray-700 text-sm">
                                     <span className="font-semibold">
@@ -1069,20 +1067,86 @@ export default function DeliveryBoyPortal() {
                               {order.items?.map((item, index) => (
                                 <div
                                   key={index}
-                                  className="text-sm text-gray-700 leading-5"
+                                  className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
                                 >
                                   <p className="font-semibold">{item.name}</p>
+
                                   <p>
                                     Qty: {item.quantity} | Price: ₹{item.price}
                                   </p>
-                                  {item.pickup_otp !== null && (
-                                    <div className="mt-2 bg-green-100 text-green-800 px-4  rounded-full text-sm font-semibold w-max shadow-sm">
-                                      Pickup OTP:{" "}
-                                      <span className="ml-1 text-lg">
-                                        {item.pickup_otp}
+
+                                  {/* IMEI */}
+                                  <p>
+                                    <span className="font-semibold">IMEI:</span>{" "}
+                                    {item.imei_number || "Not Available"}
+                                  </p>
+
+                                  {/* Packaging Video */}
+                                  <p>
+                                    <span className="font-semibold">
+                                      Packaging Video:
+                                    </span>{" "}
+                                    {item.video_path ? (
+                                      <a
+                                        href={`/${item.video_path}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 underline"
+                                      >
+                                        View Video
+                                      </a>
+                                    ) : (
+                                      <span className="text-red-600">
+                                        Not Uploaded
                                       </span>
-                                    </div>
-                                  )}
+                                    )}
+                                  </p>
+
+                                  {/* Verification Status */}
+                                  <div className="mt-1 text-sm">
+                                    <p>
+                                      IMEI Verified:{" "}
+                                      <span
+                                        className={
+                                          item.imei_verified
+                                            ? "text-green-600 font-semibold"
+                                            : "text-red-600 font-semibold"
+                                        }
+                                      >
+                                        {item.imei_verified
+                                          ? "Yes ✅"
+                                          : "Pending ❌"}
+                                      </span>
+                                    </p>
+
+                                    <p>
+                                      Video Verified:{" "}
+                                      <span
+                                        className={
+                                          item.video_verified
+                                            ? "text-green-600 font-semibold"
+                                            : "text-red-600 font-semibold"
+                                        }
+                                      >
+                                        {item.video_verified
+                                          ? "Yes ✅"
+                                          : "Pending ❌"}
+                                      </span>
+                                    </p>
+                                  </div>
+
+                                  {/* Pickup OTP – ONLY AFTER BOTH VERIFIED */}
+                                  {item.imei_verified === 1 &&
+                                    item.video_verified === 1 &&
+                                    item.pickup_otp !== null &&
+                                    item.pickup_otp !== 0 && (
+                                      <div className="mt-2 bg-green-100 text-green-800 px-4 rounded-full text-sm font-semibold w-max shadow-sm">
+                                        Pickup OTP:
+                                        <span className="ml-1 text-lg">
+                                          {item.pickup_otp}
+                                        </span>
+                                      </div>
+                                    )}
                                 </div>
                               ))}
                             </div>

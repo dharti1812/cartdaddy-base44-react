@@ -145,19 +145,15 @@ export const OrderApi = {
     return res.json();
   },
 
- validateImei: async ({ imei, order_id }) => {
+ storeImei: async (formData) => {
   try {
- 
     const response = await fetch(`${API_BASE_URL}/api/store-imei`, {
       method: "POST",
+      body: formData, // send FormData directly
+      // Do NOT set Content-Type manually! fetch will set correct multipart boundary automatically
       headers: {
-        "Content-Type": "application/json",
         "Accept": "application/json",
       },
-      body: JSON.stringify({
-        imei: imei,
-        order_id: order_id,
-      }),
     });
 
     const data = await response.json();
@@ -166,11 +162,14 @@ export const OrderApi = {
       throw new Error(data.message || "IMEI validation failed");
     }
 
-    return data; 
-   
+    return data;
+
   } catch (err) {
     throw err;
   }
 },
+
+
+
 
 };

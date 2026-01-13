@@ -69,6 +69,53 @@ export default function AvailableOrders({
   const scannerRef = useRef(null);
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
+  const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [recordedChunks, setRecordedChunks] = useState([]);
+  const [videoURL, setVideoURL] = useState("");
+
+  const [videoRecorded, setVideoRecorded] = useState(false);
+  const [scanAttempted, setScanAttempted] = useState(false);
+
+  const videoRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const handleStartRecording = async () => {
+    if (!videoRef.current) return;
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    videoRef.current.srcObject = stream;
+
+    recordedChunksRef.current = [];
+    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    };
+
+    mediaRecorder.start();
+    setRecording(true);
+
+    // Save recorder instance so we can stop it later
+    videoRef.current.mediaRecorder = mediaRecorder;
+  };
+
+  const handleStopRecording = () => {
+    if (!videoRef.current?.mediaRecorder) return;
+
+    videoRef.current.mediaRecorder.stop();
+    videoRef.current.mediaRecorder.stream
+      .getTracks()
+      .forEach((track) => track.stop());
+    setRecording(false);
+    setVideoRecorded(true);
+
+    const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+    setVideoURL(URL.createObjectURL(blob));
+  };
+
   useEffect(() => {
     if (!showImeiDialog || !scannerActive) return;
 
@@ -141,16 +188,15 @@ export default function AvailableOrders({
   }, [showImeiDialog, scannerActive]);
 
   useEffect(() => {
-    if (!scannerActive) return;
+  if (!scannerActive || !scanAttempted) return;
 
-    const timeout = setTimeout(() => {
-      // If not scanned in 6 seconds → show message
-      toast.error("Unable to scan this IMEI. Please enter manually.");
-      stopScanner();
-    }, 6000);
+  const timeout = setTimeout(() => {
+    toast.error("Unable to scan this IMEI. Please enter manually.");
+    stopScanner();
+  }, 6000);
 
-    return () => clearTimeout(timeout);
-  }, [scannerActive]);
+  return () => clearTimeout(timeout);
+}, [scannerActive, scanAttempted]);
 
   const stopScanner = () => {
     try {
@@ -164,6 +210,7 @@ export default function AvailableOrders({
   const handleScanAgain = () => {
     setImeiValue("");
     setScannerActive(true);
+    setScanAttempted(true);
   };
   const handleAccept = async (order) => {
     setAccepting(order.id);
@@ -225,20 +272,20 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
 
+    if (order.payment_type === "needs_paylink") {
+      setPendingOrder(order);
+      setAccepting(null);
+      return;
+    }
+
+    // ✅ Only accept immediately for non-paylink orders
     await OrderApi.acceptOrder({
       ...apiData,
-      notify_delivery_boys: order.payment_type !== "needs_paylink",
+      notify_delivery_boys: true,
     });
 
     setAccepting(null);
-
-    // If payment link needed and this retailer is active, show dialog immediately
-    if (order.payment_type === "needs_paylink") {
-      setPendingOrder({ ...order, ...updateData });
-      return;
-    } else {
-      onAccept();
-    }
+    onAccept();
   };
 
   const paymentInfo = {
@@ -341,20 +388,74 @@ export default function AvailableOrders({
         paid_at: new Date().toISOString(),
       });
 
-      toast.success("Payment confirmed.");
+      toast.success("Payment confirmed. Please add IMEI.");
 
+      // 🔑 Open IMEI dialog AFTER payment
+      setImeiOrder(order);
+      setShowImeiDialog(true);
+
+      setAwaitingPaymentConfirmation(true);
+      setPaymentConfirmedOrder(order);
+    } catch (err) {
+      toast.error("Failed to confirm payment");
+    }
+  };
+
+  const handleConfirmImeiAndNotify = async () => {
+    if (!imeiOrder || submitting) return;
+
+    setSubmitting(true);
+
+    try {
+      await OrderApi.updateOrder(imeiOrder.id, {
+        payment_status: "paid",
+        paid_at: new Date().toISOString(),
+      });
+
+      // ✅ Prepare FormData for IMEI + video
+      const formData = new FormData();
+      formData.append("imei", imeiValue);
+      formData.append("order_id", imeiOrder.id);
+
+      if (recordedChunksRef.current.length) {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
+        formData.append("video", blob, "imei_video.webm");
+      }
+
+      // Send to backend
+      const result = await OrderApi.storeImei(formData, true); // <-- true for multipart/form-data
+
+      if (!result.success) {
+        toast.error(result.message || "Invalid IMEI");
+        return;
+      }
+
+      // Notify delivery boy
       await OrderApi.acceptOrder({
-        orderId: order.code || order.id,
-        retailerId: retailerId,
+        orderId: imeiOrder.code || imeiOrder.id,
+        retailerId,
         notify_delivery_boys: true,
       });
 
+      toast.success("Order accepted & delivery boy assigned");
+
+      // Cleanup
+      stopScanner();
+      setShowImeiDialog(false);
+      setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
+
+      setImeiValue("");
+      setImeiOrder(null);
       setAwaitingPaymentConfirmation(false);
       setPaymentConfirmedOrder(null);
 
       onAccept();
     } catch (err) {
-      toast.error("Failed to confirm payment");
+      toast.error(err.message || "Failed to complete order");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1314,15 +1415,46 @@ export default function AvailableOrders({
               />
             </div>
 
-            {/* SCAN*/}
+            <div className="space-y-2">
+              <Label>Packaging Video</Label>
+              <video
+                ref={videoRef}
+                autoPlay
+                className="w-full h-40 border rounded-md bg-black"
+              ></video>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  onClick={handleStartRecording}
+                  disabled={recording}
+                >
+                  🎬 Start Recording
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleStopRecording}
+                  disabled={!recording}
+                >
+                  ⏹ Stop Recording
+                </Button>
+              </div>
+            </div>
+
             {!scannerActive && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleScanAgain}
-              >
-                🔁 Scan
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleScanAgain}
+                >
+                  🔁 Scan Again
+                </Button>
+                <p className="text-xs text-gray-500 text-center">
+                  ⚠️ Barcode scanning is supported on{" "}
+                  <strong>mobile devices only</strong>. Web browsers do not
+                  support this feature.
+                </p>
+              </div>
             )}
           </div>
 
@@ -1342,46 +1474,8 @@ export default function AvailableOrders({
 
             <Button
               className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-              disabled={imeiValue.length !== 15 || submitting} // optional: disable during validation
-              onClick={async () => {
-                if (!imeiOrder) return;
-
-                setSubmitting(true); // optional: state to show loader
-
-                try {
-                  // 1️⃣ Call backend to verify IMEI
-                  const result = await OrderApi.storeImei({
-                    imei: imeiValue,
-                    order_id: imeiOrder.id,
-                  });
-
-                  if (!result.success) {
-                    alert(result.message || "IMEI not found"); // you can use toast or modal instead
-                    return;
-                  }
-
-                  // ✅ IMEI exists, proceed
-                  stopScanner();
-                  setShowImeiDialog(false);
-
-                  if (
-                    awaitingPaymentConfirmation &&
-                    paymentConfirmedOrder?.id === imeiOrder.id
-                  ) {
-                    await handlePaymentReceivedAndNotify(imeiOrder);
-                    setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
-                  } else {
-                    await handleAccept(imeiOrder);
-                  }
-
-                  setImeiValue("");
-                  setImeiOrder(null);
-                } catch (err) {
-                  alert(err.message || "Failed to validate IMEI");
-                } finally {
-                  setSubmitting(false);
-                }
-              }}
+              disabled={imeiValue.length !== 15 || submitting || !videoRecorded}
+              onClick={handleConfirmImeiAndNotify}
             >
               Confirm & Continue
             </Button>
