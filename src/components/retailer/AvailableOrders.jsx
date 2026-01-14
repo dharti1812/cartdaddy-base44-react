@@ -188,15 +188,15 @@ export default function AvailableOrders({
   }, [showImeiDialog, scannerActive]);
 
   useEffect(() => {
-  if (!scannerActive || !scanAttempted) return;
+    if (!scannerActive || !scanAttempted) return;
 
-  const timeout = setTimeout(() => {
-    toast.error("Unable to scan this IMEI. Please enter manually.");
-    stopScanner();
-  }, 6000);
+    const timeout = setTimeout(() => {
+      toast.error("Unable to scan this IMEI. Please enter manually.");
+      stopScanner();
+    }, 6000);
 
-  return () => clearTimeout(timeout);
-}, [scannerActive, scanAttempted]);
+    return () => clearTimeout(timeout);
+  }, [scannerActive, scanAttempted]);
 
   const stopScanner = () => {
     try {
@@ -990,11 +990,7 @@ export default function AvailableOrders({
                     <Button
                       onClick={() => {
                         // 🔥 CASE 1: IMEI not added yet → ask IMEI
-                        if (
-                          awaitingPaymentConfirmation &&
-                          paymentConfirmedOrder?.id === order.id &&
-                          !imeiAddedOrders.includes(order.id)
-                        ) {
+                        if (!imeiAddedOrders.includes(order.id)) {
                           setImeiOrder(order);
                           setShowImeiDialog(true);
                           return;
@@ -1382,7 +1378,13 @@ export default function AvailableOrders({
         </DialogContent>
       </Dialog>
       {/* IMEI Dialog */}
-      <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
+      <Dialog
+        open={showImeiDialog}
+        onOpenChange={(open) => {
+          if (!open) stopScanner();
+          setShowImeiDialog(open);
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
