@@ -129,6 +129,21 @@ export const OrderApi = {
     return data;
   },
 
+  updateRetailerStatus: async (orderCode, payload) => {
+    const token = sessionStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/${orderCode}/updateRetailerStatus`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json", 
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    }); 
+    if (!res.ok) throw new Error("Failed to update retailer status");
+    return res.json();
+  },
+
   updateOrder: async (orderCode, payload) => {
     const token = sessionStorage.getItem("token");
 

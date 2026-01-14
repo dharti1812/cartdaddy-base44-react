@@ -272,6 +272,11 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
 
+    await OrderApi.updateRetailerStatus(order.id, {
+      status: "awaiting_payment",
+      accepted_at: new Date().toISOString(),
+    });
+
     if (order.payment_type === "needs_paylink") {
       setPendingOrder(order);
       setAccepting(null);
@@ -424,9 +429,9 @@ export default function AvailableOrders({
       formData.append("order_id", imeiOrder.id);
 
       if (recordedChunksRef.current.length > 0) {
-  const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-  formData.append("video", blob, "packaging_video.webm");
-}
+        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        formData.append("video", blob, "packaging_video.webm");
+      }
       
       // Send to backend
       const result = await OrderApi.storeImei(formData, true); // <-- true for multipart/form-data
