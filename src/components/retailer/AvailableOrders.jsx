@@ -60,6 +60,7 @@ export default function AvailableOrders({
   const [submitting, setSubmitting] = useState(false);
   const [awaitingPaymentConfirmation, setAwaitingPaymentConfirmation] =
     useState(false);
+
   const [paymentConfirmedOrder, setPaymentConfirmedOrder] = useState(null);
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [showImeiDialog, setShowImeiDialog] = useState(false);
@@ -98,7 +99,6 @@ export default function AvailableOrders({
     mediaRecorder.start();
     setRecording(true);
 
-    // Save recorder instance so we can stop it later
     videoRef.current.mediaRecorder = mediaRecorder;
   };
 
@@ -153,7 +153,7 @@ export default function AvailableOrders({
 
         locate: true,
         frequency: 15,
-        numOfWorkers: 0, // VERY IMPORTANT
+        numOfWorkers: 0,
       },
       (err) => {
         if (err) {
@@ -273,7 +273,7 @@ export default function AvailableOrders({
     };
 
     await OrderApi.updateRetailerStatus(order.id, {
-      status: "awaiting_payment",
+      status: "awaiting_payment_link",
       accepted_at: new Date().toISOString(),
     });
 
@@ -283,7 +283,6 @@ export default function AvailableOrders({
       return;
     }
 
-    // ✅ Only accept immediately for non-paylink orders
     await OrderApi.acceptOrder({
       ...apiData,
       notify_delivery_boys: true,
@@ -357,7 +356,6 @@ export default function AvailableOrders({
         order_id: pendingOrder.id,
       });
 
-      // Send payment link notification
       const { notifyPaymentLink } = await import(
         "../utils/customerNotifications"
       );
@@ -365,11 +363,9 @@ export default function AvailableOrders({
 
       setPaylinkUrl("");
 
-      // move order into payment-confirmation mode
       setPaymentConfirmedOrder(pendingOrder);
       setAwaitingPaymentConfirmation(true);
 
-      // 🔑 THIS closes the dialog
       setPendingOrder(null);
     } catch (err) {
       if (err.type === "validation" && err.errors) {
@@ -387,30 +383,29 @@ export default function AvailableOrders({
   };
 
   const handlePaymentReceivedAndNotify = async (order) => {
-  try {
-    const result = await OrderApi.updateOrder(order.id, {
-      payment_status: "paid",
-      paid_at: new Date().toISOString(),
-    });
+    try {
+      const result = await OrderApi.updateOrder(order.id, {
+        payment_status: "paid",
+        paid_at: new Date().toISOString(),
+      });
 
-    console.log("✅ Payment confirmed for order", order.id, result);
+      console.log("✅ Payment confirmed for order", order.id, result);
 
-    toast.success("Payment confirmed. Please add IMEI.");
-    
-    setScannerActive(false);
-    setScanAttempted(false);
-    setImeiValue("");
-    setImeiOrder(order);
-    console.log("💡 showImeiDialog before:", showImeiDialog);
-    setShowImeiDialog(true);
-    setAwaitingPaymentConfirmation(false);
-    setPaymentConfirmedOrder(null);
-  } catch (err) {
-    console.error("💥 Error in payment confirmation:", err);
-    toast.error("Failed to confirm payment");
-  }
-};
+      toast.success("Payment confirmed. Please add IMEI.");
 
+      setScannerActive(false);
+      setScanAttempted(false);
+      setImeiValue("");
+      setImeiOrder(order);
+      console.log("💡 showImeiDialog before:", showImeiDialog);
+      setShowImeiDialog(true);
+      setAwaitingPaymentConfirmation(false);
+      setPaymentConfirmedOrder(null);
+    } catch (err) {
+      console.error("💥 Error in payment confirmation:", err);
+      toast.error("Failed to confirm payment");
+    }
+  };
 
   const handleConfirmImeiAndNotify = async () => {
     if (!imeiOrder || submitting) return;
@@ -429,19 +424,19 @@ export default function AvailableOrders({
       formData.append("order_id", imeiOrder.id);
 
       if (recordedChunksRef.current.length > 0) {
-        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
         formData.append("video", blob, "packaging_video.webm");
       }
-      
-      // Send to backend
-      const result = await OrderApi.storeImei(formData, true); // <-- true for multipart/form-data
+
+      const result = await OrderApi.storeImei(formData, true);
 
       if (!result.success) {
         toast.error(result.message || "Invalid IMEI");
         return;
       }
 
-      // Notify delivery boy
       await OrderApi.acceptOrder({
         orderId: imeiOrder.code || imeiOrder.id,
         retailerId,
@@ -450,7 +445,6 @@ export default function AvailableOrders({
 
       toast.success("Order accepted & delivery boy assigned");
 
-      // Cleanup
       stopScanner();
       setShowImeiDialog(false);
       setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
@@ -486,12 +480,10 @@ export default function AvailableOrders({
       applied_at: new Date().toISOString(),
     });
 
-    // Update this retailer's acceptance status
     const updatedAcceptances = pendingOrder.accepted_retailers.map((ar) =>
       ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar
     );
 
-    // Find next retailer in line
     const nextRetailer = updatedAcceptances.find(
       (ar) => ar.status === "active" && ar.retailer_id !== retailerId
     );
@@ -504,7 +496,6 @@ export default function AvailableOrders({
       penalties,
     });
 
-    // Decrement retailer's current_orders count and remove from active_order_ids
     await Retailer.update(retailerId, {
       current_orders: Math.max(0, (retailerProfile?.current_orders || 0) - 1),
       active_order_ids: (retailerProfile?.active_order_ids || []).filter(
@@ -521,7 +512,6 @@ export default function AvailableOrders({
   };
 
   const filteredOrders = orders.filter((order) => {
-    // Show pending orders and queued orders
     if (
       order.status !== "pending" &&
       order.status !== "UNASSIGNED" &&
@@ -616,7 +606,6 @@ export default function AvailableOrders({
           const deliveryCharge = charges?.baseCharge || 0;
           const fuelCost = charges?.fuelCost || 0;
 
-          // Platform commission (percent OR fixed)
           const commissionItem = order.items?.find(
             (item) =>
               item.commission_type === "percent" ||
@@ -641,6 +630,10 @@ export default function AvailableOrders({
           const settlementAmount =
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
           const roundedSettlementAmount = Math.round(settlementAmount);
+
+          const isAwaitingImei =
+            order.payment_status === "paid" &&
+            Number(order.items?.[0]?.imei_verified) === 0;
 
           return (
             <Card
@@ -996,23 +989,23 @@ export default function AvailableOrders({
                   )}
 
                   <div className="grid grid-cols-1 gap-3 pt-2">
-                   <Button
-  onClick={async () => {
-    // 🔥 CASE 1: Payment confirmed → confirm backend & open IMEI
-    if (
-      awaitingPaymentConfirmation &&
-      paymentConfirmedOrder?.id === order.id &&
-      !imeiAddedOrders.includes(order.id)
-    ) {
-      await handlePaymentReceivedAndNotify(order); // ✅ REQUIRED
-      return;
-    }
+                    <Button
+                      onClick={async () => {
+                        // 🔥 CASE 1: Payment confirmed → confirm backend & open IMEI
+                        if (
+                          awaitingPaymentConfirmation &&
+                          paymentConfirmedOrder?.id === order.id &&
+                          !imeiAddedOrders.includes(order.id)
+                        ) {
+                          await handlePaymentReceivedAndNotify(order); // ✅ REQUIRED
+                          return;
+                        }
 
-    // 🔥 CASE 2: Normal accept flow
-    handleAccept(order);
-  }}
-  disabled={accepting === order.id}
-  className={`
+                        // 🔥 CASE 2: Normal accept flow
+                        handleAccept(order);
+                      }}
+                      disabled={accepting === order.id}
+                      className={`
     relative w-full py-6 text-lg text-white font-semibold
     overflow-hidden rounded-xl transition-all duration-300
     ${
@@ -1021,9 +1014,7 @@ export default function AvailableOrders({
         : "bg-gradient-to-r from-blue-600 to-blue-700"
     }
   `}
->
-
-                  
+                    >
                       {/* Running Border */}
                       {awaitingPaymentConfirmation &&
                         paymentConfirmedOrder?.id === order.id && (
@@ -1056,7 +1047,12 @@ export default function AvailableOrders({
       </div>
 
       {/* Payment Link Dialog */}
-      <Dialog open={!!pendingOrder} onOpenChange={() => {}}>
+      <Dialog
+        open={!!pendingOrder}
+        onOpenChange={(open) => {
+          if (!open) setPendingOrder(null);
+        }}
+      >
         <DialogContent
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -1391,105 +1387,109 @@ export default function AvailableOrders({
         </DialogContent>
       </Dialog>
       {/* IMEI Dialog */}
- <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
-  <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()}>
-    <DialogHeader>
-      <DialogTitle>📱 Enter / Scan IMEI</DialogTitle>
-      <DialogDescription>
-        You can scan IMEI or enter it manually
-      </DialogDescription>
-    </DialogHeader>
-
-    <div className="space-y-4 py-4">
-      {/* SCAN BUTTON */}
-      {!scannerActive && (
-        <>
-        <Button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          onClick={() => setScannerActive(true)} // activate scanner only on click
+      <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={(e) => e.preventDefault()}
         >
-          🔍 Scan IMEI
-         
-        </Button>
-         <p> Barcode scanning is supported on mobile devices only; web browsers do not support this feature.</p>
-         </>
-      )}
+          <DialogHeader>
+            <DialogTitle>📱 Enter / Scan IMEI</DialogTitle>
+            <DialogDescription>
+              You can scan IMEI or enter it manually
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* CAMERA SCANNER */}
-      {scannerActive && (
-        <div
-          id="imei-scanner"
-          className="w-full h-[160px] border rounded-md bg-black"
-        ></div>
-      )}
+          <div className="space-y-4 py-4">
+            {/* SCAN BUTTON */}
+            {!scannerActive && (
+              <>
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={() => setScannerActive(true)}
+                >
+                  🔍 Scan IMEI
+                </Button>
+                <p>
+                  {" "}
+                  Barcode scanning is supported on mobile devices only; web
+                  browsers do not support this feature.
+                </p>
+              </>
+            )}
 
-      {/* MANUAL INPUT */}
-      <div className="space-y-2">
-        <Label>IMEI Number</Label>
-        <Input
-          placeholder="Enter IMEI manually"
-          value={imeiValue}
-          maxLength={15}
-          onChange={(e) =>
-            setImeiValue(e.target.value.replace(/\D/g, ""))
-          }
-        />
-      </div>
+            {/* CAMERA SCANNER */}
+            {scannerActive && (
+              <div
+                id="imei-scanner"
+                className="w-full h-[160px] border rounded-md bg-black"
+              ></div>
+            )}
 
-      {/* VIDEO RECORDING */}
-      <div className="space-y-2">
-        <Label>Packaging Video</Label>
-        <video
-          ref={videoRef}
-          autoPlay
-          className="w-full h-40 border rounded-md bg-black"
-        ></video>
-        <div className="flex gap-2 mt-2">
-          <Button
-            variant="outline"
-            onClick={handleStartRecording}
-            disabled={recording}
-          >
-            🎬 Start Recording
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleStopRecording}
-            disabled={!recording}
-          >
-            ⏹ Stop Recording
-          </Button>
-        </div>
-      </div>
-    </div>
+            {/* MANUAL INPUT */}
+            <div className="space-y-2">
+              <Label>IMEI Number</Label>
+              <Input
+                placeholder="Enter IMEI manually"
+                value={imeiValue}
+                maxLength={15}
+                onChange={(e) =>
+                  setImeiValue(e.target.value.replace(/\D/g, ""))
+                }
+              />
+            </div>
 
-    <DialogFooter className="flex gap-2">
-      <Button
-        variant="outline"
-        className="flex-1"
-        onClick={() => {
-          stopScanner();
-          setShowImeiDialog(false);
-          setImeiValue("");
-          setImeiOrder(null);
-          setScannerActive(false); // reset scanner
-        }}
-      >
-        Cancel
-      </Button>
+            {/* VIDEO RECORDING */}
+            <div className="space-y-2">
+              <Label>Packaging Video</Label>
+              <video
+                ref={videoRef}
+                autoPlay
+                className="w-full h-40 border rounded-md bg-black"
+              ></video>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="outline"
+                  onClick={handleStartRecording}
+                  disabled={recording}
+                >
+                  🎬 Start Recording
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleStopRecording}
+                  disabled={!recording}
+                >
+                  ⏹ Stop Recording
+                </Button>
+              </div>
+            </div>
+          </div>
 
-      <Button
-        className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-        disabled={imeiValue.length !== 15 || submitting || !videoRecorded}
-        onClick={handleConfirmImeiAndNotify}
-      >
-        Confirm & Continue
-      </Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                stopScanner();
+                setShowImeiDialog(false);
+                setImeiValue("");
+                setImeiOrder(null);
+                setScannerActive(false);
+              }}
+            >
+              Cancel
+            </Button>
 
-
+            <Button
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              disabled={imeiValue.length !== 15 || submitting || !videoRecorded}
+              onClick={handleConfirmImeiAndNotify}
+            >
+              Confirm & Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
