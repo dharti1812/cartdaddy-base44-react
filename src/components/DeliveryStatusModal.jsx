@@ -14,6 +14,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
   const [otpTimer, setOtpTimer] = useState(30);
   const [cameraStream, setCameraStream] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  
 
   const showOtpInput = status === "reached_to_customer" && !showCustomerInfo;
   const showCustomerForm = status === "otp_verified" || showCustomerInfo;
@@ -250,7 +251,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
             )}
 
             {status === "reached_to_seller" && (
-              <p>Waiting until seller accepts the order</p>
+              <p> </p>
             )}
           </div>
         )}

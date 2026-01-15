@@ -27,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import toast from "react-hot-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createPageUrl } from "@/utils";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
@@ -38,6 +39,7 @@ import DeliveryStatusModal from "@/components/DeliveryStatusModal";
 import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailableOrders";
 import DeliveryBoyProfileSettings from "@/components/DeliveryBoyProfileSettings";
 import { calculateDeliveryCharges } from "../components/utils/deliveryChargeCalculator";
+import { set } from "date-fns";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -61,9 +63,16 @@ export default function DeliveryBoyPortal() {
     today: 0,
     available: 0,
   });
+  const [confirmVerify, setConfirmVerify] = useState({
+    open: false,
+    type: null, // "imei" | "video"
+    orderDetailId: null,
+  });
+
   const watchIdRef = useRef(null);
   const notificationAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -258,15 +267,7 @@ export default function DeliveryBoyPortal() {
 
       if (data.success) {
         toast.success("IMEI verified ✅");
-
-        // ✅ Update state immediately
-        setOrderDetails((prev) =>
-          prev.map((item) =>
-            item.order_id === orderDetailId
-              ? { ...item, imei_verified: 1 }
-              : item
-          )
-        );
+        window.location.reload();
       } else {
         toast.error(data.message || "Failed to verify IMEI");
       }
@@ -294,14 +295,7 @@ export default function DeliveryBoyPortal() {
       if (data.success) {
         toast.success("Video verified ✅");
 
-        // ✅ Update state immediately
-        setOrderDetails((prev) =>
-          prev.map((item) =>
-            item.order_id === orderDetailId
-              ? { ...item, video_verified: 1 }
-              : item
-          )
-        );
+        window.location.reload();
       } else {
         toast.error(data.message || "Failed to verify video");
       }
@@ -1146,11 +1140,39 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     Qty: {item.quantity} | Price: ₹{item.price}
                                   </p>
-
+                                </div>
+                              ))}
+                              {order.items?.map((item, index) => (
+                                <div
+                                  key={item.order_id}
+                                  className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
+                                >
                                   {/* IMEI */}
                                   <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
+                                    {order.delivery_status ===
+                                      "reached_to_seller" &&
+                                      item.imei_number &&
+                                      item.imei_verified !== 1 && (
+                                        <button
+                                          className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                          onClick={() =>
+                                            setConfirmVerify({
+                                              open: true,
+                                              type: "imei",
+                                              orderDetailId: item.order_id, // ✅ Use item.id (order_detail_id)
+                                            })
+                                          }
+                                        >
+                                          Verify
+                                        </button>
+                                      )}
+                                    {item.imei_verified === 1 && (
+                                      <span className="text-green-600 font-semibold ml-2">
+                                        ✅ Verified
+                                      </span>
+                                    )}
                                   </p>
 
                                   {/* Packaging Video */}
@@ -1159,109 +1181,90 @@ export default function DeliveryBoyPortal() {
                                       Packaging Video:
                                     </span>{" "}
                                     {item.video_path ? (
-                                      <button
-                                        onClick={() => setShowVideoModal(true)}
-                                        className="text-blue-600 underline"
-                                      >
-                                        View Video
-                                      </button>
+                                      <>
+                                        <button
+                                          className="ml-2 text-blue-600 underline"
+                                          onClick={() =>
+                                            setShowVideoModal(item.order_id)
+                                          }
+                                        >
+                                          View Video
+                                        </button>
+
+                                        {/* Video Modal */}
+                                        <Dialog
+                                          open={
+                                            showVideoModal === item.order_id
+                                          }
+                                          onOpenChange={() =>
+                                            setShowVideoModal(null)
+                                          }
+                                        >
+                                          <DialogContent className="max-w-lg">
+                                            <DialogHeader>
+                                              <DialogTitle>
+                                                📹 Packaging Video
+                                              </DialogTitle>
+                                            </DialogHeader>
+
+                                            <video
+                                              controls
+                                              autoPlay
+                                              className="w-full h-64 rounded-md bg-black"
+                                              src={`${API_BASE_URL}/${item.video_path}`}
+                                            ></video>
+
+                                            <div className="mt-4 text-right">
+                                              <button
+                                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                                onClick={() =>
+                                                  setShowVideoModal(null)
+                                                }
+                                              >
+                                                Close
+                                              </button>
+                                            </div>
+                                          </DialogContent>
+                                        </Dialog>
+
+                                        {/* Video Verify Button */}
+                                        {order.delivery_status ===
+                                          "reached_to_seller" &&
+                                          item.video_verified !== 1 && (
+                                            <button
+                                              className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                              onClick={() =>
+                                                setConfirmVerify({
+                                                  open: true,
+                                                  type: "video",
+                                                  orderDetailId: item.order_id,
+                                                })
+                                              }
+                                            >
+                                              Verify
+                                            </button>
+                                          )}
+
+                                        {item.video_verified === 1 && (
+                                          <span className="text-green-600 font-semibold ml-2">
+                                            ✅ Verified
+                                          </span>
+                                        )}
+                                      </>
                                     ) : (
-                                      <span className="text-red-600">
+                                      <span className="text-red-600 ml-2">
                                         Not Uploaded
                                       </span>
                                     )}
-                                    <Dialog
-                                      open={showVideoModal}
-                                      onOpenChange={setShowVideoModal}
-                                    >
-                                      <DialogContent className="max-w-lg">
-                                        <DialogHeader>
-                                          <DialogTitle>
-                                            📹 Packaging Video
-                                          </DialogTitle>
-                                        </DialogHeader>
-
-                                        <video
-                                          controls
-                                          autoPlay
-                                          className="w-full h-64 rounded-md bg-black"
-                                          src={`${API_BASE_URL}/${item.video_path}`}
-                                        ></video>
-
-                                        <div className="mt-4 text-right">
-                                          <button
-                                            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                                            onClick={() =>
-                                              setShowVideoModal(false)
-                                            }
-                                          >
-                                            Close
-                                          </button>
-                                        </div>
-                                      </DialogContent>
-                                    </Dialog>
                                   </p>
 
-                                  {/* Verification Status */}
-
-                                  <p>
-                                    IMEI Verified:{" "}
-                                    {console.log("ITEM DATA 👉", item)}
-                                    <span
-                                      className={
-                                        item.imei_verified == 1
-                                          ? "text-green-600 font-semibold"
-                                          : "text-red-600 font-semibold"
-                                      }
-                                    >
-                                      {item.imei_verified == 1
-                                        ? "Yes ✅"
-                                        : "Pending ❌"}
-                                    </span>
-                                    {item.imei_verified != 1 && (
-                                      <button
-                                        className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded"
-                                        onClick={() =>
-                                          handleVerifyImei(item.order_id)
-                                        }
-                                      >
-                                        Verify
-                                      </button>
-                                    )}
-                                  </p>
-
-                                  <p>
-                                    Video Verified:{" "}
-                                    <span
-                                      className={
-                                        item.video_verified
-                                          ? "text-green-600 font-semibold"
-                                          : "text-red-600 font-semibold"
-                                      }
-                                    >
-                                      {item.video_verified
-                                        ? "Yes ✅"
-                                        : "Pending ❌"}
-                                    </span>
-                                    {!item.video_verified && (
-                                      <button
-                                        className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded"
-                                        onClick={() =>
-                                          handleVerifyVideo(item.order_id)
-                                        }
-                                      >
-                                        Verify
-                                      </button>
-                                    )}
-                                  </p>
-
-                                  {/* Pickup OTP – ONLY AFTER BOTH VERIFIED */}
-                                  {item.imei_verified == 1 &&
-                                    item.video_verified == 1 &&
+                                  {/* Pickup OTP */}
+                                  {item.imei_verified === 1 &&
+                                    item.video_verified === 1 &&
                                     item.pickup_otp !== null &&
                                     item.pickup_otp !== 0 && (
                                       <div className="mt-2 bg-green-100 text-green-800 px-4 rounded-full text-sm font-semibold w-max shadow-sm">
-                                        Pickup OTP:
+                                        Pickup OTP:{" "}
                                         <span className="ml-1 text-lg">
                                           {item.pickup_otp}
                                         </span>
@@ -1526,6 +1529,65 @@ export default function DeliveryBoyPortal() {
           </Tabs>
         </Card>
       </div>
+      <Dialog
+        open={confirmVerify.open}
+        onOpenChange={(open) =>
+          !open &&
+          setConfirmVerify({ open: false, type: null, orderDetailId: null })
+        }
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Verification</DialogTitle>
+          </DialogHeader>
+
+          <p className="text-sm text-gray-600">
+            Are you sure you want to verify this{" "}
+            <span className="font-semibold">
+              {confirmVerify.type === "imei" ? "IMEI" : "Video"}
+            </span>
+            ?
+          </p>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              onClick={() =>
+                setConfirmVerify({
+                  open: false,
+                  type: null,
+                  orderDetailId: null,
+                })
+              }
+            >
+              Cancel
+            </button>
+
+            <button
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              onClick={async () => {
+                if (!confirmVerify.orderDetailId) return;
+
+                if (confirmVerify.type === "imei") {
+                  await handleVerifyImei(confirmVerify.orderDetailId);
+                }
+
+                if (confirmVerify.type === "video") {
+                  await handleVerifyVideo(confirmVerify.orderDetailId);
+                }
+
+                setConfirmVerify({
+                  open: false,
+                  type: null,
+                  orderDetailId: null,
+                });
+              }}
+            >
+              Yes, Verify
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ⬇️ NEW PROFILE SETTINGS MODAL ⬇️ */}
       <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
