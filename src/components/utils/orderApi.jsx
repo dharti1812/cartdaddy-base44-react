@@ -184,6 +184,29 @@ export const OrderApi = {
   }
 },
 
+ storeVideo: async (formData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/store-video`, {
+      method: "POST",
+      body: formData, 
+      headers: {
+        "Accept": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Video validation failed");
+    }
+
+    return data;
+
+  } catch (err) {
+    throw err;
+  }
+},
+
 
 
 

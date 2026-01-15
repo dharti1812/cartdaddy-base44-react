@@ -65,6 +65,7 @@ export default function AvailableOrders({
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [showImeiDialog, setShowImeiDialog] = useState(false);
   const [imeiValue, setImeiValue] = useState("");
+  const [imeiStep, setImeiStep] = useState("imei");
   const [imeiOrder, setImeiOrder] = useState(null);
   const [scannerActive, setScannerActive] = useState(true);
   const scannerRef = useRef(null);
@@ -80,40 +81,159 @@ export default function AvailableOrders({
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  // Start the camera and recording
   const handleStartRecording = async () => {
-    if (!videoRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: 1280,
+          height: 720,
+        },
+        audio: true,
+      });
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
-    videoRef.current.srcObject = stream;
+      // Show camera preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
 
-    recordedChunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      // Start recording
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp8,opus",
+      });
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.start();
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
-    };
-
-    mediaRecorder.start();
-    setRecording(true);
-
-    videoRef.current.mediaRecorder = mediaRecorder;
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      toast.error("Cannot access camera");
+    }
   };
 
   const handleStopRecording = () => {
-    if (!videoRef.current?.mediaRecorder) return;
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop(); // stop recording only
+    }
 
-    videoRef.current.mediaRecorder.stop();
-    videoRef.current.mediaRecorder.stream
-      .getTracks()
-      .forEach((track) => track.stop());
-    setRecording(false);
-    setVideoRecorded(true);
+    setRecording(false); // update UI state
+    setVideoRecorded(true); // mark video ready to confirm
+  };
 
-    const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-    setVideoURL(URL.createObjectURL(blob));
+  const handleConfirmVideo = async () => {
+    if (!videoRef.current) return;
+
+    // Stop camera now
+    const stream = videoRef.current.srcObject;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    // Prepare video blob
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      const formData = new FormData();
+      formData.append("order_id", imeiOrder.id);
+      formData.append("video", blob, "order_video.webm");
+
+      try {
+        const res = await OrderApi.storeVideo(formData, true);
+
+        if (res.success) {
+          // Notify delivery boy & accept order
+          await OrderApi.acceptOrder({
+            orderId: imeiOrder.code || imeiOrder.id,
+            retailerId,
+            notify_delivery_boys: true,
+          });
+
+          toast.success("Video saved successfully! Notifying delivery boy");
+
+          // Stop camera completely
+          if (videoRef.current?.srcObject) {
+            videoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+            videoRef.current.srcObject = null;
+          }
+
+          // Reset states
+          setRecording(false);
+
+          setVideoRecorded(false);
+
+          setShowImeiDialog(false);
+          setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
+          setImeiOrder(null);
+          setImeiValue("");
+          setImeiStep("imei");
+          setAwaitingPaymentConfirmation(false);
+          setPaymentConfirmedOrder(null);
+          onAccept();
+        } else {
+          toast.error(res.message || "Failed to save video");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Something went wrong while saving video");
+      }
+    }
+  };
+
+  const openImeiDialog = (order) => {
+    setImeiOrder(order);
+    setShowImeiDialog(true);
+
+    if (order.imei_number && order.imei_number.trim() !== "") {
+      // 🔥 IMEI already exists → go directly to video
+      setImeiValue(order.imei_number);
+      setImeiStep("video");
+    } else {
+      // ❌ No IMEI → start from IMEI step
+      setImeiValue("");
+      setImeiStep("imei");
+    }
+  };
+  const handleSaveImeiOnly = async () => {
+    const imeiRegex = /^[38]\d{14}$/;
+
+    if (!imeiOrder || !imeiRegex.test(imeiValue)) {
+      toast.error("IMEI must be 15 digits and start with 3 or 8");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("order_id", imeiOrder.id);
+      formData.append("imei", imeiValue);
+
+      const res = await OrderApi.storeImei(formData);
+
+      if (!res.success) {
+        toast.error(res.message || "Invalid IMEI");
+        return;
+      }
+
+      toast.success("IMEI saved successfully");
+
+      setScannerActive(false);
+
+      // 🔥 move to video step
+      setImeiStep("video");
+    } catch (err) {
+      toast.error("Failed to save IMEI");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -401,6 +521,7 @@ export default function AvailableOrders({
       setShowImeiDialog(true);
       setAwaitingPaymentConfirmation(false);
       setPaymentConfirmedOrder(null);
+      onAccept();
     } catch (err) {
       console.error("💥 Error in payment confirmation:", err);
       toast.error("Failed to confirm payment");
@@ -427,6 +548,7 @@ export default function AvailableOrders({
         const blob = new Blob(recordedChunksRef.current, {
           type: "video/webm",
         });
+
         formData.append("video", blob, "packaging_video.webm");
       }
 
@@ -631,10 +753,11 @@ export default function AvailableOrders({
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
           const roundedSettlementAmount = Math.round(settlementAmount);
 
-          const isAwaitingImei =
-            order.payment_status === "paid" &&
-            Number(order.items?.[0]?.imei_verified) === 0;
+          const isPaymentReceived = order.payment_status === "paid";
+          const isImeiAdded = !!order.imei_number;
+          const isAccepted = !!order.accepted_at;
 
+          console.log(isPaymentReceived, isImeiAdded, isAccepted);
           return (
             <Card
               key={order.id}
@@ -1030,7 +1153,7 @@ export default function AvailableOrders({
                           ) : (
                             <>
                               <span className="text-lg animate-bounce">⚡</span>
-                              Payment Received &amp; Add IMEI
+                              Payment Received. Add IMEI
                             </>
                           )
                         ) : (
@@ -1393,100 +1516,97 @@ export default function AvailableOrders({
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle>📱 Enter / Scan IMEI</DialogTitle>
+            <DialogTitle>
+              {imeiStep === "imei"
+                ? "📱 Scan / Enter IMEI"
+                : "🎥 Record Packaging Video"}
+            </DialogTitle>
             <DialogDescription>
-              You can scan IMEI or enter it manually
+              {imeiStep === "imei"
+                ? "Scan or manually enter the IMEI number"
+                : "Record a sealed-box packaging video"}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* SCAN BUTTON */}
-            {!scannerActive && (
-              <>
-                <Button
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  onClick={() => setScannerActive(true)}
-                >
-                  🔍 Scan IMEI
-                </Button>
-                <p>
-                  {" "}
-                  Barcode scanning is supported on mobile devices only; web
-                  browsers do not support this feature.
-                </p>
-              </>
-            )}
-
-            {/* CAMERA SCANNER */}
-            {scannerActive && (
-              <div
-                id="imei-scanner"
-                className="w-full h-[160px] border rounded-md bg-black"
-              ></div>
-            )}
-
-            {/* MANUAL INPUT */}
-            <div className="space-y-2">
+          {/* STEP 1 — IMEI */}
+          {imeiStep === "imei" && (
+            <div className="space-y-4 py-4">
               <Label>IMEI Number</Label>
               <Input
-                placeholder="Enter IMEI manually"
-                value={imeiValue}
+                placeholder="Enter IMEI"
                 maxLength={15}
+                value={imeiValue}
                 onChange={(e) =>
                   setImeiValue(e.target.value.replace(/\D/g, ""))
                 }
               />
             </div>
+          )}
 
-            {/* VIDEO RECORDING */}
-            <div className="space-y-2">
-              <Label>Packaging Video</Label>
-              <video
-                ref={videoRef}
-                autoPlay
-                className="w-full h-40 border rounded-md bg-black"
-              ></video>
-              <div className="flex gap-2 mt-2">
+          {/* STEP 2 — VIDEO */}
+          {imeiStep === "video" && (
+            <div className="space-y-4 py-4">
+              <div className="relative w-full max-w-lg aspect-video bg-black rounded-md overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   onClick={handleStartRecording}
                   disabled={recording}
                 >
-                  🎬 Start Recording
+                  🎬 Start
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleStopRecording}
                   disabled={!recording}
                 >
-                  ⏹ Stop Recording
+                  ⏹ Stop
                 </Button>
               </div>
             </div>
-          </div>
+          )}
 
           <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
               className="flex-1"
               onClick={() => {
-                stopScanner();
                 setShowImeiDialog(false);
-                setImeiValue("");
                 setImeiOrder(null);
-                setScannerActive(false);
+                setImeiValue("");
+                setImeiStep("imei");
+                setVideoRecorded(false);
               }}
             >
               Cancel
             </Button>
 
-            <Button
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-              disabled={imeiValue.length !== 15 || submitting || !videoRecorded}
-              onClick={handleConfirmImeiAndNotify}
-            >
-              Confirm & Continue
-            </Button>
+            {imeiStep === "imei" ? (
+              <Button
+                className="flex-1"
+                disabled={imeiValue.length !== 15 || submitting}
+                onClick={handleSaveImeiOnly}
+              >
+                Save IMEI
+              </Button>
+            ) : (
+              <Button
+                className="flex-1 bg-emerald-600"
+                disabled={!videoRecorded}
+                onClick={handleConfirmVideo}
+              >
+                Confirm & Continue
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
