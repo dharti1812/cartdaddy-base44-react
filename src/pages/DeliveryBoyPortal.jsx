@@ -1132,7 +1132,7 @@ export default function DeliveryBoyPortal() {
                               </p>
                               {order.items?.map((item, index) => (
                                 <div
-                                  key={index}
+                                  key={item.order_detail_id || item.id}
                                   className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
                                 >
                                   <p className="font-semibold">{item.name}</p>
