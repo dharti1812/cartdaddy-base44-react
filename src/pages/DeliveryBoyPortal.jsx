@@ -1211,7 +1211,7 @@ export default function DeliveryBoyPortal() {
                                               controls
                                               autoPlay
                                               className="w-full h-64 rounded-md bg-black"
-                                              src={`${API_BASE_URL}/${item.video_path}`}
+                                              src={`${API_BASE_URL}/public/${item.video_path}`}
                                             ></video>
 
                                             <div className="mt-4 text-right">
