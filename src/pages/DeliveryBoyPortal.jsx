@@ -1140,15 +1140,7 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     Qty: {item.quantity} | Price: ₹{item.price}
                                   </p>
-                                </div>
-                              ))}
-                              {order.items?.map((item, index) => (
-                                <div
-                                  key={item.order_id}
-                                  className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
-                                >
-                                  {/* IMEI */}
-                                  <p>
+                                   <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
                                     {order.delivery_status ===
@@ -1272,6 +1264,9 @@ export default function DeliveryBoyPortal() {
                                     )}
                                 </div>
                               ))}
+                              
+                           
+                             
                             </div>
 
                             <div className="bg-gray-50 rounded-xl p-4">
