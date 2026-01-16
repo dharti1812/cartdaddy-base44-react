@@ -78,57 +78,65 @@ export default function AvailableOrders({
 
   const [videoRecorded, setVideoRecorded] = useState(false);
   const [scanAttempted, setScanAttempted] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
   // Start the camera and recording
   const handleStartRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: 1280,
-          height: 720,
-        },
-        audio: true,
-      });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" },
+        width: 1280,
+        height: 720,
+      },
+      audio: true,
+    });
 
-      // Show camera preview
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+    // Save stream to stop it later
+    setCameraStream(stream);
 
-      // Start recording
-      const recorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp8,opus",
-      });
-      recordedChunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
-      };
-      recorder.start();
-
-      setMediaRecorder(recorder);
-      setRecording(true);
-    } catch (err) {
-      console.error("Camera error:", err);
-      toast.error("Cannot access camera");
-    }
-  };
-
-  const handleStopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop(); // stop recording only
+    // Show camera preview
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
     }
 
-     if (cameraStream) { 
-        cameraStream.getTracks().forEach(track => track.stop());
-    }
+    // Start recording
+    const recorder = new MediaRecorder(stream, {
+      mimeType: "video/webm;codecs=vp8,opus",
+    });
+    recordedChunksRef.current = [];
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    };
+    recorder.start();
 
-    setRecording(false); 
-    setVideoRecorded(true); 
-  };
+    setMediaRecorder(recorder);
+    setRecording(true);
+  } catch (err) {
+    console.error("Camera error:", err);
+    toast.error("Cannot access camera");
+  }
+};
+
+
+const handleStopRecording = () => {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop(); // stop recording only
+  }
+
+  // Stop all camera tracks
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    setCameraStream(null); // clear stream
+  }
+
+  setRecording(false);
+  setVideoRecorded(true);
+};
+
 
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
