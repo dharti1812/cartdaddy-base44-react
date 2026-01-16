@@ -267,7 +267,7 @@ export default function DeliveryBoyPortal() {
 
       if (data.success) {
         toast.success("IMEI verified ✅");
-        window.location.reload();
+        loadData();
       } else {
         toast.error(data.message || "Failed to verify IMEI");
       }
@@ -294,8 +294,7 @@ export default function DeliveryBoyPortal() {
 
       if (data.success) {
         toast.success("Video verified ✅");
-
-        window.location.reload();
+        loadData();
       } else {
         toast.error(data.message || "Failed to verify video");
       }
@@ -1140,7 +1139,7 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     Qty: {item.quantity} | Price: ₹{item.price}
                                   </p>
-                                   <p>
+                                  <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
                                     {order.delivery_status ===
@@ -1264,9 +1263,6 @@ export default function DeliveryBoyPortal() {
                                     )}
                                 </div>
                               ))}
-                              
-                           
-                             
                             </div>
 
                             <div className="bg-gray-50 rounded-xl p-4">

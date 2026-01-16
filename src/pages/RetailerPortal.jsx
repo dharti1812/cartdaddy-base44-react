@@ -151,6 +151,9 @@ export default function SellerPortal() {
           },
         }
       );
+
+      
+
       const settingsData = await resSettings.json();
       console.log("Delivery Settings API Response:", settingsData);
 
@@ -186,6 +189,8 @@ export default function SellerPortal() {
       setLoading(false);
     }
   };
+
+  
 
   useEffect(() => {
     let initialLoad = true;
@@ -387,14 +392,19 @@ export default function SellerPortal() {
   }
 
   const availableOrders = orders.filter((o) => {
-    const alreadyAccepted = o.accepted_retailers?.some(
+    const myResponseStatus = o.accepted_retailers?.find(
       (ar) => ar.retailer_id === sellerProfile?.id
-    );
+    )?.response_status;
+
     return (
-      (o.status === "pending" || o.status === "UNASSIGNED") && !alreadyAccepted
+      (o.status === "pending" ||
+        o.status === "UNASSIGNED" ||
+        myResponseStatus === "awaiting_payment_link") &&
+      o.status !== "accepted"
     );
-    //return !alreadyAccepted;
   });
+
+  console.log("Available Orders:", availableOrders);
 
   const myActiveOrders = myAcceptedOrders;
 

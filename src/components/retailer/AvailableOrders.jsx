@@ -45,13 +45,14 @@ import { OrderApi } from "../utils/orderApi";
 import toast from "react-hot-toast";
 
 export default function AvailableOrders({
-  orders,
+  orders: initialOrders,
   retailerId,
   config,
   onAccept,
   deliverySettings,
   retailerProfile,
 }) {
+  const [orders, setOrders] = useState(initialOrders || []);
   const [accepting, setAccepting] = useState(null);
   const [showPaylinkDialog, setShowPaylinkDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -82,61 +83,63 @@ export default function AvailableOrders({
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+
+  useEffect(() => {
+    setOrders(initialOrders || []);
+  }, [initialOrders]);
   // Start the camera and recording
   const handleStartRecording = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: 1280,
-        height: 720,
-      },
-      audio: true,
-    });
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: 1280,
+          height: 720,
+        },
+        audio: true,
+      });
 
-    // Save stream to stop it later
-    setCameraStream(stream);
+      // Save stream to stop it later
+      setCameraStream(stream);
 
-    // Show camera preview
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+      // Show camera preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // Start recording
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp8,opus",
+      });
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.start();
+
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      toast.error("Cannot access camera");
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop(); // stop recording only
     }
 
-    // Start recording
-    const recorder = new MediaRecorder(stream, {
-      mimeType: "video/webm;codecs=vp8,opus",
-    });
-    recordedChunksRef.current = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
-    };
-    recorder.start();
+    // Stop all camera tracks
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null); // clear stream
+    }
 
-    setMediaRecorder(recorder);
-    setRecording(true);
-  } catch (err) {
-    console.error("Camera error:", err);
-    toast.error("Cannot access camera");
-  }
-};
-
-
-const handleStopRecording = () => {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop(); // stop recording only
-  }
-
-  // Stop all camera tracks
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(track => track.stop());
-    setCameraStream(null); // clear stream
-  }
-
-  setRecording(false);
-  setVideoRecorded(true);
-};
-
+    setRecording(false);
+    setVideoRecorded(true);
+  };
 
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
@@ -475,6 +478,15 @@ const handleStopRecording = () => {
     },
   };
 
+  const fetchOrders = async () => {
+    try {
+      const allOrders = await OrderApi.PendingAcceptanceOrders();
+      setOrders(allOrders?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch orders:", err);
+    }
+  };
+
   const handleSubmitPaylink = async () => {
     if (!paylinkUrl || !pendingOrder) return;
 
@@ -486,12 +498,15 @@ const handleStopRecording = () => {
         paylink_generated_at: new Date().toISOString(),
         payment_status: "paylink_sent",
         order_id: pendingOrder.id,
+        status: "awaiting_payment_link",
       });
 
       const { notifyPaymentLink } = await import(
         "../utils/customerNotifications"
       );
       await notifyPaymentLink(pendingOrder, paylinkUrl);
+
+      fetchOrders(); // Refresh orders after paylink submission
 
       setPaylinkUrl("");
 
@@ -646,20 +661,21 @@ const handleStopRecording = () => {
   };
 
   const filteredOrders = orders.filter((order) => {
-    if (
-      order.status !== "pending" &&
-      order.status !== "UNASSIGNED" &&
-      order.assignemnt_status !== "assigned" &&
-      order.status !== "queued"
-    )
-      return false;
+    const myAcceptance = order.accepted_retailers?.find(
+      (ar) => ar.retailer_id === retailerId
+    );
 
-    // If order is COD, only show to retailers who accept COD
-    if (order.is_cod || order.payment_method === "cod") {
-      return retailerProfile?.accepts_cod === true;
-    }
-    // Non-COD orders shown to everyone
-    return true;
+    const myResponseStatus = myAcceptance?.response_status ?? "pending";
+
+    const isUnpaid = order.payment_status === "unpaid";
+
+    // Show only orders that I can act on
+    return (
+      (myResponseStatus === "pending" && isUnpaid) ||
+      (myResponseStatus === "awaiting_payment_link" && isUnpaid) ||
+      order.status === "pending" ||
+      order.status === "UNASSIGNED"
+    );
   });
 
   if (filteredOrders.length === 0) {
@@ -769,7 +785,15 @@ const handleStopRecording = () => {
           const isImeiAdded = !!order.imei_number;
           const isAccepted = !!order.accepted_at;
 
-          console.log(isPaymentReceived, isImeiAdded, isAccepted);
+          const myAcceptance = order.accepted_retailers?.find(
+            (ar) => ar.retailer_id === retailerId
+          );
+
+          const myResponseStatus = myAcceptance?.response_status ?? "pending";
+          const isUnpaid = order.payment_status === "unpaid";
+          const showAcceptButton = myResponseStatus === "pending" && isUnpaid;
+          const showPaymentReceivedButton =
+            myResponseStatus === "awaiting_payment_link";
           return (
             <Card
               key={order.id}
@@ -1124,55 +1148,42 @@ const handleStopRecording = () => {
                   )}
 
                   <div className="grid grid-cols-1 gap-3 pt-2">
-                    <Button
-                      onClick={async () => {
-                        // 🔥 CASE 1: Payment confirmed → confirm backend & open IMEI
-                        if (
-                          awaitingPaymentConfirmation &&
-                          paymentConfirmedOrder?.id === order.id &&
-                          !imeiAddedOrders.includes(order.id)
-                        ) {
-                          await handlePaymentReceivedAndNotify(order); // ✅ REQUIRED
-                          return;
-                        }
+                    {showAcceptButton && (
+                      <Button
+                        onClick={() => handleAccept(order)}
+                        disabled={accepting === order.id}
+                        className="w-full py-6 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl transition-all duration-300 hover:from-blue-700 hover:to-blue-800"
+                      >
+                        Accept Order
+                      </Button>
+                    )}
 
-                        // 🔥 CASE 2: Normal accept flow
-                        handleAccept(order);
-                      }}
-                      disabled={accepting === order.id}
-                      className={`
-    relative w-full py-6 text-lg text-white font-semibold
-    overflow-hidden rounded-xl transition-all duration-300
-    ${
-      awaitingPaymentConfirmation && paymentConfirmedOrder?.id === order.id
-        ? "bg-green-600 hover:bg-green-700"
-        : "bg-gradient-to-r from-blue-600 to-blue-700"
-    }
-  `}
-                    >
-                      {/* Running Border */}
-                      {awaitingPaymentConfirmation &&
-                        paymentConfirmedOrder?.id === order.id && (
+                    {showPaymentReceivedButton && (
+                      <Button
+                        onClick={async () =>
+                          await handlePaymentReceivedAndNotify(order)
+                        }
+                        disabled={accepting === order.id}
+                        className="relative w-full py-6 text-lg font-semibold text-white bg-green-600 hover:bg-green-700 overflow-hidden rounded-xl transition-all duration-300"
+                      >
+                        {/* Animated border for payment received */}
+                        {!imeiAddedOrders.includes(order.id) && (
                           <span className="absolute inset-0 rounded-xl border-2 border-green-400 animate-running-border" />
                         )}
 
-                      {/* Button Text */}
-                      <span className="relative z-10 flex items-center justify-center gap-2 font-semibold">
-                        {awaitingPaymentConfirmation &&
-                        paymentConfirmedOrder?.id === order.id ? (
-                          imeiAddedOrders.includes(order.id) ? (
+                        {/* Button Text */}
+                        <span className="relative z-10 flex items-center justify-center gap-2 font-semibold">
+                          {imeiAddedOrders.includes(order.id) ? (
                             "Add IMEI"
                           ) : (
                             <>
                               <span className="text-lg animate-bounce">⚡</span>
                               Payment Received. Add IMEI
                             </>
-                          )
-                        ) : (
-                          "Accept Order"
-                        )}
-                      </span>
-                    </Button>
+                          )}
+                        </span>
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
