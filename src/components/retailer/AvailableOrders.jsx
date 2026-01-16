@@ -122,8 +122,12 @@ export default function AvailableOrders({
       mediaRecorder.stop(); // stop recording only
     }
 
-    setRecording(false); // update UI state
-    setVideoRecorded(true); // mark video ready to confirm
+     if (cameraStream) { 
+        cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    setRecording(false); 
+    setVideoRecorded(true); 
   };
 
   const handleConfirmVideo = async () => {
