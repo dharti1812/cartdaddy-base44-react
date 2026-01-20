@@ -1104,7 +1104,7 @@ export default function DeliveryBoyPortal() {
                         >
                           <CardContent className="p-4">
                             <h3 className="font-bold text-lg mb-2">
-                              {order.website_ref || `Order #${order.id}`}  ({order.created_date})
+                              {order.website_ref || `Order #${order.id}`}  ({order.created_at})
                             </h3>
 
                             <p className="text-gray-700 text-sm flex items-center gap-2">
