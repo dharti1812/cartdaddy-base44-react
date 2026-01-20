@@ -296,7 +296,7 @@ export default function AvailableOrders({
           return;
         }
         Quagga.start();
-      }
+      },
     );
 
     let detected = false;
@@ -362,8 +362,8 @@ export default function AvailableOrders({
     const deviceName = /mobile/i.test(navigator.userAgent)
       ? "Mobile Device"
       : /tablet/i.test(navigator.userAgent)
-      ? "Tablet"
-      : "Desktop/Laptop";
+        ? "Tablet"
+        : "Desktop/Laptop";
 
     const newAcceptance = {
       retailer_id: retailerId,
@@ -501,9 +501,8 @@ export default function AvailableOrders({
         status: "awaiting_payment_link",
       });
 
-      const { notifyPaymentLink } = await import(
-        "../utils/customerNotifications"
-      );
+      const { notifyPaymentLink } =
+        await import("../utils/customerNotifications");
       await notifyPaymentLink(pendingOrder, paylinkUrl);
 
       fetchOrders(); // Refresh orders after paylink submission
@@ -630,11 +629,11 @@ export default function AvailableOrders({
     });
 
     const updatedAcceptances = pendingOrder.accepted_retailers.map((ar) =>
-      ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar
+      ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar,
     );
 
     const nextRetailer = updatedAcceptances.find(
-      (ar) => ar.status === "active" && ar.retailer_id !== retailerId
+      (ar) => ar.status === "active" && ar.retailer_id !== retailerId,
     );
 
     await Order.update(pendingOrder.id, {
@@ -648,7 +647,7 @@ export default function AvailableOrders({
     await Retailer.update(retailerId, {
       current_orders: Math.max(0, (retailerProfile?.current_orders || 0) - 1),
       active_order_ids: (retailerProfile?.active_order_ids || []).filter(
-        (id) => id !== pendingOrder.id
+        (id) => id !== pendingOrder.id,
       ),
     });
 
@@ -662,7 +661,7 @@ export default function AvailableOrders({
 
   const filteredOrders = orders.filter((order) => {
     const myAcceptance = order.accepted_retailers?.find(
-      (ar) => ar.retailer_id === retailerId
+      (ar) => ar.retailer_id === retailerId,
     );
 
     const myResponseStatus = myAcceptance?.response_status ?? "pending";
@@ -730,7 +729,7 @@ export default function AvailableOrders({
           const amount = parseFloat(
             (order.amount || order.total_amount || "0")
               .toString()
-              .replace(/,/g, "")
+              .replace(/,/g, ""),
           );
 
           let charges = null;
@@ -741,7 +740,7 @@ export default function AvailableOrders({
             charges = calculateDeliveryCharges(
               amount,
               order.distance_km,
-              deliverySettings
+              deliverySettings,
             );
           }
 
@@ -759,7 +758,7 @@ export default function AvailableOrders({
           const commissionItem = order.items?.find(
             (item) =>
               item.commission_type === "percent" ||
-              item.commission_type === "fixed"
+              item.commission_type === "fixed",
           );
 
           let platformFeeAmount = 0;
@@ -786,7 +785,7 @@ export default function AvailableOrders({
           const isAccepted = !!order.accepted_at;
 
           const myAcceptance = order.accepted_retailers?.find(
-            (ar) => ar.retailer_id === retailerId
+            (ar) => ar.retailer_id === retailerId,
           );
 
           const myResponseStatus = myAcceptance?.response_status ?? "pending";
@@ -807,8 +806,8 @@ export default function AvailableOrders({
                     isCOD
                       ? "bg-gradient-to-r from-amber-50 to-yellow-50"
                       : isQueued
-                      ? "bg-gradient-to-r from-amber-100 to-orange-100"
-                      : "bg-gradient-to-r from-blue-50 to-purple-50"
+                        ? "bg-gradient-to-r from-amber-100 to-orange-100"
+                        : "bg-gradient-to-r from-blue-50 to-purple-50"
                   } border-b`}
                 >
                   {isQueued && (
@@ -820,8 +819,9 @@ export default function AvailableOrders({
 
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                     <h5 className="font-bold text-gray-900 text-xs">
-                      {`Order #${order.id}`}
+                      Order #{order.id} ({order.created_date})
                     </h5>
+
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">
                         <IndianRupee className="w-3 h-3 mr-1" />
@@ -1030,7 +1030,7 @@ export default function AvailableOrders({
                               size: 16,
                               className:
                                 paymentInfo[order.payment_type].iconClass,
-                            }
+                            },
                           )}
 
                           <span>{paymentInfo[order.payment_type].label}</span>
@@ -1237,7 +1237,7 @@ export default function AvailableOrders({
                         >
                           {channel.toUpperCase()}
                         </Badge>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
@@ -1407,7 +1407,7 @@ export default function AvailableOrders({
                               day: "numeric",
                               month: "short",
                               year: "numeric",
-                            }
+                            },
                           )
                         : "N/A"}
                     </p>
@@ -1422,7 +1422,7 @@ export default function AvailableOrders({
                               day: "numeric",
                               month: "short",
                               year: "numeric",
-                            }
+                            },
                           )
                         : "N/A"}
                     </p>

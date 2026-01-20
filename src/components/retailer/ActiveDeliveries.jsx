@@ -461,7 +461,7 @@ export default function ActiveDeliveries({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-bold text-xs text-gray-900">
-                          Order #{order.id}
+                         d
                         </h3>
                         <Badge
                           className={getStatusBadgeClass(order.delivery_status)}
