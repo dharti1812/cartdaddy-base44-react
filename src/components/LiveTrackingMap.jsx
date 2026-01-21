@@ -43,8 +43,10 @@ export default function LiveTrackingMap({ orderId }) {
     const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: 19.076, lng: 72.8777 },
       zoom: 15,
-      disableDefaultUI: true,
       zoomControl: true,
+      fullscreenControl: true,
+      streetViewControl: false,
+      mapTypeControl: false,
     });
 
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
@@ -72,7 +74,7 @@ export default function LiveTrackingMap({ orderId }) {
     const fetchAndUpdate = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`
+          `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`,
         );
 
         const { delivery_boy, destination } = res.data;
@@ -102,7 +104,7 @@ export default function LiveTrackingMap({ orderId }) {
           "Customer:",
           customerLatLng,
           "Time:",
-          new Date().toLocaleTimeString()
+          new Date().toLocaleTimeString(),
         );
 
         /* ---------- Delivery Boy Marker ---------- */
@@ -133,7 +135,7 @@ export default function LiveTrackingMap({ orderId }) {
               deliveryMarkerRef.current,
               { lat: prevPos.lat(), lng: prevPos.lng() },
               deliveryLatLng,
-              map
+              map,
             );
             map.panTo(deliveryLatLng);
           } else {
@@ -172,7 +174,7 @@ export default function LiveTrackingMap({ orderId }) {
                 setEta(Math.ceil(duration / 60));
               }
             }
-          }
+          },
         );
       } catch (err) {
         console.error("Error fetching tracking data:", err);

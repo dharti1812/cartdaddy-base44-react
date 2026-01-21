@@ -59,9 +59,11 @@ export default function LiveTrackingMapAvailableOrders({
 
     const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: Number(pickupLat), lng: Number(pickupLng) },
-      zoom: 14,
-      disableDefaultUI: true,
+      zoom: 15,
       zoomControl: true,
+      fullscreenControl: true,
+      streetViewControl: false,
+      mapTypeControl: false,
     });
 
     directionsServiceRef.current = new window.google.maps.DirectionsService();
