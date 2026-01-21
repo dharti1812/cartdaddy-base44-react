@@ -14,11 +14,12 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
   const [otpTimer, setOtpTimer] = useState(30);
   const [cameraStream, setCameraStream] = useState(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  
+  const [cashReceived, setCashReceived] = useState(false);
 
   const showOtpInput = status === "reached_to_customer" && !showCustomerInfo;
   const showCustomerForm = status === "otp_verified" || showCustomerInfo;
-
+  const isCOD = order.payment_type === "cash_on_delivery";
+  console.log(order);
   useEffect(() => {
     setStatus(order.delivery_status);
   }, [order]);
@@ -51,7 +52,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ order_id: order.id, status: newStatus }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -65,9 +66,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
       } else if (newStatus === "reached_to_customer") {
         await sendOtp("customer");
         setCustomerOtp(true); // show OTP modal
-      }
-
-      else if (newStatus === "reached_to_seller") {
+      } else if (newStatus === "reached_to_seller") {
         setCustomerOtp(false);
         await sendOtp("seller");
       }
@@ -160,7 +159,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ order_id: order.id, otp }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -177,9 +176,12 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
     }
   };
 
-   const submitCustomerInfo = async () => {
+  const submitCustomerInfo = async () => {
     if (!customerName || !deliveryPhoto)
       return alert("Customer name & photo required");
+
+    if (isCOD && !cashReceived)
+      return alert("Please confirm that cash has been received");
 
     try {
       const token = sessionStorage.getItem("token");
@@ -195,9 +197,10 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
           body: JSON.stringify({
             order_id: order.id,
             delivery_verified_user_info: customerName,
-            delivery_verified_photo: deliveryPhoto, 
+            delivery_verified_photo: deliveryPhoto,
+            cash_received: isCOD ? cashReceived : false,
           }),
-        }
+        },
       );
 
       const data = await res.json();
@@ -241,7 +244,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
               </Button>
             )}
 
-              {status === "accepted_db" && (
+            {status === "accepted_db" && (
               <Button
                 className="w-full bg-purple-500"
                 onClick={() => updateStatus("reached_to_seller")}
@@ -250,9 +253,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
               </Button>
             )}
 
-            {status === "reached_to_seller" && (
-              <p> </p>
-            )}
+            {status === "reached_to_seller" && <p> </p>}
           </div>
         )}
 
@@ -302,7 +303,6 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
               Click Live Delivery Photo
             </label>
 
-           
             {!deliveryPhoto && (
               <Button className="w-full bg-blue-600" onClick={openCamera}>
                 Open Camera
@@ -316,9 +316,26 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
               />
             )}
 
+            {isCOD && (
+              <div className="flex items-start gap-2 p-3 border rounded-lg bg-yellow-50">
+                <input
+                  type="checkbox"
+                  id="cashReceived"
+                  className="mt-1"
+                  checked={cashReceived}
+                  onChange={(e) => setCashReceived(e.target.checked)}
+                />
+                <label htmlFor="cashReceived" className="text-sm font-medium">
+                  I confirm that I have received the full cash amount from the
+                  customer.
+                </label>
+              </div>
+            )}
+
             <Button
               className="w-full bg-green-700"
               onClick={submitCustomerInfo}
+              disabled={isCOD && !cashReceived}
             >
               Submit & Complete Delivery
             </Button>
