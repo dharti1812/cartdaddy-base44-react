@@ -93,13 +93,9 @@ export default function CompletedOrders({ orders }) {
                           />
                         )}
 
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-800">
-                            Delivered By
-                          </span>
-                          <span className="text-sm text-gray-600">
-                            {detail.delivery_verified_user_info}
-                          </span>
+                        <div className="flex items-center gap-2 text-sm text-gray-800">
+                          <span className="font-medium">Delivered To:</span>
+                          <span className="text-gray-600">{detail.delivery_verified_user_info}</span>
                         </div>
                       </div>
                     )}
