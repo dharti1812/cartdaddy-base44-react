@@ -110,7 +110,7 @@ export default function ActiveDeliveries({
 
     // Verification derived steps
     authenticity_check: order.reached_to_seller_at, // starts after seller reached
-    verification_completed: order.imei_verified_at,
+    verification_completed: order.video_verified_at,
   });
 
   const getDerivedSteps = (order) => {
