@@ -77,9 +77,30 @@ export default function CompletedOrders({ orders }) {
                         <span>
                           {format(
                             new Date(detail.actual_delivery_time),
-                            "MMM d, yyyy • h:mm a"
+                            "MMM d, yyyy • h:mm a",
                           )}
                         </span>
+                      </div>
+                    )}
+                    {detail?.delivery_verified_user_info && (
+                      <div className="flex items-center gap-3 mt-2">
+                      
+                        {detail.delivery_verified_photo_url && (
+                          <img
+                            src={detail.delivery_verified_photo_url}
+                            alt="Delivery Verified"
+                            className="w-12 h-12 rounded-full object-cover border"
+                          />
+                        )}
+
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-800">
+                            Delivered By
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            {detail.delivery_verified_user_info}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
