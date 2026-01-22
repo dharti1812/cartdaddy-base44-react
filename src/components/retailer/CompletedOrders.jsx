@@ -82,12 +82,12 @@ export default function CompletedOrders({ orders }) {
                         </span>
                       </div>
                     )}
-                    {detail?.delivery_verified_user_info && (
+                    {detail?.delivery_verified_photo && (
                       <div className="flex items-center gap-3 mt-2">
                       
                         {detail.delivery_verified_photo_url && (
                           <img
-                            src={detail.delivery_verified_photo_url}
+                            src={detail.delivery_verified_photo}
                             alt="Delivery Verified"
                             className="w-12 h-12 rounded-full object-cover border"
                           />
