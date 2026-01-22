@@ -68,8 +68,6 @@ export default function ActiveDeliveries({
     authenticity_check: "🔍 Authenticity Check in Progress",
     verification_completed:
       "🛡️ Product Authenticity Verified at Seller Location",
-    verification_review:
-      "🎥 Verification video and IMEI details are now available for you to review",
     picked_up: "📦 Order Picked Up",
     out_for_delivery: "🛵 Out for Delivery",
     reached_to_customer: "📌 Reached Your Location",
@@ -83,7 +81,6 @@ export default function ActiveDeliveries({
     // Verification (derived, UI-only)
     "authenticity_check",
     "verification_completed",
-    "verification_review",
 
     "picked_up",
     "out_for_delivery",
@@ -117,37 +114,90 @@ export default function ActiveDeliveries({
     const steps = [];
 
     if (order.delivery_status === "reached_to_seller") {
-      steps.push("authenticity_check");
+      if (!order.video_verified_at) {
+        steps.push("authenticity_check");
+      }
 
       if (order.video_verified_at) {
         steps.push("verification_completed");
       }
-
     }
 
     return steps;
   };
 
+  const resolveCurrentDeliveryStep = (order) => {
+    // Delivered
+    if (order.actual_delivery_time) return "delivered";
+
+    // Reached customer
+    if (order.reached_to_customer_at) return "reached_to_customer";
+
+    // Out for delivery
+    if (order.out_for_delivery_at) return "out_for_delivery";
+
+    // Picked up
+    if (order.picked_up_at) return "picked_up";
+
+    // ✅ Verification completed
+    if (order.video_verified_at) return "verification_completed";
+
+    // 🔍 Authenticity check (only if NOT verified)
+    if (order.reached_to_seller_at && !order.video_verified_at) {
+      return "authenticity_check";
+    }
+
+    // Reached seller
+    if (order.reached_to_seller_at) return "reached_to_seller";
+
+    // Accepted by delivery boy
+    if (order.accepted_at) return "accepted_db";
+
+    return "assigned";
+  };
+
   const getSafeCurrentStepIndex = (order) => {
-    const baseStatus =
-      DELIVERY_STATUS_MAP[order.delivery_status] || order.delivery_status;
-
-    let index = DELIVERY_TRACKING_STEPS_ORDERED.indexOf(baseStatus);
-
-    const derivedSteps = getDerivedSteps(order);
-
-    derivedSteps.forEach((step) => {
-      const stepIndex = DELIVERY_TRACKING_STEPS_ORDERED.indexOf(step);
-      if (stepIndex > index) index = stepIndex;
-    });
-
+    const currentStep = resolveCurrentDeliveryStep(order);
+    const index = DELIVERY_TRACKING_STEPS_ORDERED.indexOf(currentStep);
     return index === -1 ? 0 : index;
   };
 
-  const getStepState = (stepIndex, currentIndex) => {
+  const getStepState = (stepKey, stepIndex, currentIndex) => {
     if (stepIndex < currentIndex) return "done";
     if (stepIndex === currentIndex) return "current";
     return "pending";
+  };
+
+  const getStepTimestamp = (order, stepKey) => {
+    switch (stepKey) {
+      case "assigned":
+        return order.assigned_at;
+
+      case "accepted_db":
+        return order.accepted_at;
+
+      case "reached_to_seller":
+      case "authenticity_check":
+        return order.reached_to_seller_at;
+
+      case "verification_completed":
+        return order.video_verified_at;
+
+      case "picked_up":
+        return order.picked_up_at;
+
+      case "out_for_delivery":
+        return order.out_for_delivery_at;
+
+      case "reached_to_customer":
+        return order.reached_to_customer_at;
+
+      case "delivered":
+        return order.actual_delivery_time;
+
+      default:
+        return null;
+    }
   };
 
   const shouldShowDeliveryTracking = (order) => {
@@ -904,54 +954,35 @@ export default function ActiveDeliveries({
                               <div className="flex justify-between relative z-10">
                                 {DELIVERY_TRACKING_STEPS_ORDERED.map(
                                   (stepKey, index) => {
-                                    const stepState =
-                                      index < currentIndex
-                                        ? "done"
-                                        : index === currentIndex
-                                          ? "current"
-                                          : "upcoming";
-
-                                    const timestamp =
-                                      order.status_history?.[stepKey];
+                                    const stepState = getStepState(
+                                      stepKey,
+                                      index,
+                                      currentIndex,
+                                    );
+                                    const timestamp = getStepTimestamp(
+                                      order,
+                                      stepKey,
+                                    );
 
                                     return (
                                       <div
                                         key={stepKey}
                                         className="flex flex-col items-center"
                                       >
-                                        {/* Dot */}
                                         <div
-                                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
-                  ${
-                    stepState === "done"
-                      ? "bg-green-600 border-green-600"
-                      : stepState === "current"
-                        ? "bg-white border-blue-600 animate-delivery-blue"
-                        : "bg-white border-gray-300"
-                  }`}
-                                        >
-                                          {stepState === "done" && (
-                                            <CheckCircle className="w-3 h-3 text-white" />
-                                          )}
-                                        </div>
+                                          className={`dot ${
+                                            stepState === "current"
+                                              ? "current-dot blinking-dot"
+                                              : ""
+                                          } ${stepState === "done" ? "done-dot" : ""}`}
+                                        />
 
-                                        {/* Label */}
-                                        <span
-                                          className={`mt-2 text-[10px] font-medium text-center
-                  ${
-                    stepState === "done"
-                      ? "text-green-700"
-                      : stepState === "current"
-                        ? "text-blue-700 font-semibold"
-                        : "text-gray-500"
-                  }`}
-                                        >
+                                        <span className={`label ${stepState}`}>
                                           {DELIVERY_TRACKING_LABELS[stepKey]}
                                         </span>
 
-                                        {/* Timestamp */}
                                         {timestamp && (
-                                          <span className="mt-1 text-[9px] text-gray-400 text-center">
+                                          <span className="time">
                                             {new Date(timestamp).toLocaleString(
                                               "en-IN",
                                               {
@@ -964,25 +995,6 @@ export default function ActiveDeliveries({
                                             )}
                                           </span>
                                         )}
-
-                                        {/* Delivered photo */}
-                                        {stepKey === "delivered" &&
-                                          order.items[0]
-                                            ?.delivery_verified_photo_url && (
-                                            <>
-                                              <img
-                                                src={
-                                                  order.items[0]
-                                                    .delivery_verified_photo_url
-                                                }
-                                                alt="Delivery Verified"
-                                                className="w-10 h-10 rounded-full object-cover border mt-2"
-                                              />
-                                              <span className="text-[10px] font-semibold text-gray-700">
-                                                {order.customer_name}
-                                              </span>
-                                            </>
-                                          )}
                                       </div>
                                     );
                                   },
