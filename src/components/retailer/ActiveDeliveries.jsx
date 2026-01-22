@@ -111,7 +111,6 @@ export default function ActiveDeliveries({
     // Verification derived steps
     authenticity_check: order.reached_to_seller_at, // starts after seller reached
     verification_completed: order.imei_verified_at,
-    verification_review: order.verification_video_verified_at,
   });
 
   const getDerivedSteps = (order) => {
@@ -120,13 +119,10 @@ export default function ActiveDeliveries({
     if (order.delivery_status === "reached_to_seller") {
       steps.push("authenticity_check");
 
-      if (order.imei_verified_at) {
+      if (order.video_verified_at) {
         steps.push("verification_completed");
       }
 
-      if (order.verification_video_url) {
-        steps.push("verification_review");
-      }
     }
 
     return steps;
@@ -894,33 +890,38 @@ export default function ActiveDeliveries({
                           </div>
                         </div>
 
-                       {shouldShowDeliveryTracking(order) && (
-  <div className="mt-5 bg-white border rounded-xl p-4 shadow-sm">
-    <h4 className="text-sm font-semibold text-gray-700 mb-4">
-      Delivery Progress
-    </h4>
+                        {shouldShowDeliveryTracking(order) && (
+                          <div className="mt-5 bg-white border rounded-xl p-4 shadow-sm">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-4">
+                              Delivery Progress
+                            </h4>
 
-    <div className="relative">
-      {/* Background line */}
-      <div className="absolute top-2 left-0 right-0 h-1 bg-gray-200 rounded-full" />
+                            <div className="relative">
+                              {/* Background line */}
+                              <div className="absolute top-2 left-0 right-0 h-1 bg-gray-200 rounded-full" />
 
-      {/* Dots container */}
-      <div className="flex justify-between relative z-10">
-        {DELIVERY_TRACKING_STEPS_ORDERED.map((stepKey, index) => {
-          const stepState =
-            index < currentIndex
-              ? "done"
-              : index === currentIndex
-                ? "current"
-                : "upcoming";
+                              {/* Dots container */}
+                              <div className="flex justify-between relative z-10">
+                                {DELIVERY_TRACKING_STEPS_ORDERED.map(
+                                  (stepKey, index) => {
+                                    const stepState =
+                                      index < currentIndex
+                                        ? "done"
+                                        : index === currentIndex
+                                          ? "current"
+                                          : "upcoming";
 
-          const timestamp = order.status_history?.[stepKey];
+                                    const timestamp =
+                                      order.status_history?.[stepKey];
 
-          return (
-            <div key={stepKey} className="flex flex-col items-center">
-              {/* Dot */}
-              <div
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
+                                    return (
+                                      <div
+                                        key={stepKey}
+                                        className="flex flex-col items-center"
+                                      >
+                                        {/* Dot */}
+                                        <div
+                                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
                   ${
                     stepState === "done"
                       ? "bg-green-600 border-green-600"
@@ -928,15 +929,15 @@ export default function ActiveDeliveries({
                         ? "bg-white border-blue-600 animate-delivery-blue"
                         : "bg-white border-gray-300"
                   }`}
-              >
-                {stepState === "done" && (
-                  <CheckCircle className="w-3 h-3 text-white" />
-                )}
-              </div>
+                                        >
+                                          {stepState === "done" && (
+                                            <CheckCircle className="w-3 h-3 text-white" />
+                                          )}
+                                        </div>
 
-              {/* Label */}
-              <span
-                className={`mt-2 text-[10px] font-medium text-center
+                                        {/* Label */}
+                                        <span
+                                          className={`mt-2 text-[10px] font-medium text-center
                   ${
                     stepState === "done"
                       ? "text-green-700"
@@ -944,45 +945,52 @@ export default function ActiveDeliveries({
                         ? "text-blue-700 font-semibold"
                         : "text-gray-500"
                   }`}
-              >
-                {DELIVERY_TRACKING_LABELS[stepKey]}
-              </span>
+                                        >
+                                          {DELIVERY_TRACKING_LABELS[stepKey]}
+                                        </span>
 
-              {/* Timestamp */}
-              {timestamp && (
-                <span className="mt-1 text-[9px] text-gray-400 text-center">
-                  {new Date(timestamp).toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
-                </span>
-              )}
+                                        {/* Timestamp */}
+                                        {timestamp && (
+                                          <span className="mt-1 text-[9px] text-gray-400 text-center">
+                                            {new Date(timestamp).toLocaleString(
+                                              "en-IN",
+                                              {
+                                                day: "2-digit",
+                                                month: "short",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                hour12: true,
+                                              },
+                                            )}
+                                          </span>
+                                        )}
 
-              {/* Delivered photo */}
-              {stepKey === "delivered" &&
-                order.items[0]?.delivery_verified_photo_url && (
-                  <>
-                    <img
-                      src={order.items[0].delivery_verified_photo_url}
-                      alt="Delivery Verified"
-                      className="w-10 h-10 rounded-full object-cover border mt-2"
-                    />
-                    <span className="text-[10px] font-semibold text-gray-700">
-                      {order.customer_name}
-                    </span>
-                  </>
-                )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-)}
-
+                                        {/* Delivered photo */}
+                                        {stepKey === "delivered" &&
+                                          order.items[0]
+                                            ?.delivery_verified_photo_url && (
+                                            <>
+                                              <img
+                                                src={
+                                                  order.items[0]
+                                                    .delivery_verified_photo_url
+                                                }
+                                                alt="Delivery Verified"
+                                                className="w-10 h-10 rounded-full object-cover border mt-2"
+                                              />
+                                              <span className="text-[10px] font-semibold text-gray-700">
+                                                {order.customer_name}
+                                              </span>
+                                            </>
+                                          )}
+                                      </div>
+                                    );
+                                  },
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
