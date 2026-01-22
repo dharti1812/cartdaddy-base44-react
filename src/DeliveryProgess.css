@@ -1,0 +1,80 @@
+.delivery-timeline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.delivery-timeline::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: #e5e7eb; /* gray-200 */
+  transform: translateY(-50%);
+  border-radius: 2px;
+  z-index: 0;
+}
+
+.delivery-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+.delivery-step-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db; /* gray-300 */
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.delivery-step-dot.completed {
+  background-color: #16a34a; /* green-600 */
+  border-color: #16a34a;
+}
+
+.delivery-step-dot.current {
+  background-color: white;
+  border-color: #2563eb; /* blue-600 */
+  animation: pulse 1s infinite;
+}
+
+.delivery-step-label {
+  margin-top: 0.25rem;
+  font-size: 10px;
+  text-align: center;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-pulse-green {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.animate-pulse-blue {
+  animation: pulse 1.5s ease-in-out infinite;
+}

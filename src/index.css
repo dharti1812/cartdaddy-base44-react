@@ -169,3 +169,23 @@ button:focus-visible {
   min-height: 150px;
 }
 
+@layer utilities {
+  @keyframes deliveryPulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1.3);
+    }
+  }
+
+  .animate-delivery-blue {
+    animation: deliveryPulse 1.4s ease-in-out infinite;
+  }
+
+  .animate-delivery-green {
+    animation: deliveryPulse 2s ease-in-out infinite;
+  }
+}

@@ -155,20 +155,20 @@ export default function DeliveryBoyPortal() {
 
       const allOrdersRes = await deliveryPartnerApi.getAvailableOrders();
       const myDeliveriesRes = await deliveryPartnerApi.getMyDeliveries(
-        partnerData.id
+        partnerData.id,
       );
       const completedDeliveriesRes =
         await deliveryPartnerApi.getMyCompletedDeliveries(partnerData.id);
 
       const allOrders = Array.isArray(allOrdersRes)
         ? allOrdersRes
-        : allOrdersRes?.data ?? [];
+        : (allOrdersRes?.data ?? []);
       const myDeliveries = Array.isArray(myDeliveriesRes)
         ? myDeliveriesRes
-        : myDeliveriesRes?.data ?? [];
+        : (myDeliveriesRes?.data ?? []);
       const completedDeliveries = Array.isArray(completedDeliveriesRes)
         ? completedDeliveriesRes
-        : completedDeliveriesRes?.data ?? [];
+        : (completedDeliveriesRes?.data ?? []);
 
       const combinedOrders = [
         ...allOrders,
@@ -210,7 +210,7 @@ export default function DeliveryBoyPortal() {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",
           },
-        }
+        },
       );
 
       const settingsData = await resSettings.json();
@@ -238,7 +238,7 @@ export default function DeliveryBoyPortal() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
       const data = await res.json();
       console.log(data);
@@ -261,7 +261,7 @@ export default function DeliveryBoyPortal() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ order_detail_id: orderDetailId }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -288,7 +288,7 @@ export default function DeliveryBoyPortal() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ order_detail_id: orderDetailId }),
-        }
+        },
       );
       const data = await res.json();
 
@@ -314,14 +314,14 @@ export default function DeliveryBoyPortal() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
       const data = await res.json();
 
       setNotifications((prev) =>
         prev.map((n) =>
-          n.id === id ? { ...n, read_at: new Date().toISOString() } : n
-        )
+          n.id === id ? { ...n, read_at: new Date().toISOString() } : n,
+        ),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
@@ -401,7 +401,7 @@ export default function DeliveryBoyPortal() {
         }
       },
 
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 },
     );
 
     return () => {
@@ -524,7 +524,7 @@ export default function DeliveryBoyPortal() {
             <Button
               onClick={() =>
                 (window.location.href = createPageUrl(
-                  "DeliveryPartnerOnboarding"
+                  "DeliveryPartnerOnboarding",
                 ))
               }
               className="bg-[#FFEB3B] text-black"
@@ -542,19 +542,19 @@ export default function DeliveryBoyPortal() {
     (o) =>
       o.delivery_status !== "delivered" &&
       o.delivery_status !== "cancelled" &&
-      !o.assign_delivery_boy
+      !o.assign_delivery_boy,
   );
 
   const myActiveDeliveries = orders.filter(
     (o) =>
       o.assign_delivery_boy === partner.id &&
-      !["delivered", "cancelled"].includes(o.delivery_status)
+      !["delivered", "cancelled"].includes(o.delivery_status),
   );
 
   const completedDeliveries = orders.filter(
     (o) =>
       o.assign_delivery_boy === partner.id &&
-      ["delivered"].includes(o.delivery_status)
+      ["delivered"].includes(o.delivery_status),
   );
 
   const completedToday = orders.filter((o) => {
@@ -799,16 +799,16 @@ export default function DeliveryBoyPortal() {
                           (order?.distances?.pickup_to_delivery_km || 0);
                         console.log(
                           "Total Distance:",
-                          order?.distances?.delivery_boy_to_pickup_km
+                          order?.distances?.delivery_boy_to_pickup_km,
                         );
                         charges = calculateDeliveryCharges(
                           order?.amount || 0,
                           order?.distances?.pickup_to_delivery_km || 0,
-                          deliverySettings
+                          deliverySettings,
                         );
                       } else {
                         console.warn(
-                          "⚠️ Order distance or amount is not defined"
+                          "⚠️ Order distance or amount is not defined",
                         );
                       }
 
@@ -827,7 +827,8 @@ export default function DeliveryBoyPortal() {
                             <div className="flex justify-between items-center">
                               <h3 className="font-bold text-lg text-gray-900">
                                 {order.website_ref ||
-                                  `Order #${String(order.id)}`}  ({order.created_date})
+                                  `Order #${String(order.id)}`}{" "}
+                                ({order.created_date})
                               </h3>
                               <span className=" py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full capitalize">
                                 {order.payment_status}
@@ -1040,7 +1041,7 @@ export default function DeliveryBoyPortal() {
                                   const response =
                                     await deliveryPartnerApi.acceptOrder(
                                       order.id,
-                                      partner.id
+                                      partner.id,
                                     );
                                   loadData();
                                 } catch (error) {
@@ -1081,16 +1082,16 @@ export default function DeliveryBoyPortal() {
                           (order?.distances?.pickup_to_delivery_km || 0);
                         console.log(
                           "Total Distance:",
-                          order?.distances?.delivery_boy_to_pickup_km
+                          order?.distances?.delivery_boy_to_pickup_km,
                         );
                         charges = calculateDeliveryCharges(
                           order?.amount || 0,
                           totalDistance,
-                          deliverySettings
+                          deliverySettings,
                         );
                       } else {
                         console.warn(
-                          "⚠️ Order distance or amount is not defined"
+                          "⚠️ Order distance or amount is not defined",
                         );
                       }
 
@@ -1104,18 +1105,41 @@ export default function DeliveryBoyPortal() {
                         >
                           <CardContent className="p-4">
                             <h3 className="font-bold text-lg mb-2">
-                              {order.website_ref || `Order #${order.id}`}  ({order.created_at})
+                              {order.website_ref || `Order #${order.id}`} (
+                              {order.created_at})
                             </h3>
 
-                            <p className="text-gray-700 text-sm flex items-center gap-2">
+                            <div className="text-gray-700 text-sm flex items-center gap-2">
                               <Store className="w-4 h-4 text-gray-500" />
-                              <span className="font-semibold">
-                                Retailer:
-                              </span>{" "}
-                              {order.seller_id === 9
-                                ? "Admin"
-                                : order.retailer_name || "Not Assigned"}
-                            </p>
+
+                              <span className="font-semibold">Retailer:</span>
+
+                              <span>
+                                {order.seller_id === 9
+                                  ? "Admin"
+                                  : order.retailer_name || "Not Assigned"}
+                              </span>
+
+                              {order.retailer_phone &&
+                                (
+                                  <>
+                                    <span className="text-gray-400">|</span>
+
+                                    <a
+                                      href={`tel:${order.retailer_phone}`}
+                                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
+                 border border-green-600 text-green-700
+                 hover:bg-green-50 hover:text-green-800
+                 transition"
+                                      aria-label="Call retailer"
+                                    >
+                                      <Phone className="w-3 h-3" />
+                                      Call
+                                    </a>
+                                  </>
+                                )}
+                            </div>
+
                             <p className="text-gray-700 text-sm">
                               <span className="font-semibold">
                                 Pickup Address:
@@ -1448,7 +1472,7 @@ export default function DeliveryBoyPortal() {
                           {/* Header */}
                           <div className="flex items-center justify-between">
                             <h3 className="font-bold text-lg ">
-                              {order.website_ref || `Order #${order.id}`} 
+                              {order.website_ref || `Order #${order.id}`}
                             </h3>
 
                             <Badge className="bg-green-600 text-white flex items-center gap-1">
@@ -1502,7 +1526,7 @@ export default function DeliveryBoyPortal() {
                             Delivered on{" "}
                             <span className="font-medium">
                               {new Date(
-                                order.actual_delivery_time || order.updated_at
+                                order.actual_delivery_time || order.updated_at,
                               ).toLocaleString()}
                             </span>
                           </p>

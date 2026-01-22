@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import {
   MapPin,
   Package,
@@ -61,12 +62,113 @@ export default function ActiveDeliveries({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
+  const DELIVERY_TRACKING_LABELS = {
+    accepted_db: "👤 Delivery Partner Onboarded",
+    reached_to_seller: "📍 Reached Seller",
+    authenticity_check: "🔍 Authenticity Check in Progress",
+    verification_completed:
+      "🛡️ Product Authenticity Verified at Seller Location",
+    verification_review:
+      "🎥 Verification video and IMEI details are now available for you to review",
+    picked_up: "📦 Order Picked Up",
+    out_for_delivery: "🛵 Out for Delivery",
+    reached_to_customer: "📌 Reached Your Location",
+    delivered: "✅ Delivered Successfully",
+  };
+
+  const DELIVERY_TRACKING_STEPS_ORDERED = [
+    "accepted_db",
+    "reached_to_seller",
+
+    // Verification (derived, UI-only)
+    "authenticity_check",
+    "verification_completed",
+    "verification_review",
+
+    "picked_up",
+    "out_for_delivery",
+    "reached_to_customer",
+    "delivered",
+  ];
+
+  const DELIVERY_STATUS_MAP = {
+    accepted_db: "accepted_db",
+    reached_to_seller: "reached_to_seller",
+    picked_up: "picked_up",
+    out_for_delivery: "out_for_delivery",
+    reached_to_customer: "reached_to_customer",
+    delivered: "delivered",
+  };
+
+  const DELIVERY_TIMESTAMP_MAP = (order) => ({
+    accepted_db: order.accepted_at,
+    reached_to_seller: order.reached_to_seller_at,
+    picked_up: order.picked_up_at,
+    out_for_delivery: order.out_for_delivery_at,
+    reached_to_customer: order.reached_to_customer_at,
+    delivered: order.delivered_at,
+
+    // Verification derived steps
+    authenticity_check: order.reached_to_seller_at, // starts after seller reached
+    verification_completed: order.imei_verified_at,
+    verification_review: order.verification_video_verified_at,
+  });
+
+  const getDerivedSteps = (order) => {
+    const steps = [];
+
+    if (order.delivery_status === "reached_to_seller") {
+      steps.push("authenticity_check");
+
+      if (order.imei_verified_at) {
+        steps.push("verification_completed");
+      }
+
+      if (order.verification_video_url) {
+        steps.push("verification_review");
+      }
+    }
+
+    return steps;
+  };
+
+  const getSafeCurrentStepIndex = (order) => {
+    const baseStatus =
+      DELIVERY_STATUS_MAP[order.delivery_status] || order.delivery_status;
+
+    let index = DELIVERY_TRACKING_STEPS_ORDERED.indexOf(baseStatus);
+
+    const derivedSteps = getDerivedSteps(order);
+
+    derivedSteps.forEach((step) => {
+      const stepIndex = DELIVERY_TRACKING_STEPS_ORDERED.indexOf(step);
+      if (stepIndex > index) index = stepIndex;
+    });
+
+    return index === -1 ? 0 : index;
+  };
+
+  const getStepState = (stepIndex, currentIndex) => {
+    if (stepIndex < currentIndex) return "done";
+    if (stepIndex === currentIndex) return "current";
+    return "pending";
+  };
+
+  const shouldShowDeliveryTracking = (order) => {
+    return (
+      order?.delivery_status &&
+      order?.status_history &&
+      Object.keys(order.status_history).length > 0
+    );
+  };
 
   // Get current delivery boy if logged in
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
-    (db) => db.device_id === currentDeviceId && db.is_active
+    (db) => db.device_id === currentDeviceId && db.is_active,
   );
+
+  console.log(shouldShowDeliveryTracking);
 
   /* -------------------------
      Paylink timer logic (unchanged)
@@ -79,7 +181,7 @@ export default function ActiveDeliveries({
         !order.paylink_url
       ) {
         const myAcceptance = order.accepted_retailers?.find(
-          (ar) => ar.retailer_id === retailerId
+          (ar) => ar.retailer_id === retailerId,
         );
         if (myAcceptance) {
           const acceptedTime = new Date(myAcceptance.accepted_at).getTime();
@@ -128,9 +230,8 @@ export default function ActiveDeliveries({
     });
 
     // Send payment link notification
-    const { notifyPaymentLink } = await import(
-      "../utils/customerNotifications"
-    );
+    const { notifyPaymentLink } =
+      await import("../utils/customerNotifications");
     await notifyPaymentLink(selectedOrder, paylinkUrl);
 
     setUpdating(null);
@@ -151,14 +252,13 @@ export default function ActiveDeliveries({
 
     // Send customer notification
     if (deliveryBoy) {
-      const { notifyCustomerOnStatusChange } = await import(
-        "../utils/customerNotifications"
-      );
+      const { notifyCustomerOnStatusChange } =
+        await import("../utils/customerNotifications");
       await notifyCustomerOnStatusChange(
         { ...order, status: newStatus },
         previousStatus,
         retailerProfile,
-        deliveryBoy
+        deliveryBoy,
       );
     }
 
@@ -186,7 +286,7 @@ export default function ActiveDeliveries({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -219,7 +319,7 @@ export default function ActiveDeliveries({
           (order.total_amount *
             (config?.cancellation_penalty_percentage || 2)) /
           100
-        ).toFixed(0)}) penalty.`
+        ).toFixed(0)}) penalty.`,
       )
     ) {
       return;
@@ -242,12 +342,12 @@ export default function ActiveDeliveries({
 
     // Update this retailer's acceptance status
     const updatedAcceptances = order.accepted_retailers.map((ar) =>
-      ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar
+      ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar,
     );
 
     // Find next retailer in line
     const nextRetailer = updatedAcceptances.find(
-      (ar) => ar.status === "active" && ar.retailer_id !== retailerId
+      (ar) => ar.status === "active" && ar.retailer_id !== retailerId,
     );
 
     await Order.update(order.id, {
@@ -305,7 +405,7 @@ export default function ActiveDeliveries({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -343,7 +443,7 @@ export default function ActiveDeliveries({
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ otp: enteredOtp }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -393,8 +493,23 @@ export default function ActiveDeliveries({
           </Card>
         ) : (
           orders.map((order) => {
+            const currentIndex = getSafeCurrentStepIndex(order);
+
+            const currentStep = DELIVERY_TRACKING_STEPS_ORDERED[currentIndex];
+            const nextStep =
+              DELIVERY_TRACKING_STEPS_ORDERED[currentIndex + 1] || "COMPLETED";
+
+            console.log("🛵 Delivery Debug:", {
+              orderId: order.id,
+              delivery_status: order.delivery_status,
+              currentIndex,
+              currentStep,
+              nextStep,
+              status_history: order.status_history,
+            });
+
             const myAcceptance = order.accepted_retailers?.find(
-              (ar) => ar.retailer_id === retailerId
+              (ar) => ar.retailer_id === retailerId,
             );
             const isPrimary = order.active_retailer_id === retailerId;
             const isMyDelivery =
@@ -409,7 +524,7 @@ export default function ActiveDeliveries({
               charges = calculateDeliveryCharges(
                 order.amount,
                 order.distance_km,
-                deliverySettings
+                deliverySettings,
               );
             }
 
@@ -424,7 +539,7 @@ export default function ActiveDeliveries({
             const commissionItem = order.items?.find(
               (item) =>
                 item.commission_type === "percent" ||
-                item.commission_type === "fixed"
+                item.commission_type === "fixed",
             );
 
             let platformFeeAmount = 0;
@@ -468,7 +583,7 @@ export default function ActiveDeliveries({
                         >
                           {(order.delivery_status || "unknown").replace(
                             /_/g,
-                            " "
+                            " ",
                           )}
                         </Badge>
                         {isPrimary && (
@@ -571,8 +686,7 @@ export default function ActiveDeliveries({
                           </div>
                         </div> */}
                         {/* Settlement info */}
-                         <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
-                         
+                        <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
                           <div className="text-xs text-green-700 space-y-1">
                             <div className="flex justify-between">
                               <span>Distance:</span>
@@ -710,7 +824,7 @@ export default function ActiveDeliveries({
                             {order.items?.[0]?.delivery_boy_accepted_at && (
                               <span className="text-[11px] text-gray-600 italic">
                                 {new Date(
-                                  order.items[0].delivery_boy_accepted_at
+                                  order.items[0].delivery_boy_accepted_at,
                                 ).toLocaleString()}
                               </span>
                             )}
@@ -754,10 +868,24 @@ export default function ActiveDeliveries({
                             <h4 className="font-semibold text-gray-900 text-sm">
                               {order.assign_delivery_boy_name}
                             </h4>
-                            <p className="text-xs text-gray-700 flex items-center gap-1">
-                              <Phone className="w-3 h-3 text-green-600" />{" "}
-                              {order.assign_delivery_boy_phone}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              {/* <span className="text-xs text-gray-700">
+                                {order.assign_delivery_boy_phone}
+                              </span> */}
+
+                              <a
+                                href={`tel:${order.assign_delivery_boy_phone}`}
+                                className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
+             border border-green-600 text-green-700
+             hover:bg-green-50 hover:text-green-800
+             transition"
+                                aria-label="Call delivery partner"
+                              >
+                                <Phone className="w-3 h-3" />
+                                Call
+                              </a>
+                            </div>
+
                             {order.delivery_boy_vehicle_no && (
                               <p className="text-[11px] text-gray-500">
                                 Vehicle No: {order.delivery_boy_vehicle_no}
@@ -765,6 +893,96 @@ export default function ActiveDeliveries({
                             )}
                           </div>
                         </div>
+
+                       {shouldShowDeliveryTracking(order) && (
+  <div className="mt-5 bg-white border rounded-xl p-4 shadow-sm">
+    <h4 className="text-sm font-semibold text-gray-700 mb-4">
+      Delivery Progress
+    </h4>
+
+    <div className="relative">
+      {/* Background line */}
+      <div className="absolute top-2 left-0 right-0 h-1 bg-gray-200 rounded-full" />
+
+      {/* Dots container */}
+      <div className="flex justify-between relative z-10">
+        {DELIVERY_TRACKING_STEPS_ORDERED.map((stepKey, index) => {
+          const stepState =
+            index < currentIndex
+              ? "done"
+              : index === currentIndex
+                ? "current"
+                : "upcoming";
+
+          const timestamp = order.status_history?.[stepKey];
+
+          return (
+            <div key={stepKey} className="flex flex-col items-center">
+              {/* Dot */}
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
+                  ${
+                    stepState === "done"
+                      ? "bg-green-600 border-green-600"
+                      : stepState === "current"
+                        ? "bg-white border-blue-600 animate-delivery-blue"
+                        : "bg-white border-gray-300"
+                  }`}
+              >
+                {stepState === "done" && (
+                  <CheckCircle className="w-3 h-3 text-white" />
+                )}
+              </div>
+
+              {/* Label */}
+              <span
+                className={`mt-2 text-[10px] font-medium text-center
+                  ${
+                    stepState === "done"
+                      ? "text-green-700"
+                      : stepState === "current"
+                        ? "text-blue-700 font-semibold"
+                        : "text-gray-500"
+                  }`}
+              >
+                {DELIVERY_TRACKING_LABELS[stepKey]}
+              </span>
+
+              {/* Timestamp */}
+              {timestamp && (
+                <span className="mt-1 text-[9px] text-gray-400 text-center">
+                  {new Date(timestamp).toLocaleString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              )}
+
+              {/* Delivered photo */}
+              {stepKey === "delivered" &&
+                order.items[0]?.delivery_verified_photo_url && (
+                  <>
+                    <img
+                      src={order.items[0].delivery_verified_photo_url}
+                      alt="Delivery Verified"
+                      className="w-10 h-10 rounded-full object-cover border mt-2"
+                    />
+                    <span className="text-[10px] font-semibold text-gray-700">
+                      {order.customer_name}
+                    </span>
+                  </>
+                )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+)}
+
                       </div>
                     )}
 
@@ -981,7 +1199,7 @@ export default function ActiveDeliveries({
                         >
                           {channel.toUpperCase()}
                         </Badge>
-                      )
+                      ),
                     )}
                   </div>
                 </div>
