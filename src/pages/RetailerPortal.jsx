@@ -55,7 +55,7 @@ function useLocationChecker() {
             setLocationEnabled(false);
           }
         },
-        { enableHighAccuracy: true, maximumAge: 10000 }
+        { enableHighAccuracy: true, maximumAge: 10000 },
       );
     } else {
       setLocationEnabled(false);
@@ -93,22 +93,43 @@ export default function SellerPortal() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const notificationAudioRef = useRef(null);
+  const emergencyAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
 
-  useEffect(() => {
-    const unlockAudio = () => {
-      if (!notificationAudioRef.current) return;
+ useEffect(() => {
+  const unlockAudio = () => {
+    const audios = [
+      notificationAudioRef.current,
+      emergencyAudioRef.current,
+    ];
 
-      notificationAudioRef.current.muted = true;
-      notificationAudioRef.current.play().then(() => {
-        notificationAudioRef.current.pause();
-        notificationAudioRef.current.muted = false;
-      });
-    };
+    audios.forEach(audio => {
+      if (!audio) return;
 
-    window.addEventListener("click", unlockAudio, { once: true });
-    return () => window.removeEventListener("click", unlockAudio);
-  }, []);
+      audio.muted = true;
+      audio.play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+        })
+        .catch(() => {});
+    });
+  };
+
+  window.addEventListener("click", unlockAudio, { once: true });
+  window.addEventListener("keydown", unlockAudio, { once: true });
+
+  return () => {
+    window.removeEventListener("click", unlockAudio);
+    window.removeEventListener("keydown", unlockAudio);
+  };
+}, []);
+useEffect(() => {
+  if (unreadCount === 0) {
+    stopEmergencySound();
+  }
+}, [unreadCount]);
 
   const loadData = async () => {
     try {
@@ -149,10 +170,8 @@ export default function SellerPortal() {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",
           },
-        }
+        },
       );
-
-      
 
       const settingsData = await resSettings.json();
       console.log("Delivery Settings API Response:", settingsData);
@@ -190,7 +209,13 @@ export default function SellerPortal() {
     }
   };
 
-  
+  const stopEmergencySound = () => {
+  if (!emergencyAudioRef.current) return;
+
+  emergencyAudioRef.current.pause();
+  emergencyAudioRef.current.currentTime = 0;
+  emergencyAudioRef.current.loop = false;
+};
 
   useEffect(() => {
     let initialLoad = true;
@@ -201,28 +226,60 @@ export default function SellerPortal() {
         const res = await fetch(`${API_BASE_URL}/api/retailer/notifications`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         const data = await res.json();
 
-        if (!initialLoad && data.unread_count > prevUnreadCountRef.current) {
-          notificationAudioRef.current?.play().catch(() => {});
-        }
+        if (!initialLoad) {
+            const unreadNotifications = (data.notifications || []).filter(
+              (n) => !n.read_at
+            );
+
+            const latestUnread = unreadNotifications[0];
+
+            const isEmergency =
+              latestUnread &&
+              (latestUnread.type === "App\\Notifications\\EmergencyAlertNotification" ||
+                latestUnread.data?.type === "ROUTE_DEVIATION");
+
+            if (
+              isEmergency &&
+              data.unread_count > prevUnreadCountRef.current
+            ) {
+              console.log("🚨 NEW emergency alert");
+
+              const audio = emergencyAudioRef.current;
+              if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.loop = true;
+                audio.volume = 1;
+                audio.play().catch((e) =>
+                  console.warn("Emergency audio blocked", e)
+                );
+              }
+            } else if (data.unread_count > prevUnreadCountRef.current) {
+              notificationAudioRef.current?.play().catch(() => {});
+            }
+          }
+
 
         prevUnreadCountRef.current = data.unread_count;
         setNotifications((data.notifications || []).slice(0, 5));
         setUnreadCount(data.unread_count || 0);
       } catch (e) {
-        console.error(e);
+        console.error("Notification fetch error:", e);
       }
     };
 
     fetchNotifications();
     initialLoad = false;
-    const interval = setInterval(fetchNotifications, 60000);
 
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
 
   const markAllAsRead = async () => {
+    stopEmergencySound();
     const token = sessionStorage.getItem("token");
 
     await fetch(`${API_BASE_URL}/api/retailer/notifications/read`, {
@@ -235,6 +292,7 @@ export default function SellerPortal() {
   };
 
   const markNotificationAsRead = async (id) => {
+     stopEmergencySound();
     const token = sessionStorage.getItem("token");
 
     await fetch(`${API_BASE_URL}/api/retailer/notifications/${id}/read`, {
@@ -244,8 +302,8 @@ export default function SellerPortal() {
 
     setNotifications((prev) =>
       prev.map((n) =>
-        n.id === id ? { ...n, read_at: new Date().toISOString() } : n
-      )
+        n.id === id ? { ...n, read_at: new Date().toISOString() } : n,
+      ),
     );
     setUnreadCount((prev) => Math.max(prev - 1, 0));
   };
@@ -393,7 +451,7 @@ export default function SellerPortal() {
 
   const availableOrders = orders.filter((o) => {
     const myResponseStatus = o.accepted_retailers?.find(
-      (ar) => ar.retailer_id === sellerProfile?.id
+      (ar) => ar.retailer_id === sellerProfile?.id,
     )?.response_status;
 
     return (
@@ -412,8 +470,8 @@ export default function SellerPortal() {
     o.accepted_retailers?.some(
       (ar) =>
         ar.retailer_id === sellerProfile?.id &&
-        !["delivered", "cancelled"].includes(ar.status)
-    )
+        !["delivered", "cancelled"].includes(ar.status),
+    ),
   );
 
   // const myCompletedOrders = orders.filter((o) =>
@@ -440,6 +498,10 @@ export default function SellerPortal() {
         src="/notification.mp3"
         preload="auto"
       />
+
+      <audio ref={emergencyAudioRef} preload="auto">
+          <source src="/emergency.mp3" type="audio/mpeg" />
+    </audio>
 
       <div className="bg-[#075E66] text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg border-b-4 border-[#FFEB3B]">
         <div className="max-w-7xl mx-auto">
@@ -497,6 +559,9 @@ export default function SellerPortal() {
                   className="cursor-pointer"
                   onClick={() => {
                     setShowDropdown(!showDropdown);
+                    if (!showDropdown) {
+                      stopEmergencySound();
+                    }
                     if (!showDropdown && unreadCount > 0) {
                       markAllAsRead();
                     }

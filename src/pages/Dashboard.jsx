@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Order, Retailer } from "@/components/utils/mockApi";
 
@@ -24,13 +23,11 @@ export default function Dashboard() {
     loadData();
   }, []);
 
-
-
   const loadData = async () => {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([
       OrderApi.list("-created_date", 100),
-      retailerApi.list("-created_date")
+      retailerApi.list("-created_date"),
     ]);
     setOrders(ordersData);
     setRetailers(retailersData);
@@ -54,44 +51,56 @@ export default function Dashboard() {
     }
   };
 
-
+  
 
   const stats = {
     totalOrders: orders.length,
-    activeOrders: orders.filter(o => ['assigned', 'en_route', 'arrived'].includes(o.assignment_status || o.delivery_status )).length,
-    deliveredToday: orders.filter(o => {
-      if (o.status !== 'delivered') return false;
+    activeOrders: orders.filter((o) =>
+      ["assigned", "en_route", "arrived"].includes(
+        o.assignment_status || o.delivery_status,
+      ),
+    ).length,
+    deliveredToday: orders.filter((o) => {
+      if (o.status !== "delivered") return false;
       const today = new Date().toDateString();
-      return new Date(o.actual_delivery_time || o.updated_date).toDateString() === today;
+      return (
+        new Date(o.actual_delivery_time || o.updated_date).toDateString() ===
+        today
+      );
     }).length,
-    activeRetailers: retailers.filter(r => r.availability_status === 'online').length,
-    pendingAssignment: orders.filter(o => o.delivery_status === 'pending').length,
-    slaBreaches: orders.filter(o => {
+    activeRetailers: retailers.filter((r) => r.availability_status === "online")
+      .length,
+    pendingAssignment: orders.filter((o) => o.delivery_status === "pending")
+      .length,
+    slaBreaches: orders.filter((o) => {
       if (!o.estimated_delivery_time) return false;
-      return new Date(o.estimated_delivery_time) < new Date() && o.status !== 'delivered';
-    }).length
+      return (
+        new Date(o.estimated_delivery_time) < new Date() &&
+        o.status !== "delivered"
+      );
+    }).length,
   };
 
   const handleStatClick = (type) => {
     try {
       switch (type) {
-        case 'totalOrders':
-          window.location.href = createPageUrl('Orders');
+        case "totalOrders":
+          window.location.href = createPageUrl("Orders");
           break;
-        case 'activeOrders':
-          window.location.href = createPageUrl('Orders');
+        case "activeOrders":
+          window.location.href = createPageUrl("Orders");
           break;
-        case 'deliveredToday':
-          window.location.href = createPageUrl('Orders');
+        case "deliveredToday":
+          window.location.href = createPageUrl("Orders");
           break;
-        case 'activeRetailers':
-          window.location.href = createPageUrl('Retailers');
+        case "activeRetailers":
+          window.location.href = createPageUrl("Retailers");
           break;
-        case 'pendingAssignment':
-          window.location.href = createPageUrl('Orders');
+        case "pendingAssignment":
+          window.location.href = createPageUrl("Orders");
           break;
-        case 'slaBreaches':
-          window.location.href = createPageUrl('Orders');
+        case "slaBreaches":
+          window.location.href = createPageUrl("Orders");
           break;
         default:
           break;
@@ -106,8 +115,12 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Super Admin Dashboard</h1>
-            <p className="text-white opacity-90 mt-1">Real-time delivery management overview</p>
+            <h1 className="text-3xl font-bold text-white">
+              Super Admin Dashboard
+            </h1>
+            <p className="text-white opacity-90 mt-1">
+              Real-time delivery management overview
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <Button
@@ -133,11 +146,19 @@ export default function Dashboard() {
 
         <QueuedOrdersMonitor />
 
-        <StatsOverview stats={stats} loading={loading} onStatClick={handleStatClick} />
+        <StatsOverview
+          stats={stats}
+          loading={loading}
+          onStatClick={handleStatClick}
+        />
 
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <RecentOrders orders={orders} loading={loading} onRefresh={loadData} />
+            <RecentOrders
+              orders={orders}
+              loading={loading}
+              onRefresh={loadData}
+            />
           </div>
           <div className="space-y-6">
             <RetailerStatus retailers={retailers} loading={loading} />

@@ -4,6 +4,8 @@ import { API_BASE_URL } from "@/config";
 
 const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
+
+
 /* ---------- Smooth Marker Animation ---------- */
 const animateMarker = (marker, from, to, map) => {
   const frames = 60;
@@ -26,12 +28,26 @@ const animateMarker = (marker, from, to, map) => {
   }, 16); // ~60 FPS
 };
 
+const isOffRoute = (currentPosition, routePath) => {
+  if (!routePath || routePath.length === 0) return false;
+
+  const toleranceInMeters = 50; // 🔥 allowed deviation (50m)
+
+  return !window.google.maps.geometry.poly.isLocationOnEdge(
+    new window.google.maps.LatLng(currentPosition.lat, currentPosition.lng),
+    routePath,
+    toleranceInMeters / 100000, // meters → degrees
+  );
+};
+
 export default function LiveTrackingMap({ orderId }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const deliveryMarkerRef = useRef(null);
   const customerMarkerRef = useRef(null);
   const directionsRendererRef = useRef(null);
+  const routePolylineRef = useRef(null);
+const emergencyTriggeredRef = useRef(false);
 
   const [eta, setEta] = useState(null);
   const [error, setError] = useState("");
@@ -72,12 +88,14 @@ export default function LiveTrackingMap({ orderId }) {
     const distanceThreshold = 0.00005; // ~5 meters
 
     const fetchAndUpdate = async () => {
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`,
-        );
+          try {
+          const res = await fetch(
+      `${API_BASE_URL}/api/delivery-partner/track-order/${orderId}`
+    );
 
-        const { delivery_boy, destination } = res.data;
+        const data = await res.json();
+
+        const { delivery_boy, destination } = data;
         const customer = destination?.customer;
 
         if (!delivery_boy || !customer) {
@@ -96,6 +114,23 @@ export default function LiveTrackingMap({ orderId }) {
           lat: Number(customer.latitude),
           lng: Number(customer.longitude),
         };
+
+        if (routePolylineRef.current && !emergencyTriggeredRef.current) {
+          const deviated = isOffRoute(deliveryLatLng, routePolylineRef.current);
+
+          if (deviated) {
+            emergencyTriggeredRef.current = true;
+
+            console.warn("🚨 DELIVERY BOY OFF ROUTE");
+
+            await axios.post(`${API_BASE_URL}/api/emergency/route-deviation`, {
+              order_id: orderId,
+              latitude: deliveryLatLng.lat,
+              longitude: deliveryLatLng.lng,
+              type: "ROUTE_DEVIATION",
+            });
+          }
+        }
 
         console.log(
           "GPS:",
@@ -169,6 +204,7 @@ export default function LiveTrackingMap({ orderId }) {
           (result, status) => {
             if (status === "OK") {
               directionsRendererRef.current.setDirections(result);
+              routePolylineRef.current = result.routes[0].overview_path;
               const duration = result.routes[0].legs[0].duration?.value;
               if (duration) {
                 setEta(Math.ceil(duration / 60));
