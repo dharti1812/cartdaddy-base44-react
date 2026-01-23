@@ -13,6 +13,7 @@ import {
 import { format } from "date-fns";
 
 export default function CompletedOrders({ orders }) {
+  const [zoomImage, setZoomImage] = React.useState(null);
   if (!orders || orders.length === 0) {
     return (
       <Card className="border-none shadow-md">
@@ -33,6 +34,7 @@ export default function CompletedOrders({ orders }) {
     <div className="space-y-5">
       {orders.map((order) => {
         const detail = order.order_details?.[0];
+
         const address = order.shipping_address
           ? JSON.parse(order.shipping_address)
           : {};
@@ -84,18 +86,42 @@ export default function CompletedOrders({ orders }) {
                     )}
                     {detail?.delivery_verified_photo && (
                       <div className="flex items-center gap-3 mt-2">
-                      
                         {detail.delivery_verified_photo_url && (
                           <img
-                            src={detail.delivery_verified_photo}
+                            src={detail.delivery_verified_photo_url}
                             alt="Delivery Verified"
-                            className="w-12 h-12 rounded-full object-cover border"
+                            className="w-12 h-12 rounded-full object-cover border cursor-pointer hover:scale-105 transition"
+                            onClick={() =>
+                              setZoomImage(detail.delivery_verified_photo_url)
+                            }
                           />
                         )}
 
                         <div className="flex items-center gap-2 text-sm text-gray-800">
                           <span className="font-medium">Delivered To:</span>
-                          <span className="text-gray-600">{detail.delivery_verified_user_info}</span>
+                          <span className="text-gray-600">
+                            {detail.delivery_verified_user_info}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {zoomImage && (
+                      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                       
+                        <div className="relative">
+                        
+                          <button
+                            onClick={() => setZoomImage(null)}
+                            className="absolute -top-3 -right-3 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-gray-200 transition"
+                          >
+                            ✕
+                          </button>
+
+                          <img
+                            src={zoomImage}
+                            alt="Zoomed"
+                            className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg"
+                          />
                         </div>
                       </div>
                     )}
