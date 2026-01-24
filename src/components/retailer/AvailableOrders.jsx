@@ -83,7 +83,7 @@ export default function AvailableOrders({
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
-
+  const [highlightOrderId, setHighlightOrderId] = useState(null);
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
@@ -795,10 +795,11 @@ export default function AvailableOrders({
             myResponseStatus === "awaiting_payment_link";
           return (
             <Card
-              key={order.id}
-              className={`border-none shadow-lg hover:shadow-xl transition-shadow ${
-                isQueued ? "border-2 border-amber-500" : ""
-              }`}
+              id={`order-${order.id}`}
+              className={`border-none shadow-lg hover:shadow-xl transition-all duration-500
+              ${highlightOrderId === order.id ? "ring-4 ring-red-500 animate-pulse" : ""}
+              ${isQueued ? "border-2 border-amber-500" : ""}
+            `}
             >
               <CardContent className="p-0">
                 <div

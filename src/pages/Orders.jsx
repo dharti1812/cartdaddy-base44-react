@@ -33,6 +33,19 @@ export default function OrdersPage() {
     }
   }, [orders]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderCode = params.get("order");
+
+    if (orderCode && orders.length > 0) {
+      const order = orders.find((o) => o.code === orderCode);
+
+      if (order) {
+        setSelectedOrder(order);
+      }
+    }
+  }, [orders]);
+
   const loadData = async () => {
     setLoading(true);
     const [ordersData, retailersData] = await Promise.all([

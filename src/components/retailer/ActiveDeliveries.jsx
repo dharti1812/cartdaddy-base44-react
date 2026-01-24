@@ -62,6 +62,8 @@ export default function ActiveDeliveries({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
+  const [highlightOrderId, setHighlightOrderId] = useState(null);
+
   const DELIVERY_TRACKING_LABELS = {
     accepted_db: "👤 Delivery Partner Onboarded",
     reached_to_seller: "📍 Reached Seller",
@@ -572,11 +574,15 @@ export default function ActiveDeliveries({
             return (
               <Card
                 key={order.id}
-                className={`border-2 ${
-                  isPrimary
-                    ? "border-green-500 bg-green-50"
-                    : "border-blue-500 bg-blue-50"
-                }`}
+                id={`active-order-${order.id}`}
+                className={`border-2 transition-all duration-500
+    ${
+      highlightOrderId === order.id
+        ? "ring-4 ring-red-500 animate-pulse scale-[1.01]"
+        : ""
+    }
+    ${isPrimary ? "border-green-500 bg-green-50" : "border-blue-500 bg-blue-50"}
+  `}
               >
                 <CardContent className="p-4">
                   {/* ---------- header & badges ---------- */}

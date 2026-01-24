@@ -95,41 +95,47 @@ export default function SellerPortal() {
   const notificationAudioRef = useRef(null);
   const emergencyAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
+  const [highlightOrderId, setHighlightOrderId] = useState(null);
+  useEffect(() => {
+    const unlockAudio = () => {
+      const audios = [notificationAudioRef.current, emergencyAudioRef.current];
 
- useEffect(() => {
-  const unlockAudio = () => {
-    const audios = [
-      notificationAudioRef.current,
-      emergencyAudioRef.current,
-    ];
+      audios.forEach((audio) => {
+        if (!audio) return;
 
-    audios.forEach(audio => {
-      if (!audio) return;
+        audio.muted = true;
+        audio
+          .play()
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.muted = false;
+          })
+          .catch(() => {});
+      });
+    };
 
-      audio.muted = true;
-      audio.play()
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.muted = false;
-        })
-        .catch(() => {});
-    });
-  };
+    window.addEventListener("click", unlockAudio, { once: true });
+    window.addEventListener("keydown", unlockAudio, { once: true });
 
-  window.addEventListener("click", unlockAudio, { once: true });
-  window.addEventListener("keydown", unlockAudio, { once: true });
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, []);
 
-  return () => {
-    window.removeEventListener("click", unlockAudio);
-    window.removeEventListener("keydown", unlockAudio);
-  };
-}, []);
-useEffect(() => {
-  if (unreadCount === 0) {
-    stopEmergencySound();
-  }
-}, [unreadCount]);
+  useEffect(() => {
+    if (unreadCount === 0) {
+      stopEmergencySound();
+    }
+  }, [unreadCount]);
+
+  useEffect(() => {
+    if (!highlightOrderId) return;
+
+    const timer = setTimeout(() => setHighlightOrderId(null), 15000); // removes ring after 5s
+    return () => clearTimeout(timer);
+  }, [highlightOrderId]);
 
   const loadData = async () => {
     try {
@@ -210,12 +216,12 @@ useEffect(() => {
   };
 
   const stopEmergencySound = () => {
-  if (!emergencyAudioRef.current) return;
+    if (!emergencyAudioRef.current) return;
 
-  emergencyAudioRef.current.pause();
-  emergencyAudioRef.current.currentTime = 0;
-  emergencyAudioRef.current.loop = false;
-};
+    emergencyAudioRef.current.pause();
+    emergencyAudioRef.current.currentTime = 0;
+    emergencyAudioRef.current.loop = false;
+  };
 
   useEffect(() => {
     let initialLoad = true;
@@ -230,38 +236,35 @@ useEffect(() => {
         const data = await res.json();
 
         if (!initialLoad) {
-            const unreadNotifications = (data.notifications || []).filter(
-              (n) => !n.read_at
-            );
+          const unreadNotifications = (data.notifications || []).filter(
+            (n) => !n.read_at,
+          );
 
-            const latestUnread = unreadNotifications[0];
+          const latestUnread = unreadNotifications[0];
 
-            const isEmergency =
-              latestUnread &&
-              (latestUnread.type === "App\\Notifications\\EmergencyAlertNotification" ||
-                latestUnread.data?.type === "ROUTE_DEVIATION");
+          const isEmergency =
+            latestUnread &&
+            (latestUnread.type ===
+              "App\\Notifications\\EmergencyAlertNotification" ||
+              latestUnread.data?.type === "ROUTE_DEVIATION");
 
-            if (
-              isEmergency &&
-              data.unread_count > prevUnreadCountRef.current
-            ) {
-              console.log("🚨 NEW emergency alert");
+          if (isEmergency && data.unread_count > prevUnreadCountRef.current) {
+            console.log("🚨 NEW emergency alert");
 
-              const audio = emergencyAudioRef.current;
-              if (audio) {
-                audio.pause();
-                audio.currentTime = 0;
-                audio.loop = true;
-                audio.volume = 1;
-                audio.play().catch((e) =>
-                  console.warn("Emergency audio blocked", e)
-                );
-              }
-            } else if (data.unread_count > prevUnreadCountRef.current) {
-              notificationAudioRef.current?.play().catch(() => {});
+            const audio = emergencyAudioRef.current;
+            if (audio) {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.loop = true;
+              audio.volume = 1;
+              audio
+                .play()
+                .catch((e) => console.warn("Emergency audio blocked", e));
             }
+          } else if (data.unread_count > prevUnreadCountRef.current) {
+            notificationAudioRef.current?.play().catch(() => {});
           }
-
+        }
 
         prevUnreadCountRef.current = data.unread_count;
         setNotifications((data.notifications || []).slice(0, 5));
@@ -292,7 +295,7 @@ useEffect(() => {
   };
 
   const markNotificationAsRead = async (id) => {
-     stopEmergencySound();
+    stopEmergencySound();
     const token = sessionStorage.getItem("token");
 
     await fetch(`${API_BASE_URL}/api/retailer/notifications/${id}/read`, {
@@ -500,8 +503,8 @@ useEffect(() => {
       />
 
       <audio ref={emergencyAudioRef} preload="auto">
-          <source src="/emergency.mp3" type="audio/mpeg" />
-    </audio>
+        <source src="/emergency.mp3" type="audio/mpeg" />
+      </audio>
 
       <div className="bg-[#075E66] text-white p-3 sm:p-4 sticky top-0 z-10 shadow-lg border-b-4 border-[#FFEB3B]">
         <div className="max-w-7xl mx-auto">
@@ -590,7 +593,25 @@ useEffect(() => {
                               ? "bg-gray-800 text-white"
                               : "bg-yellow-50 text-gray-900"
                           } hover:bg-gray-700 hover:text-white`}
-                          onClick={() => markNotificationAsRead(n.id)}
+                          onClick={() => {
+                            markNotificationAsRead(n.id);
+
+                            if (n.data?.order_id) {
+                              setActiveTab("active"); // Switch tab without reload
+                              setHighlightOrderId(n.data.order_id);
+
+                              // Smooth scroll to the order after it renders
+                              setTimeout(() => {
+                                const el = document.getElementById(
+                                  `order-${n.data.order_id}`,
+                                );
+                                el?.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "center",
+                                });
+                              }, 200);
+                            }
+                          }}
                         >
                           <p className="font-semibold">
                             {n.data?.order_id
@@ -739,6 +760,9 @@ useEffect(() => {
                 <AvailableOrders
                   orders={availableOrders}
                   retailerId={sellerProfile?.id}
+                  highlightOrderId={sessionStorage.getItem(
+                    "highlight_order_id",
+                  )}
                   deliverySettings={deliverySettings}
                   config={sellerProfile}
                   onAccept={loadData}
@@ -750,6 +774,9 @@ useEffect(() => {
                 <ActiveDeliveries
                   orders={activeOrders}
                   retailerId={sellerProfile?.id}
+                  highlightOrderId={sessionStorage.getItem(
+                    "highlight_order_id",
+                  )}
                   deliverySettings={deliverySettings}
                   config={sellerProfile}
                   onUpdate={loadData}
