@@ -160,7 +160,7 @@ export default function AvailableOrders({
 
       try {
         const res = await OrderApi.storeVideo(formData, true);
-
+        console.log(res);
         if (res.success) {
           // Notify delivery boy & accept order
           await OrderApi.acceptOrder({
@@ -347,6 +347,7 @@ export default function AvailableOrders({
     setScannerActive(true);
     setScanAttempted(true);
   };
+
   const handleAccept = async (order) => {
     setAccepting(order.id);
 
@@ -407,10 +408,24 @@ export default function AvailableOrders({
       retailerId: retailerId,
     };
 
-    await OrderApi.updateRetailerStatus(order.id, {
-      status: "awaiting_payment_link",
-      accepted_at: new Date().toISOString(),
-    });
+    if (order.payment_type === "cash_on_delivery") {
+      setScannerActive(false);
+      setScanAttempted(false);
+      setImeiValue("");
+      setImeiOrder(order);
+      console.log("💡 showImeiDialog before:", showImeiDialog);
+      setShowImeiDialog(true);
+      setAwaitingPaymentConfirmation(false);
+      setPaymentConfirmedOrder(null);
+      onAccept();
+      return;
+    }
+    if (order.payment_type === "needs_paylink") {
+      await OrderApi.updateRetailerStatus(order.id, {
+        status: "awaiting_payment_link",
+        accepted_at: new Date().toISOString(),
+      });
+    }
 
     if (order.payment_type === "needs_paylink") {
       setPendingOrder(order);
@@ -789,10 +804,12 @@ export default function AvailableOrders({
           );
 
           const myResponseStatus = myAcceptance?.response_status ?? "pending";
+          const is_COD = order.payment_type === "cash_on_delivery";
           const isUnpaid = order.payment_status === "unpaid";
-          const showAcceptButton = myResponseStatus === "pending" && isUnpaid;
+          const showAcceptButton =
+            myResponseStatus === "pending" && (is_COD || isUnpaid);
           const showPaymentReceivedButton =
-            myResponseStatus === "awaiting_payment_link";
+            !is_COD && myResponseStatus === "awaiting_payment_link";
           return (
             <Card
               id={`order-${order.id}`}
