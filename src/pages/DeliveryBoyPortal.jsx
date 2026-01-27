@@ -58,6 +58,16 @@ export default function DeliveryBoyPortal() {
   const [deliverySettings, setDeliverySettings] = useState(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [orderDetails, setOrderDetails] = useState([]);
+  const [rejectModal, setRejectModal] = useState({
+    open: false,
+    orderDetailId: null,
+  });
+
+  const [rejectData, setRejectData] = useState({
+    reason: "",
+    photo: null,
+    video: null,
+  });
   const [stats, setStats] = useState({
     active: 0,
     today: 0,
@@ -300,6 +310,47 @@ export default function DeliveryBoyPortal() {
       }
     } catch (err) {
       toast.error("Failed to verify video");
+    }
+  };
+
+  const handleRejectImei = async () => {
+    if (!rejectData.reason || !rejectData.photo || !rejectData.video) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    try {
+      const token = sessionStorage.getItem("token");
+
+      const formData = new FormData();
+      formData.append("order_detail_id", rejectModal.orderDetailId);
+      formData.append("reason", rejectData.reason);
+      formData.append("photo", rejectData.photo);
+      formData.append("video", rejectData.video);
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/delivery-partner/reject-imei`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        },
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("IMEI rejected successfully ❌");
+        setRejectModal({ open: false, orderDetailId: null });
+        setRejectData({ reason: "", photo: null, video: null });
+        loadData();
+      } else {
+        toast.error(data.message || "Failed to reject IMEI");
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
     }
   };
 
@@ -1120,24 +1171,23 @@ export default function DeliveryBoyPortal() {
                                   : order.retailer_name || "Not Assigned"}
                               </span>
 
-                              {order.retailer_phone &&
-                                (
-                                  <>
-                                    <span className="text-gray-400">|</span>
+                              {order.retailer_phone && (
+                                <>
+                                  <span className="text-gray-400">|</span>
 
-                                    <a
-                                      href={`tel:${order.retailer_phone}`}
-                                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
+                                  <a
+                                    href={`tel:${order.retailer_phone}`}
+                                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded
                  border border-green-600 text-green-700
                  hover:bg-green-50 hover:text-green-800
                  transition"
-                                      aria-label="Call retailer"
-                                    >
-                                      <Phone className="w-3 h-3" />
-                                      Call
-                                    </a>
-                                  </>
-                                )}
+                                    aria-label="Call retailer"
+                                  >
+                                    <Phone className="w-3 h-3" />
+                                    Call
+                                  </a>
+                                </>
+                              )}
                             </div>
 
                             <p className="text-gray-700 text-sm">
@@ -1166,28 +1216,56 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
-                                    {order.delivery_status ===
-                                      "reached_to_seller" &&
-                                      item.imei_number &&
-                                      item.imei_verified !== 1 && (
-                                        <button
-                                          className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                          onClick={() =>
-                                            setConfirmVerify({
-                                              open: true,
-                                              type: "imei",
-                                              orderDetailId: item.order_id, // ✅ Use item.id (order_detail_id)
-                                            })
-                                          }
-                                        >
-                                          Verify
-                                        </button>
-                                      )}
+                                    {/* ✅ VERIFIED */}
                                     {item.imei_verified === 1 && (
                                       <span className="text-green-600 font-semibold ml-2">
                                         ✅ Verified
                                       </span>
                                     )}
+                                    {/* ❌ REJECTED */}
+                                    {item.imei_verified === 0 &&
+                                      item.imei_reject_count > 0 && (
+                                        <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
+                                          ❌ Rejected
+                                        </span>
+                                      )}
+                                    {/* 🔘 VERIFY / REJECT BUTTONS */}
+                                    {order.delivery_status ===
+                                      "reached_to_seller" &&
+                                      item.imei_number &&
+                                      item.imei_verified !== 1 &&
+                                      (!item.imei_reject_count ||
+                                        item.imei_reject_count === 0) && (
+                                        <>
+                                          <button
+                                            className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            onClick={() =>
+                                              setConfirmVerify({
+                                                open: true,
+                                                type: "imei",
+                                                orderDetailId:
+                                                  item.order_detail_id, // ⚠️ use order_detail_id
+                                              })
+                                            }
+                                          >
+                                            Verify
+                                          </button>
+
+                                          <button
+                                            className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            onClick={() =>
+                                              setRejectModal({
+                                                open: true,
+                                                type: "imei",
+                                                orderDetailId:
+                                                  item.order_detail_id, // ⚠️ use order_detail_id
+                                              })
+                                            }
+                                          >
+                                            Reject
+                                          </button>
+                                        </>
+                                      )}
                                   </p>
 
                                   {/* Packaging Video */}
@@ -1624,6 +1702,85 @@ export default function DeliveryBoyPortal() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={rejectModal.open}
+        onOpenChange={() =>
+          setRejectModal({ open: false, orderDetailId: null })
+        }
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">❌ Reject IMEI</DialogTitle>
+          </DialogHeader>
+
+          {/* Reason */}
+          <div className="mt-3">
+            <label className="font-semibold text-sm">
+              Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              className="w-full border rounded-md p-2 mt-1 text-sm"
+              rows={3}
+              placeholder="Explain why IMEI is rejected"
+              value={rejectData.reason}
+              onChange={(e) =>
+                setRejectData({ ...rejectData, reason: e.target.value })
+              }
+            />
+          </div>
+
+          {/* Photo Upload */}
+          <div className="mt-3">
+            <label className="font-semibold text-sm">
+              Upload Photo <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              className="mt-1"
+              onChange={(e) =>
+                setRejectData({ ...rejectData, photo: e.target.files[0] })
+              }
+            />
+          </div>
+
+          {/* Video Upload */}
+          <div className="mt-3">
+            <label className="font-semibold text-sm">
+              Upload Video <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="file"
+              accept="video/*"
+              className="mt-1"
+              onChange={(e) =>
+                setRejectData({ ...rejectData, video: e.target.files[0] })
+              }
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              className="px-4 py-2 bg-gray-200 rounded"
+              onClick={() =>
+                setRejectModal({ open: false, orderDetailId: null })
+              }
+            >
+              Cancel
+            </button>
+
+            <button
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              onClick={() => handleRejectImei()}
+            >
+              Reject IMEI
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
   );
