@@ -324,6 +324,7 @@ export default function DeliveryBoyPortal() {
 
       const formData = new FormData();
       formData.append("order_detail_id", rejectModal.orderDetailId);
+      formData.append("type", rejectModal.type);
       formData.append("reason", rejectData.reason);
       formData.append("photo", rejectData.photo);
       formData.append("video", rejectData.video);
@@ -340,10 +341,12 @@ export default function DeliveryBoyPortal() {
       );
 
       const data = await res.json();
-
+     
       if (data.success) {
-        toast.success("IMEI rejected successfully ❌");
-        setRejectModal({ open: false, orderDetailId: null });
+       toast.success(
+          `${rejectModal.type.toUpperCase()} rejected successfully ❌`
+        );
+        setRejectModal({ open: false, orderDetailId: null,  type: null  });
         setRejectData({ reason: "", photo: null, video: null });
         loadData();
       } else {
@@ -1244,7 +1247,7 @@ export default function DeliveryBoyPortal() {
                                                 open: true,
                                                 type: "imei",
                                                 orderDetailId:
-                                                  item.order_detail_id, // ⚠️ use order_detail_id
+                                                  item.order_id, // ⚠️ use order_detail_id
                                               })
                                             }
                                           >
@@ -1258,7 +1261,7 @@ export default function DeliveryBoyPortal() {
                                                 open: true,
                                                 type: "imei",
                                                 orderDetailId:
-                                                  item.order_detail_id, // ⚠️ use order_detail_id
+                                                  item.order_id, // ⚠️ use order_detail_id
                                               })
                                             }
                                           >
@@ -1323,7 +1326,8 @@ export default function DeliveryBoyPortal() {
                                         {/* Video Verify Button */}
                                         {order.delivery_status ===
                                           "reached_to_seller" &&
-                                          item.video_verified !== 1 && (
+                                          item.video_verified !== 1 &&  item.video_reject_count === 0 && (
+                                            <>
                                             <button
                                               className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                                               onClick={() =>
@@ -1336,6 +1340,20 @@ export default function DeliveryBoyPortal() {
                                             >
                                               Verify
                                             </button>
+                                             <button
+                                            className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            onClick={() =>
+                                              setRejectModal({
+                                                open: true,
+                                                type: "video",
+                                                orderDetailId:
+                                                  item.order_id, // ⚠️ use order_detail_id
+                                              })
+                                            }
+                                          >
+                                            Reject
+                                          </button>
+                                          </>
                                           )}
 
                                         {item.video_verified === 1 && (
@@ -1343,6 +1361,13 @@ export default function DeliveryBoyPortal() {
                                             ✅ Verified
                                           </span>
                                         )}
+
+                                        {item.video_verified === 0 &&
+                                        item.video_reject_count > 0 && (
+                                          <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
+                                            ❌ Rejected
+                                          </span>
+                                      )}
                                       </>
                                     ) : (
                                       <span className="text-red-600 ml-2">
@@ -1711,7 +1736,10 @@ export default function DeliveryBoyPortal() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-red-600">❌ Reject IMEI</DialogTitle>
+            <DialogTitle className="text-red-600">
+  ❌ Reject {rejectModal.type?.toUpperCase()}
+</DialogTitle>
+
           </DialogHeader>
 
           {/* Reason */}
@@ -1722,7 +1750,7 @@ export default function DeliveryBoyPortal() {
             <textarea
               className="w-full border rounded-md p-2 mt-1 text-sm"
               rows={3}
-              placeholder="Explain why IMEI is rejected"
+              placeholder={`Explain why ${rejectModal.type} is rejected`}
               value={rejectData.reason}
               onChange={(e) =>
                 setRejectData({ ...rejectData, reason: e.target.value })
@@ -1775,7 +1803,7 @@ export default function DeliveryBoyPortal() {
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               onClick={() => handleRejectImei()}
             >
-              Reject IMEI
+              Reject {rejectModal.type?.toUpperCase()}
             </button>
           </div>
         </DialogContent>

@@ -63,6 +63,8 @@ export default function ActiveDeliveries({
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
   const [highlightOrderId, setHighlightOrderId] = useState(null);
+  const [rejectPreview, setRejectPreview] = useState(null);
+  const [zoomPhoto, setZoomPhoto] = useState(null);
 
   const DELIVERY_TRACKING_LABELS = {
     accepted_db: "👤 Delivery Partner Onboarded",
@@ -249,6 +251,16 @@ export default function ActiveDeliveries({
     setPaylinkUrl("");
     setSelectedOrder(null);
     onUpdate();
+  };
+
+  const getFileUrl = (path) => {
+    if (!path) return null;
+
+    const parts = path.split("/");
+    const fileName = parts.pop();
+    const encodedFileName = encodeURIComponent(fileName);
+
+    return `${API_BASE_URL}/public/${parts.join("/")}/${encodedFileName}`;
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
@@ -622,14 +634,93 @@ export default function ActiveDeliveries({
                             {order.items.map((item, idx) => (
                               <div
                                 key={idx}
-                                className="flex justify-between text-sm bg-gray-50 p-2 rounded"
+                                className="bg-gray-50 p-3 rounded space-y-3"
                               >
-                                <span className="text-gray-700 font-medium">
-                                  {item.name}
-                                </span>
-                                <span className="font-bold text-gray-900">
-                                  ₹{item.price}
-                                </span>
+                                {/* Product name & price */}
+                                <div className="flex justify-between items-center text-sm">
+                                  <span className="text-gray-700 font-medium">
+                                    {item.name}
+                                  </span>
+                                  <span className="font-bold text-gray-900">
+                                    ₹{item.price}
+                                  </span>
+                                </div>
+
+                                {/* Verification Section */}
+                                <div className="space-y-2">
+                                  {/* IMEI Status */}
+                                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      IMEI Verification
+                                    </span>
+
+                                    {item.imei_verified === 1 ? (
+                                      <Badge className="bg-green-600 text-white">
+                                        Verified
+                                      </Badge>
+                                    ) : item.imei_reject_count > 0 ? (
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-red-600 text-white">
+                                          Rejected
+                                        </Badge>
+                                        <Button
+                                          className="bg-blue-600 text-white hover:bg-blue-700 p-2"
+                                          size="sm"
+                                          onClick={() =>
+                                            setRejectPreview({
+                                              open: true,
+                                              type: "imei",
+                                              rejections: item.imei_rejections,
+                                            })
+                                          }
+                                        >
+                                          View Details
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Badge className="bg-yellow-500 text-white">
+                                        Pending
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {/* Video Status */}
+                                  <div className="flex items-center justify-between bg-white p-2 rounded border">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      Packaging Video
+                                    </span>
+
+                                    {item.video_verified === 1 ? (
+                                      <Badge className="bg-green-600 text-white">
+                                        Verified
+                                      </Badge>
+                                    ) : item.video_reject_count > 0 ? (
+                                      <div className="flex items-center gap-2">
+                                        <Badge className="bg-red-600 text-white">
+                                          Rejected
+                                        </Badge>
+                                        <Button
+                                          className="bg-blue-600 text-white hover:bg-blue-700 p-2"
+                                          size="sm"
+                                          variant="link"
+                                          onClick={() =>
+                                            setRejectPreview({
+                                              open: true,
+                                              type: "video",
+                                              rejections: item.video_rejections,
+                                            })
+                                          }
+                                        >
+                                          View Details
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Badge className="bg-yellow-500 text-white">
+                                        Pending
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1262,6 +1353,102 @@ export default function ActiveDeliveries({
               {updating ? "Sending..." : "Send Payment Link"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rejectPreview?.open}
+        onOpenChange={() => setRejectPreview(null)}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              {rejectPreview?.type === "imei"
+                ? "IMEI Rejection Details"
+                : "Packaging Video Rejection"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* No Rejections */}
+          {(!rejectPreview?.rejections ||
+            rejectPreview.rejections.length === 0) && (
+            <p className="text-sm text-gray-500">
+              No rejection details available.
+            </p>
+          )}
+          {console.log(rejectPreview?.rejections)}
+          {/* Rejection List */}
+          <div className="space-y-4 mt-3 max-h-[65vh] overflow-y-auto">
+            {rejectPreview?.rejections
+              ?.slice()
+              .reverse()
+              .map((rej, idx) => (
+                <div key={idx} className="border rounded-lg p-4 bg-gray-50">
+                  {/* Date */}
+                  <p className="text-xs text-gray-500 mb-2">
+                    Rejected on {rej.created_at}
+                  </p>
+
+                  {/* Reason */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">
+                      Rejection Reason
+                    </p>
+                    <p className="text-sm text-gray-800 bg-white p-3 rounded border">
+                      {rej.reason || "No reason provided"}
+                    </p>
+                  </div>
+
+                  {/* Photo */}
+                  {rej.photo_path && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">
+                        Evidence Photo
+                      </p>
+                      <img
+                        src={`${API_BASE_URL}/${encodeURI(rej.photo_path)}`}
+                        className="w-full h-48 object-cover rounded border cursor-zoom-in"
+                        onClick={() =>
+                          setZoomPhoto(
+                            `${API_BASE_URL}/${encodeURI(rej.photo_path)}`,
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+
+                  {/* Video */}
+                  {rej.video_path && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-gray-500 mb-1">
+                        Evidence Video
+                      </p>
+                      <video
+                        controls
+                        className="w-full h-56 rounded bg-black"
+                        src={`${API_BASE_URL}/${encodeURI(rej.video_path)}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setRejectPreview(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!zoomPhoto} onOpenChange={() => setZoomPhoto(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-black">
+          <img
+            src={zoomPhoto}
+            className="w-full h-auto max-h-[90vh] object-contain"
+          />
         </DialogContent>
       </Dialog>
     </>
