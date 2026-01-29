@@ -46,6 +46,7 @@ export default function DeliveryBoyPortal() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("available");
+  const activeTabRef = useRef(null);
   const [error, setError] = useState("");
   const [mobileView, setMobileView] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -62,7 +63,7 @@ export default function DeliveryBoyPortal() {
     open: false,
     orderDetailId: null,
   });
-
+  const [scrollToOrderId, setScrollToOrderId] = useState(null);
   const [rejectData, setRejectData] = useState({
     reason: "",
     photo: null,
@@ -93,6 +94,31 @@ export default function DeliveryBoyPortal() {
       return;
     }
   }, []);
+
+useEffect(() => {
+  if (activeTab !== "active" || !scrollToOrderId) return;
+
+  requestAnimationFrame(() => {
+    const container = activeTabRef.current;
+    const el = document.getElementById(`order-${scrollToOrderId}`);
+
+    if (!container || !el) return;
+
+    el.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    // highlight
+    el.classList.add("ring-2", "ring-yellow-400");
+    setTimeout(() => {
+      el.classList.remove("ring-2", "ring-yellow-400");
+    }, 2000);
+
+    setScrollToOrderId(null);
+  });
+}, [activeTab, scrollToOrderId]);
+
 
   useEffect(() => {
     loadData();
@@ -154,7 +180,7 @@ export default function DeliveryBoyPortal() {
       let partnerData = myPartners[0];
 
       setPartner(partnerData);
-      console.log("✅ Delivery Partner Data:", partnerData);
+      
 
       // const notifyData = await deliveryPartnerApi.getNotifications(token);
       // setNotifications(notifyData.notifications);
@@ -224,7 +250,7 @@ export default function DeliveryBoyPortal() {
       );
 
       const settingsData = await resSettings.json();
-      console.log("Delivery Settings API Response:", settingsData);
+      
 
       if (Array.isArray(settingsData) && settingsData.length > 0) {
         setDeliverySettings(settingsData[0]);
@@ -239,7 +265,7 @@ export default function DeliveryBoyPortal() {
   const markAllAsRead = async () => {
     try {
       const token = sessionStorage.getItem("token");
-      console.log(token);
+      
       const res = await fetch(
         `${API_BASE_URL}/api/delivery-partner/notifications/read`,
         {
@@ -251,7 +277,7 @@ export default function DeliveryBoyPortal() {
         },
       );
       const data = await res.json();
-      console.log(data);
+      
       setUnreadCount(0);
       prevUnreadCountRef.current = 0;
     } catch (error) {
@@ -713,13 +739,24 @@ export default function DeliveryBoyPortal() {
                             No notifications
                           </p>
                         ) : (
-                          notifications.map((n, index) => (
+                            notifications.map((n, index) => (
+
                             <div
                               key={n.id}
                               className={`p-2 border-b last:border-0 text-sm cursor-pointer ${
                                 n.read_at ? "bg-gray-100" : "bg-yellow-50"
                               }`}
-                              onClick={() => markNotificationAsRead(n.id)}
+                              
+                              onClick={() => {
+                                markNotificationAsRead(n.id);
+
+                                if (n.data?.order_id) {
+                                  setActiveTab("active");
+                                  setScrollToOrderId(n.data.code);
+                                  setShowDropdown(false);
+                                }
+                              }}
+
                             >
                               <p className="font-semibold">
                                 {n.data?.title || "Notification"}
@@ -826,7 +863,9 @@ export default function DeliveryBoyPortal() {
             </CardHeader>
 
             <CardContent className="p-4">
-              <TabsContent value="available" className="mt-0">
+              <TabsContent value="available"   ref={activeTabRef}
+  className="mt-0 max-h-[75vh] overflow-y-auto"
+>
                 {availableOrders.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -851,10 +890,7 @@ export default function DeliveryBoyPortal() {
                         const totalDistance =
                           (order?.distances?.delivery_boy_to_pickup_km || 0) +
                           (order?.distances?.pickup_to_delivery_km || 0);
-                        console.log(
-                          "Total Distance:",
-                          order?.distances?.delivery_boy_to_pickup_km,
-                        );
+                        
                         charges = calculateDeliveryCharges(
                           order?.amount || 0,
                           order?.distances?.pickup_to_delivery_km || 0,
@@ -873,6 +909,7 @@ export default function DeliveryBoyPortal() {
                       return (
                         <Card
                           key={order.id}
+                          id={`order-${order.id}`}
                           className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
                         >
                           <CardContent className="p-4 space-y-4">
@@ -1134,10 +1171,7 @@ export default function DeliveryBoyPortal() {
                         const totalDistance =
                           (order?.distances?.delivery_boy_to_pickup_km || 0) +
                           (order?.distances?.pickup_to_delivery_km || 0);
-                        console.log(
-                          "Total Distance:",
-                          order?.distances?.delivery_boy_to_pickup_km,
-                        );
+                        
                         charges = calculateDeliveryCharges(
                           order?.amount || 0,
                           totalDistance,
@@ -1155,9 +1189,11 @@ export default function DeliveryBoyPortal() {
                       return (
                         <Card
                           key={order.id}
+                          id={`order-${order.id}`} 
                           className="border-2 border-blue-500"
                         >
                           <CardContent className="p-4">
+
                             <h3 className="font-bold text-lg mb-2">
                               {order.website_ref || `Order #${order.id}`} (
                               {order.created_at})

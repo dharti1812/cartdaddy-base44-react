@@ -100,7 +100,7 @@ export default function LiveTrackingMapAvailableOrders({
       title: "Customer",
     });
 
-    console.log("🗺️ Map initialized");
+  
   }, []);
 
   // ---------- Live Tracking ----------
@@ -121,7 +121,7 @@ export default function LiveTrackingMapAvailableOrders({
         if (isNaN(lat) || isNaN(lng)) return;
 
         const currentPos = { lat, lng };
-        console.log("📍 Delivery Boy:", lat, lng);
+        
 
         // ---------- Animate delivery boy marker ----------
         if (!deliveryMarkerRef.current) {
@@ -144,7 +144,7 @@ export default function LiveTrackingMapAvailableOrders({
         // ---------- Check if pickup reached ----------
         const distToPickup = getDistance(lat, lng, Number(pickupLat), Number(pickupLng));
         if (distToPickup <= PICKUP_RADIUS && !reachedPickup) {
-          console.log("✅ Pickup reached");
+          
           setReachedPickup(true);
         }
 
@@ -178,7 +178,7 @@ export default function LiveTrackingMapAvailableOrders({
           );
         }
       } catch (err) {
-        console.error("Error fetching tracking:", err);
+        //console.error("Error fetching tracking:", err);
       }
     };
 
