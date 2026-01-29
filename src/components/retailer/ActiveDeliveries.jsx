@@ -1,5 +1,5 @@
 // (same imports as your file)
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 
 // New import for LocationTracker
@@ -36,6 +37,8 @@ import LocationTracker from "./LocationTracker";
 import { API_BASE_URL } from "@/config";
 import LiveTrackingMap from "../LiveTrackingMap";
 import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
+import toast from "react-hot-toast";
+import { OrderApi } from "../utils/orderApi";
 
 export default function ActiveDeliveries({
   orders,
@@ -65,6 +68,191 @@ export default function ActiveDeliveries({
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const [rejectPreview, setRejectPreview] = useState(null);
   const [zoomPhoto, setZoomPhoto] = useState(null);
+  const [showImeiDialog, setShowImeiDialog] = useState(false);
+  const [imeiStep, setImeiStep] = useState("imei"); // "imei" | "video"
+  const [imeiValue, setImeiValue] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [videoRecorded, setVideoRecorded] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [imeiOrder, setImeiOrder] = useState(null); // store item/order
+  const videoRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  const [lockedUploads, setLockedUploads] = useState({
+    imei: [],
+    video: [],
+  });
+
+  const openImeiReuploadDialog = (item) => {
+    setImeiOrder({
+      id: item.order_id ?? item.code,
+      item_id: item.id,
+      type: "imei",
+    });
+    console.log(item.code);
+    setImeiStep("imei");
+    setImeiValue("");
+    setVideoRecorded(false);
+    setShowImeiDialog(true);
+  };
+
+  const openVideoReuploadDialog = (item) => {
+    setImeiOrder({
+      id: item.order_id ?? item.code,
+      item_id: item.id,
+      type: "video",
+    });
+    setImeiStep("video");
+    setVideoRecorded(false);
+    setShowImeiDialog(true);
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: 1280,
+          height: 720,
+        },
+        audio: true,
+      });
+
+      // Save stream to stop it later
+      setCameraStream(stream);
+
+      // Show camera preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // Start recording
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm;codecs=vp8,opus",
+      });
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.start();
+
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      toast.error("Cannot access camera");
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop(); // stop recording only
+    }
+
+    // Stop all camera tracks
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null); // clear stream
+    }
+
+    setRecording(false);
+    setVideoRecorded(true);
+  };
+
+  const handleSaveImeiOnly = async () => {
+    const imeiRegex = /^[38]\d{14}$/;
+
+    if (!imeiOrder || !imeiRegex.test(imeiValue)) {
+      toast.error("IMEI must be 15 digits and start with 3 or 8");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("order_id", imeiOrder.id);
+      formData.append("imei", imeiValue);
+
+      const res = await OrderApi.storeImei(formData);
+
+      if (!res.success) {
+        toast.error(res.message || "Invalid IMEI");
+        return;
+      }
+
+      toast.success("IMEI saved successfully");
+      setLockedUploads((prev) => ({
+        ...prev,
+        imei: [...prev.imei, imeiOrder.id],
+      }));
+      setScannerActive(false);
+    } catch (err) {
+      toast.error("Failed to save IMEI");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmVideo = async () => {
+    if (!videoRef.current) return;
+
+    // Stop camera now
+    const stream = videoRef.current.srcObject;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    // Prepare video blob
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      const formData = new FormData();
+
+      formData.append("order_id", imeiOrder.id);
+      formData.append("video", blob, "order_video.webm");
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+      try {
+        const res = await OrderApi.storeVideo(formData, true);
+        console.log(res);
+        if (res.success) {
+          toast.success("Video uploaded successfully!");
+
+          // Stop camera completely
+          if (videoRef.current?.srcObject) {
+            videoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+            videoRef.current.srcObject = null;
+          }
+
+          setOrders((prev) =>
+            prev.map((item) =>
+              item.id === imeiOrder.id
+                ? {
+                    ...item,
+                    video_upload_count: (item.video_upload_count || 0) + 1,
+                  }
+                : item,
+            ),
+          );
+          setRecording(false);
+          setVideoRecorded(false);
+          setShowImeiDialog(false);
+        } else {
+          toast.error(res.message || "Failed to save video");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Something went wrong while saving video");
+      }
+    }
+  };
 
   const DELIVERY_TRACKING_LABELS = {
     accepted_db: "👤 Delivery Partner Onboarded",
@@ -647,78 +835,121 @@ export default function ActiveDeliveries({
                                 </div>
 
                                 {/* Verification Section */}
+
                                 <div className="space-y-2">
                                   {/* IMEI Status */}
-                                  <div className="flex items-center justify-between bg-white p-2 rounded border">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      IMEI Verification
-                                    </span>
+                                  <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-medium text-gray-700">
+                                        IMEI Verification
+                                      </p>
 
-                                    {item.imei_verified === 1 ? (
-                                      <Badge className="bg-green-600 text-white">
-                                        Verified
-                                      </Badge>
-                                    ) : item.imei_reject_count > 0 ? (
-                                      <div className="flex items-center gap-2">
-                                        <Badge className="bg-red-600 text-white">
+                                      {item.imei_verified === 1 ? (
+                                        <Badge className="bg-emerald-600 text-white">
+                                          Verified
+                                        </Badge>
+                                      ) : item.imei_upload_count >= 2 ? (
+                                        <Badge className="bg-blue-600 text-white">
+                                          Uploaded
+                                        </Badge>
+                                      ) : item.imei_reject_count > 0 ? (
+                                        <Badge className="bg-red-500 text-white">
                                           Rejected
                                         </Badge>
-                                        <Button
-                                          className="bg-blue-600 text-white hover:bg-blue-700 p-2"
-                                          size="sm"
-                                          onClick={() =>
-                                            setRejectPreview({
-                                              open: true,
-                                              type: "imei",
-                                              rejections: item.imei_rejections,
-                                            })
-                                          }
-                                        >
-                                          View Details
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <Badge className="bg-yellow-500 text-white">
-                                        Pending
-                                      </Badge>
-                                    )}
+                                      ) : (
+                                        <Badge className="bg-amber-500 text-white">
+                                          Pending
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {item.imei_reject_count > 0 &&
+                                      item.imei_verified !== 1 &&
+                                      item.imei_upload_count < 2 && (
+                                        <div className="flex items-center justify-between pt-2 border-t">
+                                          <button
+                                            className="text-sm text-gray-600 hover:text-gray-900 underline"
+                                            onClick={() =>
+                                              setRejectPreview({
+                                                open: true,
+                                                type: "imei",
+                                                rejections:
+                                                  item.imei_rejections,
+                                              })
+                                            }
+                                          >
+                                            View rejection reason
+                                          </button>
+
+                                          <span
+                                            onClick={() =>
+                                              openImeiReuploadDialog(item)
+                                            }
+                                            className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                                          >
+                                            Re-upload IMEI
+                                          </span>
+                                        </div>
+                                      )}
                                   </div>
 
                                   {/* Video Status */}
-                                  <div className="flex items-center justify-between bg-white p-2 rounded border">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      Packaging Video
-                                    </span>
+                                 
+                                  <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-sm font-medium text-gray-700">
+                                        Packaging Video
+                                      </span>
 
-                                    {item.video_verified === 1 ? (
-                                      <Badge className="bg-green-600 text-white">
-                                        Verified
-                                      </Badge>
-                                    ) : item.video_reject_count > 0 ? (
-                                      <div className="flex items-center gap-2">
-                                        <Badge className="bg-red-600 text-white">
+                                      {item.video_verified === 1 ? (
+                                        <Badge className="bg-emerald-600 text-white">
+                                          Verified
+                                        </Badge>
+                                      ) : item.video_upload_count >= 2 ? (
+                                        <Badge className="bg-blue-600 text-white">
+                                          Uploaded
+                                        </Badge>
+                                      ) : item.video_reject_count > 0 ? (
+                                        <Badge className="bg-red-500 text-white">
                                           Rejected
                                         </Badge>
-                                        <Button
-                                          className="bg-blue-600 text-white hover:bg-blue-700 p-2"
-                                          size="sm"
-                                          variant="link"
-                                          onClick={() =>
-                                            setRejectPreview({
-                                              open: true,
-                                              type: "video",
-                                              rejections: item.video_rejections,
-                                            })
-                                          }
-                                        >
-                                          View Details
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <Badge className="bg-yellow-500 text-white">
-                                        Pending
-                                      </Badge>
-                                    )}
+                                      ) : (
+                                        <Badge className="bg-amber-500 text-white">
+                                          Pending
+                                        </Badge>
+                                      )}
+                                    </div>
+
+                                    {/* Actions */}
+                                    {item.video_reject_count > 0 &&
+                                      item.video_verified !== 1 &&
+                                      item.video_upload_count < 2 && (
+                                        <div className="flex items-center justify-between pt-2 border-t">
+                                          <button
+                                            type="button"
+                                            className="text-sm text-gray-600 hover:text-gray-900 underline"
+                                            onClick={() =>
+                                              setRejectPreview({
+                                                open: true,
+                                                type: "video",
+                                                rejections:
+                                                  item.video_rejections,
+                                              })
+                                            }
+                                          >
+                                            View rejection reason
+                                          </button>
+
+                                          <span
+                                            onClick={() =>
+                                              openVideoReuploadDialog(item)
+                                            }
+                                            className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                                          >
+                                            Re-upload video
+                                          </span>
+                                        </div>
+                                      )}
                                   </div>
                                 </div>
                               </div>
@@ -1377,7 +1608,7 @@ export default function ActiveDeliveries({
               No rejection details available.
             </p>
           )}
-          {console.log(rejectPreview?.rejections)}
+
           {/* Rejection List */}
           <div className="space-y-4 mt-3 max-h-[65vh] overflow-y-auto">
             {rejectPreview?.rejections
@@ -1449,6 +1680,107 @@ export default function ActiveDeliveries({
             src={zoomPhoto}
             className="w-full h-auto max-h-[90vh] object-contain"
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {imeiStep === "imei"
+                ? "Scan / Enter IMEI"
+                : "Record Packaging Video"}
+            </DialogTitle>
+            <DialogDescription>
+              {imeiStep === "imei"
+                ? "Scan or manually enter the IMEI number"
+                : "Record a sealed-box packaging video"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* IMEI STEP */}
+          {imeiStep === "imei" && (
+            <div className="space-y-4 py-4">
+              <Label>IMEI Number</Label>
+              <Input
+                placeholder="Enter IMEI"
+                maxLength={15}
+                value={imeiValue}
+                onChange={(e) =>
+                  setImeiValue(e.target.value.replace(/\D/g, ""))
+                }
+              />
+            </div>
+          )}
+
+          {/* VIDEO STEP */}
+          {imeiStep === "video" && (
+            <div className="space-y-4 py-4">
+              <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleStartRecording}
+                  disabled={recording}
+                >
+                  Start
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleStopRecording}
+                  disabled={!recording}
+                >
+                  Stop
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setShowImeiDialog(false);
+                setImeiOrder(null);
+                setImeiValue("");
+                setImeiStep("imei");
+                setVideoRecorded(false);
+              }}
+            >
+              Cancel
+            </Button>
+
+            {imeiStep === "imei" ? (
+              <Button
+                className="flex-1"
+                disabled={imeiValue.length !== 15 || submitting}
+                onClick={() => handleSaveImeiOnly(imeiOrder)}
+              >
+                Save IMEI
+              </Button>
+            ) : (
+              <Button
+                className="flex-1 bg-emerald-600"
+                disabled={!videoRecorded}
+                onClick={() => handleConfirmVideo(imeiOrder)}
+              >
+                Confirm & Continue
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

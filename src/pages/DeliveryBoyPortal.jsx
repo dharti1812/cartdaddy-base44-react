@@ -341,12 +341,12 @@ export default function DeliveryBoyPortal() {
       );
 
       const data = await res.json();
-     
+
       if (data.success) {
-       toast.success(
-          `${rejectModal.type.toUpperCase()} rejected successfully ❌`
+        toast.success(
+          `${rejectModal.type.toUpperCase()} rejected successfully ❌`,
         );
-        setRejectModal({ open: false, orderDetailId: null,  type: null  });
+        setRejectModal({ open: false, orderDetailId: null, type: null });
         setRejectData({ reason: "", photo: null, video: null });
         loadData();
       } else {
@@ -1227,7 +1227,8 @@ export default function DeliveryBoyPortal() {
                                     )}
                                     {/* ❌ REJECTED */}
                                     {item.imei_verified === 0 &&
-                                      item.imei_reject_count > 0 && (
+                                      item.imei_reject_count > 0 &&
+                                      item.imei_reject_count == 1 && (
                                         <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
                                           ❌ Rejected
                                         </span>
@@ -1237,8 +1238,9 @@ export default function DeliveryBoyPortal() {
                                       "reached_to_seller" &&
                                       item.imei_number &&
                                       item.imei_verified !== 1 &&
-                                      (!item.imei_reject_count ||
-                                        item.imei_reject_count === 0) && (
+                                      item.imei_upload_count <= 2 &&
+                                      item.imei_reject_count <
+                                        item.imei_upload_count && (
                                         <>
                                           <button
                                             className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -1246,8 +1248,7 @@ export default function DeliveryBoyPortal() {
                                               setConfirmVerify({
                                                 open: true,
                                                 type: "imei",
-                                                orderDetailId:
-                                                  item.order_id, // ⚠️ use order_detail_id
+                                                orderDetailId: item.order_id,
                                               })
                                             }
                                           >
@@ -1260,8 +1261,7 @@ export default function DeliveryBoyPortal() {
                                               setRejectModal({
                                                 open: true,
                                                 type: "imei",
-                                                orderDetailId:
-                                                  item.order_id, // ⚠️ use order_detail_id
+                                                orderDetailId: item.order_id,
                                               })
                                             }
                                           >
@@ -1326,34 +1326,40 @@ export default function DeliveryBoyPortal() {
                                         {/* Video Verify Button */}
                                         {order.delivery_status ===
                                           "reached_to_seller" &&
-                                          item.video_verified !== 1 &&  item.video_reject_count === 0 && (
+                                          item.video_path &&
+                                          item.video_verified !== 1 &&
+                                          item.video_upload_count <= 2 &&
+                                          item.video_reject_count <
+                                            item.video_upload_count && (
                                             <>
-                                            <button
-                                              className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                              onClick={() =>
-                                                setConfirmVerify({
-                                                  open: true,
-                                                  type: "video",
-                                                  orderDetailId: item.order_id,
-                                                })
-                                              }
-                                            >
-                                              Verify
-                                            </button>
-                                             <button
-                                            className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                                            onClick={() =>
-                                              setRejectModal({
-                                                open: true,
-                                                type: "video",
-                                                orderDetailId:
-                                                  item.order_id, // ⚠️ use order_detail_id
-                                              })
-                                            }
-                                          >
-                                            Reject
-                                          </button>
-                                          </>
+                                              <button
+                                                className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                onClick={() =>
+                                                  setConfirmVerify({
+                                                    open: true,
+                                                    type: "video",
+                                                    orderDetailId:
+                                                      item.order_id,
+                                                  })
+                                                }
+                                              >
+                                                Verify
+                                              </button>
+
+                                              <button
+                                                className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                onClick={() =>
+                                                  setRejectModal({
+                                                    open: true,
+                                                    type: "video",
+                                                    orderDetailId:
+                                                      item.order_id,
+                                                  })
+                                                }
+                                              >
+                                                Reject
+                                              </button>
+                                            </>
                                           )}
 
                                         {item.video_verified === 1 && (
@@ -1363,11 +1369,12 @@ export default function DeliveryBoyPortal() {
                                         )}
 
                                         {item.video_verified === 0 &&
-                                        item.video_reject_count > 0 && (
-                                          <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
-                                            ❌ Rejected
-                                          </span>
-                                      )}
+                                          item.video_reject_count > 0 &&
+                                          item.video_upload_count != 2 && (
+                                            <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
+                                              ❌ Rejected
+                                            </span>
+                                          )}
                                       </>
                                     ) : (
                                       <span className="text-red-600 ml-2">
@@ -1737,9 +1744,8 @@ export default function DeliveryBoyPortal() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-red-600">
-  ❌ Reject {rejectModal.type?.toUpperCase()}
-</DialogTitle>
-
+              ❌ Reject {rejectModal.type?.toUpperCase()}
+            </DialogTitle>
           </DialogHeader>
 
           {/* Reason */}
