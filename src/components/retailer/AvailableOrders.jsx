@@ -87,7 +87,7 @@ export default function AvailableOrders({
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
-  // Start the camera and recording
+
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -99,16 +99,13 @@ export default function AvailableOrders({
         audio: true,
       });
 
-      // Save stream to stop it later
       setCameraStream(stream);
 
-      // Show camera preview
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
 
-      // Start recording
       const recorder = new MediaRecorder(stream, {
         mimeType: "video/webm;codecs=vp8,opus",
       });
@@ -128,13 +125,12 @@ export default function AvailableOrders({
 
   const handleStopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop(); // stop recording only
+      mediaRecorder.stop();
     }
 
-    // Stop all camera tracks
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
-      setCameraStream(null); // clear stream
+      setCameraStream(null);
     }
 
     setRecording(false);
@@ -144,14 +140,12 @@ export default function AvailableOrders({
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
 
-    // Stop camera now
     const stream = videoRef.current.srcObject;
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
 
-    // Prepare video blob
     if (recordedChunksRef.current.length > 0) {
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
       const formData = new FormData();
@@ -160,9 +154,8 @@ export default function AvailableOrders({
 
       try {
         const res = await OrderApi.storeVideo(formData, true);
-        console.log(res);
+
         if (res.success) {
-          // Notify delivery boy & accept order
           await OrderApi.acceptOrder({
             orderId: imeiOrder.code || imeiOrder.id,
             retailerId,
@@ -171,7 +164,6 @@ export default function AvailableOrders({
 
           toast.success("Video saved successfully! Notifying delivery boy");
 
-          // Stop camera completely
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
@@ -179,7 +171,6 @@ export default function AvailableOrders({
             videoRef.current.srcObject = null;
           }
 
-          // Reset states
           setRecording(false);
 
           setVideoRecorded(false);
@@ -207,11 +198,9 @@ export default function AvailableOrders({
     setShowImeiDialog(true);
 
     if (order.imei_number && order.imei_number.trim() !== "") {
-      // 🔥 IMEI already exists → go directly to video
       setImeiValue(order.imei_number);
       setImeiStep("video");
     } else {
-      // ❌ No IMEI → start from IMEI step
       setImeiValue("");
       setImeiStep("imei");
     }
@@ -242,7 +231,6 @@ export default function AvailableOrders({
 
       setScannerActive(false);
 
-      // 🔥 move to video step
       setImeiStep("video");
     } catch (err) {
       toast.error("Failed to save IMEI");
@@ -358,7 +346,6 @@ export default function AvailableOrders({
     const position =
       acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
-    // Get device info for tracking
     const deviceId = localStorage.getItem("cart_daddy_device_id") || "unknown";
     const deviceName = /mobile/i.test(navigator.userAgent)
       ? "Mobile Device"
@@ -377,7 +364,6 @@ export default function AvailableOrders({
 
     const updatedAcceptances = [...acceptedRetailers, newAcceptance];
 
-    //If this is the first acceptance, make them the active retailer
     const updateData = {
       accepted_retailers: updatedAcceptances,
       status: position === 1 ? "accepted_primary" : "accepted_backup",
@@ -392,7 +378,7 @@ export default function AvailableOrders({
               assigned_at: new Date().toISOString(),
             }
           : order.active_retailer_info,
-      // Mark as pending delivery boy assignment
+
       awaiting_delivery_boy: position === 1 ? true : false,
       delivery_boy_notification_sent: position === 1 ? true : false,
       delivery_boy_notified_at:
@@ -413,7 +399,6 @@ export default function AvailableOrders({
       setScanAttempted(false);
       setImeiValue("");
       setImeiOrder(order);
-      console.log("💡 showImeiDialog before:", showImeiDialog);
       setShowImeiDialog(true);
       setAwaitingPaymentConfirmation(false);
       setPaymentConfirmedOrder(null);
@@ -520,7 +505,7 @@ export default function AvailableOrders({
         await import("../utils/customerNotifications");
       await notifyPaymentLink(pendingOrder, paylinkUrl);
 
-      fetchOrders(); // Refresh orders after paylink submission
+      fetchOrders();
 
       setPaylinkUrl("");
 
@@ -550,15 +535,13 @@ export default function AvailableOrders({
         paid_at: new Date().toISOString(),
       });
 
-      console.log("✅ Payment confirmed for order", order.id, result);
-
       toast.success("Payment confirmed. Please add IMEI.");
 
       setScannerActive(false);
       setScanAttempted(false);
       setImeiValue("");
       setImeiOrder(order);
-      console.log("💡 showImeiDialog before:", showImeiDialog);
+
       setShowImeiDialog(true);
       setAwaitingPaymentConfirmation(false);
       setPaymentConfirmedOrder(null);
@@ -683,7 +666,6 @@ export default function AvailableOrders({
 
     const isUnpaid = order.payment_status === "unpaid";
 
-    // Show only orders that I can act on
     return (
       (myResponseStatus === "pending" && isUnpaid) ||
       (myResponseStatus === "awaiting_payment_link" && isUnpaid) ||
@@ -764,7 +746,7 @@ export default function AvailableOrders({
             order.max_acceptances || config?.max_retailer_acceptances || 3;
           const isCOD = order.is_cod || order.payment_method === "cod";
           const isQueued = order.status === "queued" || order.is_queued;
-          // Base product amount
+
           const productCost = amount;
 
           const deliveryCharge = charges?.baseCharge || 0;
@@ -790,7 +772,6 @@ export default function AvailableOrders({
             }
           }
 
-          // Settlement calculation
           const settlementAmount =
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
           const roundedSettlementAmount = Math.round(settlementAmount);

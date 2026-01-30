@@ -24,6 +24,7 @@ import AvailableOrders from "../components/retailer/AvailableOrders";
 import ActiveDeliveries from "../components/retailer/ActiveDeliveries";
 import TrackOrderMap from "../components/TrackOrderMap";
 import CompletedOrders from "../components/retailer/CompletedOrders";
+import RejectedOrders from "../components/retailer/RejectedOrders";
 import RetailerStats from "../components/retailer/RetailerStats";
 import OrderNotificationSound from "../components/retailer/OrderNotificationSound";
 import DeviceSessionManager from "../components/retailer/DeviceSessionManager";
@@ -85,6 +86,7 @@ export default function SellerPortal() {
   const [selectedOrderForHandoff, setSelectedOrderForHandoff] = useState(null);
   const [myAcceptedOrders, setMyAcceptedOrders] = useState([]);
   const [completedOrders, setMyCompletedOrders] = useState([]);
+  const [rejectedOrders, setMyRejectedOrders] = useState([]);
   const [stats, setStats] = useState(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [deliverySettings, setDeliverySettings] = useState(null);
@@ -133,7 +135,7 @@ export default function SellerPortal() {
   useEffect(() => {
     if (!highlightOrderId) return;
 
-    const timer = setTimeout(() => setHighlightOrderId(null), 15000); // removes ring after 5s
+    const timer = setTimeout(() => setHighlightOrderId(null), 15000);
     return () => clearTimeout(timer);
   }, [highlightOrderId]);
 
@@ -157,13 +159,11 @@ export default function SellerPortal() {
 
       const sellerProfile = await res.json();
 
-      console.log("🚀 Loaded seller profile:", sellerProfile);
-
       if (!sellerProfile.id) {
         window.location.href = createPageUrl("RetailerOnboarding");
         return;
       }
-      //Test comment
+
       setSellerProfile(sellerProfile);
 
       const allOrders = await OrderApi.PendingAcceptanceOrders();
@@ -180,7 +180,6 @@ export default function SellerPortal() {
       );
 
       const settingsData = await resSettings.json();
-      console.log("Delivery Settings API Response:", settingsData);
 
       if (Array.isArray(settingsData) && settingsData.length > 0) {
         setDeliverySettings(settingsData[0]);
@@ -195,9 +194,11 @@ export default function SellerPortal() {
       const completedOrders = await OrderApi.CompletedOrders();
       setMyCompletedOrders(completedOrders.data || []);
 
+      const rejectedOrders = await OrderApi.RejectedOrders();
+      setMyRejectedOrders(rejectedOrders.data || []);
+
       try {
         const statsData = await OrderApi.getSellerStats();
-        console.log("Stats:", statsData);
 
         setStats(statsData);
         setLoading(false);
@@ -249,7 +250,6 @@ export default function SellerPortal() {
               latestUnread.data?.type === "ROUTE_DEVIATION");
 
           if (isEmergency && data.unread_count > prevUnreadCountRef.current) {
-            console.log("🚨 NEW emergency alert");
 
             const audio = emergencyAudioRef.current;
             if (audio) {
@@ -388,7 +388,7 @@ export default function SellerPortal() {
       </div>
     );
   }
-  // Test comment
+
   if (!locationEnabled) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
@@ -465,8 +465,6 @@ export default function SellerPortal() {
     );
   });
 
-  console.log("Available Orders:", availableOrders);
-
   const myActiveOrders = myAcceptedOrders;
 
   const activeOrders = myAcceptedOrders.filter((o) =>
@@ -477,25 +475,12 @@ export default function SellerPortal() {
     ),
   );
 
-  // const myCompletedOrders = orders.filter((o) =>
-  //   o.accepted_retailers?.some(
-  //     (ar) =>
-  //       ar.retailer_id === sellerProfile?.id &&
-  //       ["delivered", "cancelled"].includes(ar.status)
-  //   )
-  // );
-
   return (
     <div
       className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
         mobileView ? "max-w-md mx-auto" : ""
       }`}
     >
-      {/* <DeviceSessionManager
-        retailerId={sellerProfile?.id}
-        onSessionConflict={() => setSessionConflict(true)}
-      /> */}
-
       <audio
         ref={notificationAudioRef}
         src="/notification.mp3"
@@ -525,9 +510,7 @@ export default function SellerPortal() {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Profile Picture / Settings Trigger */}
               <button
-                // 💡 CHANGE: Use state setter instead of window.location.href
                 onClick={() => setShowProfileModal(true)}
                 className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
                 title="View Profile Settings"
@@ -557,7 +540,6 @@ export default function SellerPortal() {
                   : ""}
               </Badge>
               <div className="relative">
-                {/* Bell Icon */}
                 <div
                   className="cursor-pointer"
                   onClick={() => {
@@ -597,10 +579,9 @@ export default function SellerPortal() {
                             markNotificationAsRead(n.id);
 
                             if (n.data?.order_id) {
-                              setActiveTab("active"); // Switch tab without reload
+                              setActiveTab("active");
                               setHighlightOrderId(n.data.order_id);
 
-                              // Smooth scroll to the order after it renders
                               setTimeout(() => {
                                 const el = document.getElementById(
                                   `order-${n.data.order_id}`,
@@ -706,7 +687,7 @@ export default function SellerPortal() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <Card className="border-none shadow-lg">
             <CardHeader className="border-b">
-              <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6 h-auto bg-white border-2 border-[#F4B321]">
+              <TabsList className="grid w-full grid-cols-5 mb-4 sm:mb-6 h-auto bg-white border-2 border-[#F4B321]">
                 <TabsTrigger
                   value="available"
                   className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
@@ -741,6 +722,19 @@ export default function SellerPortal() {
                   {completedOrders.length > 0 && (
                     <Badge className="ml-1 sm:ml-2 bg-green-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                       {completedOrders.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="rejected"
+                  className="relative text-[10px] sm:text-sm py-2 data-[state=active]:bg-[#F4B321] data-[state=active]:text-gray-900 data-[state=active]:font-bold"
+                >
+                  <span className="hidden sm:inline">Rejected Orders</span>
+                  <span className="sm:hidden">Rejected</span>
+
+                  {rejectedOrders.length > 0 && (
+                    <Badge className="ml-1 sm:ml-2 bg-green-600 text-white border-0 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs font-bold">
+                      {rejectedOrders.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -797,6 +791,10 @@ export default function SellerPortal() {
                 <CompletedOrders orders={completedOrders} />
               </TabsContent>
 
+              <TabsContent value="rejected">
+                <RejectedOrders orders={rejectedOrders} />
+              </TabsContent>
+
               <TabsContent value="delivery_boys" className="mt-0">
                 <ManageDeliveryBoys retailerId={sellerProfile?.id} />
               </TabsContent>
@@ -829,7 +827,6 @@ export default function SellerPortal() {
         />
       )}
 
-      {/* ⬇️ NEW PROFILE SETTINGS MODAL ⬇️ */}
       <Dialog open={showProfileModal} onOpenChange={setShowProfileModal}>
         <DialogContent className="sm:max-w-[800px] p-0">
           <DialogHeader className="p-6 pb-0">
@@ -843,14 +840,13 @@ export default function SellerPortal() {
             <RetailerProfileSettings
               retailerProfile={sellerProfile}
               onUpdateProfile={() => {
-                loadData(); // Reload seller profile and stats
-                setShowProfileModal(false); // Close modal on successful update
+                loadData();
+                setShowProfileModal(false);
               }}
             />
           </div>
         </DialogContent>
       </Dialog>
-      {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
   );
 }

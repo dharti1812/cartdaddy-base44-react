@@ -25,7 +25,7 @@ export const OrderApi = {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     if (!res.ok) throw new Error("Failed to fetch retailer orders");
@@ -104,17 +104,34 @@ export const OrderApi = {
     return res.json();
   },
 
+  RejectedOrders: async () => {
+    const token = sessionStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/rejected`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch rejected orders");
+    return res.json();
+  },
+
   SubmitPayLink: async (payload) => {
     const token = sessionStorage.getItem("token");
 
-    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/submit-paylink`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE_URL}/api/retailer/orders/submit-paylink`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     const data = await res.json();
 
@@ -132,14 +149,17 @@ export const OrderApi = {
   updateRetailerStatus: async (orderCode, payload) => {
     const token = sessionStorage.getItem("token");
 
-    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/${orderCode}/updateRetailerStatus`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json", 
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE_URL}/api/retailer/orders/${orderCode}/updateRetailerStatus`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    }); 
+    );
     if (!res.ok) throw new Error("Failed to update retailer status");
     return res.json();
   },
@@ -147,67 +167,64 @@ export const OrderApi = {
   updateOrder: async (orderCode, payload) => {
     const token = sessionStorage.getItem("token");
 
-    const res = await fetch(`${API_BASE_URL}/api/retailer/orders/${orderCode}/updateOrder`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const res = await fetch(
+      `${API_BASE_URL}/api/retailer/orders/${orderCode}/updateOrder`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     if (!res.ok) throw new Error("Failed to update order");
     return res.json();
   },
 
- storeImei: async (formData) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/store-imei`, {
-      method: "POST",
-      body: formData, // send FormData directly
-      // Do NOT set Content-Type manually! fetch will set correct multipart boundary automatically
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+  storeImei: async (formData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/store-imei`, {
+        method: "POST",
+        body: formData, // send FormData directly
+        // Do NOT set Content-Type manually! fetch will set correct multipart boundary automatically
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.message || "IMEI validation failed");
+      if (!response.ok) {
+        throw new Error(data.message || "IMEI validation failed");
+      }
+
+      return data;
+    } catch (err) {
+      throw err;
     }
+  },
 
-    return data;
+  storeVideo: async (formData) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/store-video`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-  } catch (err) {
-    throw err;
-  }
-},
+      const data = await response.json();
 
- storeVideo: async (formData) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/store-video`, {
-      method: "POST",
-      body: formData, 
-      headers: {
-        "Accept": "application/json",
-      },
-    });
+      if (!response.ok) {
+        throw new Error(data.message || "Video validation failed");
+      }
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Video validation failed");
+      return data;
+    } catch (err) {
+      throw err;
     }
-
-    return data;
-
-  } catch (err) {
-    throw err;
-  }
-},
-
-
-
-
+  },
 };

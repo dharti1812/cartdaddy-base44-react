@@ -32,7 +32,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-// New import for LocationTracker
 import LocationTracker from "./LocationTracker";
 import { API_BASE_URL } from "@/config";
 import LiveTrackingMap from "../LiveTrackingMap";
@@ -76,7 +75,7 @@ export default function ActiveDeliveries({
   const [videoRecorded, setVideoRecorded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
-  const [imeiOrder, setImeiOrder] = useState(null); // store item/order
+  const [imeiOrder, setImeiOrder] = useState(null);
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const [lockedUploads, setLockedUploads] = useState({
@@ -90,7 +89,6 @@ export default function ActiveDeliveries({
       item_id: item.id,
       type: "imei",
     });
-    console.log(item.code);
     setImeiStep("imei");
     setImeiValue("");
     setVideoRecorded(false);
@@ -119,16 +117,13 @@ export default function ActiveDeliveries({
         audio: true,
       });
 
-      // Save stream to stop it later
       setCameraStream(stream);
 
-      // Show camera preview
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
 
-      // Start recording
       const recorder = new MediaRecorder(stream, {
         mimeType: "video/webm;codecs=vp8,opus",
       });
@@ -148,13 +143,12 @@ export default function ActiveDeliveries({
 
   const handleStopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop(); // stop recording only
+      mediaRecorder.stop();
     }
 
-    // Stop all camera tracks
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
-      setCameraStream(null); // clear stream
+      setCameraStream(null);
     }
 
     setRecording(false);
@@ -185,11 +179,7 @@ export default function ActiveDeliveries({
       }
 
       toast.success("IMEI saved successfully");
-      setLockedUploads((prev) => ({
-        ...prev,
-        imei: [...prev.imei, imeiOrder.id],
-      }));
-      setScannerActive(false);
+      setShowImeiDialog(false);
     } catch (err) {
       toast.error("Failed to save IMEI");
     } finally {
@@ -200,30 +190,24 @@ export default function ActiveDeliveries({
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
 
-    // Stop camera now
     const stream = videoRef.current.srcObject;
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
 
-    // Prepare video blob
     if (recordedChunksRef.current.length > 0) {
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
       const formData = new FormData();
 
       formData.append("order_id", imeiOrder.id);
       formData.append("video", blob, "order_video.webm");
-      for (let pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
+
       try {
         const res = await OrderApi.storeVideo(formData, true);
-        console.log(res);
         if (res.success) {
           toast.success("Video uploaded successfully!");
 
-          // Stop camera completely
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
@@ -231,16 +215,6 @@ export default function ActiveDeliveries({
             videoRef.current.srcObject = null;
           }
 
-          setOrders((prev) =>
-            prev.map((item) =>
-              item.id === imeiOrder.id
-                ? {
-                    ...item,
-                    video_upload_count: (item.video_upload_count || 0) + 1,
-                  }
-                : item,
-            ),
-          );
           setRecording(false);
           setVideoRecorded(false);
           setShowImeiDialog(false);
@@ -282,8 +256,6 @@ export default function ActiveDeliveries({
   const DELIVERY_TRACKING_STEPS_ORDERED = [
     "accepted_db",
     "reached_to_seller",
-
-    // Verification (derived, UI-only)
     "authenticity_check",
     "verification_completed",
     "picked_up",
@@ -364,15 +336,11 @@ export default function ActiveDeliveries({
     return "upcoming";
   };
 
-  // Get current delivery boy if logged in
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
     (db) => db.device_id === currentDeviceId && db.is_active,
   );
 
-  /* -------------------------
-     Paylink timer logic (unchanged)
-     ------------------------- */
   useEffect(() => {
     orders.forEach((order) => {
       if (
@@ -398,7 +366,6 @@ export default function ActiveDeliveries({
     });
   }, [orders, retailerId, config]);
 
-  // Resend OTP countdown effect — MUST be at component level
   useEffect(() => {
     if (resendTimer <= 0) return;
     const timer = setInterval(() => {
@@ -429,7 +396,6 @@ export default function ActiveDeliveries({
       payment_status: "paylink_sent",
     });
 
-    // Send payment link notification
     const { notifyPaymentLink } =
       await import("../utils/customerNotifications");
     await notifyPaymentLink(selectedOrder, paylinkUrl);
@@ -460,7 +426,6 @@ export default function ActiveDeliveries({
 
     await Order.update(orderId, { status: newStatus });
 
-    // Send customer notification
     if (deliveryBoy) {
       const { notifyCustomerOnStatusChange } =
         await import("../utils/customerNotifications");
@@ -476,8 +441,6 @@ export default function ActiveDeliveries({
     onUpdate();
   };
 
-  // ===== RESEND OTP (fixed)
-  // Always uses currently selectedOrder (set when opening verify dialog)
   const handleResendOtp = async () => {
     if (!selectedOrder) {
       alert("No order selected to resend OTP");
@@ -501,13 +464,12 @@ export default function ActiveDeliveries({
 
       const data = await response.json();
       if (response.ok) {
-        // backend may return the otp for debug/retailer display; update local state
         if (data.otp) {
           setOtp(data.otp);
         }
-        // mark status pending
+
         setOtpStatus((prev) => ({ ...prev, [orderId]: "pending" }));
-        // start countdown
+
         setResendTimer(30);
       } else {
         alert(data.message || "Failed to resend OTP");
@@ -550,12 +512,10 @@ export default function ActiveDeliveries({
       applied_at: new Date().toISOString(),
     });
 
-    // Update this retailer's acceptance status
     const updatedAcceptances = order.accepted_retailers.map((ar) =>
       ar.retailer_id === retailerId ? { ...ar, status: "cancelled" } : ar,
     );
 
-    // Find next retailer in line
     const nextRetailer = updatedAcceptances.find(
       (ar) => ar.status === "active" && ar.retailer_id !== retailerId,
     );
@@ -576,7 +536,6 @@ export default function ActiveDeliveries({
     window.open(url, "_blank");
   };
 
-  // Helper function for status badges
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "pending":
@@ -596,7 +555,6 @@ export default function ActiveDeliveries({
     }
   };
 
-  // ===== Generate OTP (retailer trigger) - unchanged
   const handleGenerateOtp = async (order) => {
     const token = sessionStorage.getItem("token");
     const orderId = order.id;
@@ -622,7 +580,7 @@ export default function ActiveDeliveries({
       if (response.ok) {
         setOtp(data.otp);
         setOtpStatus((prev) => ({ ...prev, [order.id]: "pending" }));
-        // start resend timer so retailer cannot spam immediately
+
         setResendTimer(30);
       } else {
         alert(data.message || "Failed to generate OTP");
@@ -637,7 +595,6 @@ export default function ActiveDeliveries({
     }
   };
 
-  // ===== Verify OTP (fixed: removed stray useEffect)
   const handleVerifyOtp = async (orderId, enteredOtp) => {
     const token = sessionStorage.getItem("token");
     if (!orderId || !enteredOtp) return;
@@ -661,12 +618,10 @@ export default function ActiveDeliveries({
         alert("✅ OTP verified! Pickup confirmed.");
         setOtpStatus((prev) => ({ ...prev, [orderId]: "verified" }));
         setShowVerifyOtpDialog(false);
-        onUpdate(); // Refresh orders
+        onUpdate();
       } else {
         alert(data.message || "❌ Invalid OTP");
         setOtpStatus((prev) => ({ ...prev, [orderId]: "pending" }));
-        // keep dialog open so user can retry if you prefer:
-        // setShowVerifyOtpDialog(false);
       }
     } catch (err) {
       console.error(err);
@@ -675,8 +630,6 @@ export default function ActiveDeliveries({
       setVerifyingOtp(false);
     }
   };
-
-  console.log("🧾 Orders Data:", orders);
 
   return (
     <>
@@ -709,15 +662,6 @@ export default function ActiveDeliveries({
             const nextStep =
               DELIVERY_TRACKING_STEPS_ORDERED[currentIndex + 1] || "COMPLETED";
 
-            console.log("🛵 Delivery Debug:", {
-              orderId: order.id,
-              delivery_status: order.delivery_status,
-              currentIndex,
-              currentStep,
-              nextStep,
-              status_history: order.status_history,
-            });
-
             const myAcceptance = order.accepted_retailers?.find(
               (ar) => ar.retailer_id === retailerId,
             );
@@ -738,14 +682,11 @@ export default function ActiveDeliveries({
               );
             }
 
-            // Base product amount
             const productCost = order.amount;
 
-            // Delivery & fuel
             const deliveryCharge = charges?.baseCharge || 0;
             const fuelCost = charges?.fuelCost || 0;
 
-            // Platform commission (percent OR fixed)
             const commissionItem = order.items?.find(
               (item) =>
                 item.commission_type === "percent" ||
@@ -766,7 +707,6 @@ export default function ActiveDeliveries({
               }
             }
 
-            // Settlement calculation
             const settlementAmount =
               productCost - platformFeeAmount - deliveryCharge - fuelCost;
             const roundedSettlementAmount = Math.round(settlementAmount);
@@ -894,7 +834,7 @@ export default function ActiveDeliveries({
                                   </div>
 
                                   {/* Video Status */}
-                                 
+
                                   <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
                                     <div className="flex items-center justify-between">
                                       <span className="text-sm font-medium text-gray-700">
