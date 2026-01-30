@@ -1,19 +1,46 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Package,
   MapPin,
-  IndianRupee,
   CheckCircle,
-  XCircle,
   Clock,
   ShoppingBag,
 } from "lucide-react";
 import { format } from "date-fns";
 
-export default function CompletedOrders({ orders }) {
-  const [zoomImage, setZoomImage] = React.useState(null);
+export default function CompletedOrders({
+  orders,
+  scrollToOrderId,
+  clearScrollTarget,
+}) {
+  const containerRef = useRef(null);
+  const [zoomImage, setZoomImage] = useState(null);
+
+  // ✅ AUTO SCROLL LOGIC
+  useEffect(() => {
+    if (!scrollToOrderId) return;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`order-${scrollToOrderId}`);
+      if (!el) return;
+
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      // highlight
+      el.classList.add("ring-2", "ring-yellow-400");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-yellow-400");
+      }, 2000);
+
+      clearScrollTarget?.();
+    });
+  }, [scrollToOrderId, clearScrollTarget]);
+
   if (!orders || orders.length === 0) {
     return (
       <Card className="border-none shadow-md">
@@ -31,10 +58,12 @@ export default function CompletedOrders({ orders }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div
+      ref={containerRef}
+      className="space-y-5 max-h-[70vh] overflow-y-auto pr-2"
+    >
       {orders.map((order) => {
         const detail = order.order_details?.[0];
-
         const address = order.shipping_address
           ? JSON.parse(order.shipping_address)
           : {};
@@ -43,6 +72,7 @@ export default function CompletedOrders({ orders }) {
         return (
           <Card
             key={order.id}
+            id={`order-${order.id}`} // ✅ REQUIRED FOR AUTO SCROLL
             className="border border-green-300 bg-green-50 shadow-sm hover:shadow-md transition"
           >
             <CardContent className="p-4 space-y-4">
@@ -84,44 +114,20 @@ export default function CompletedOrders({ orders }) {
                         </span>
                       </div>
                     )}
-                    {detail?.delivery_verified_photo && (
+
+                    {detail?.delivery_verified_photo_url && (
                       <div className="flex items-center gap-3 mt-2">
-                        {detail.delivery_verified_photo_url && (
-                          <img
-                            src={detail.delivery_verified_photo_url}
-                            alt="Delivery Verified"
-                            className="w-12 h-12 rounded-full object-cover border cursor-pointer hover:scale-105 transition"
-                            onClick={() =>
-                              setZoomImage(detail.delivery_verified_photo_url)
-                            }
-                          />
-                        )}
-
-                        <div className="flex items-center gap-2 text-sm text-gray-800">
-                          <span className="font-medium">Delivered To:</span>
-                          <span className="text-gray-600">
-                            {detail.delivery_verified_user_info}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {zoomImage && (
-                      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                       
-                        <div className="relative">
-                        
-                          <button
-                            onClick={() => setZoomImage(null)}
-                            className="absolute -top-3 -right-3 bg-white text-black rounded-full w-8 h-8 flex items-center justify-center shadow-md hover:bg-gray-200 transition"
-                          >
-                            ✕
-                          </button>
-
-                          <img
-                            src={zoomImage}
-                            alt="Zoomed"
-                            className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg"
-                          />
+                        <img
+                          src={detail.delivery_verified_photo_url}
+                          alt="Delivery Verified"
+                          className="w-12 h-12 rounded-full object-cover border cursor-pointer hover:scale-105 transition"
+                          onClick={() =>
+                            setZoomImage(detail.delivery_verified_photo_url)
+                          }
+                        />
+                        <div className="text-sm text-gray-800">
+                          <span className="font-medium">Delivered To:</span>{" "}
+                          {detail.delivery_verified_user_info}
                         </div>
                       </div>
                     )}
@@ -144,21 +150,15 @@ export default function CompletedOrders({ orders }) {
                       key={index}
                       className="flex justify-between items-start"
                     >
-                      <div className="space-y-0.5">
-                        <p className="font-medium text-gray-900">
-                          {item.product?.name ||
-                            item.name ||
-                            item.product_name ||
-                            "Product"}
-                        </p>
-
-                        {/* <p className="text-xs text-gray-500">
-                Qty: {item.quantity} × ₹{item.price}
-              </p> */}
-                      </div>
+                      <p className="font-medium text-gray-900">
+                        {item.product?.name ||
+                          item.name ||
+                          item.product_name ||
+                          "Product"}
+                      </p>
 
                       <p className="font-semibold text-gray-900">
-                        {item.quantity} x ₹
+                        {item.quantity} × ₹
                         {(item.quantity * item.price).toFixed(0)}
                       </p>
                     </div>
@@ -169,6 +169,25 @@ export default function CompletedOrders({ orders }) {
           </Card>
         );
       })}
+
+      {/* IMAGE ZOOM MODAL */}
+      {zoomImage && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="relative">
+            <button
+              onClick={() => setZoomImage(null)}
+              className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow hover:bg-gray-200"
+            >
+              ✕
+            </button>
+            <img
+              src={zoomImage}
+              alt="Zoomed"
+              className="max-w-[90vw] max-h-[90vh] rounded-lg shadow-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

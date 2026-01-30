@@ -43,6 +43,7 @@ import RetailerProfileSettings from "../components/retailer/RetailerProfileSetti
 function useLocationChecker() {
   const [locationEnabled, setLocationEnabled] = useState(true);
 
+
   useEffect(() => {
     let watchId;
 
@@ -98,6 +99,21 @@ export default function SellerPortal() {
   const emergencyAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
+  const notificationRef = useRef(null);
+  const [scrollToOrderId, setScrollToOrderId] = useState(null);
+
+  const getOrderTab = (orderId) => {
+    if (orders.some(o => o.id === orderId)) return "available";
+
+    if (myAcceptedOrders.some(o => o.id === orderId)) return "active";
+
+    if (completedOrders.some(o => o.id === orderId)) return "completed";
+
+    if (rejectedOrders.some(o => o.id === orderId)) return "rejected";
+
+    return null;
+  };
+
   useEffect(() => {
     const unlockAudio = () => {
       const audios = [notificationAudioRef.current, emergencyAudioRef.current];
@@ -113,7 +129,7 @@ export default function SellerPortal() {
             audio.currentTime = 0;
             audio.muted = false;
           })
-          .catch(() => {});
+          .catch(() => { });
       });
     };
 
@@ -127,6 +143,25 @@ export default function SellerPortal() {
   }, []);
 
   useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  useEffect(() => {
     if (unreadCount === 0) {
       stopEmergencySound();
     }
@@ -138,6 +173,9 @@ export default function SellerPortal() {
     const timer = setTimeout(() => setHighlightOrderId(null), 15000);
     return () => clearTimeout(timer);
   }, [highlightOrderId]);
+
+
+
 
   const loadData = async () => {
     try {
@@ -262,7 +300,7 @@ export default function SellerPortal() {
                 .catch((e) => console.warn("Emergency audio blocked", e));
             }
           } else if (data.unread_count > prevUnreadCountRef.current) {
-            notificationAudioRef.current?.play().catch(() => {});
+            notificationAudioRef.current?.play().catch(() => { });
           }
         }
 
@@ -477,9 +515,8 @@ export default function SellerPortal() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
-        mobileView ? "max-w-md mx-auto" : ""
-      }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
+        }`}
     >
       <audio
         ref={notificationAudioRef}
@@ -518,8 +555,7 @@ export default function SellerPortal() {
                 <img
                   src={
                     sellerProfile?.image_url ||
-                    `https://ui-avatars.com/api/?name=${
-                      sellerProfile?.name || "Seller"
+                    `https://ui-avatars.com/api/?name=${sellerProfile?.name || "Seller"
                     }&background=FFEB3B&color=000&bold=true`
                   }
                   alt={`${sellerProfile?.name} profile`}
@@ -527,16 +563,15 @@ export default function SellerPortal() {
                 />
               </button>
               <Badge
-                className={`${
-                  sellerProfile?.user?.availability_status === "online"
-                    ? "bg-[#FFEB3B] text-gray-900 font-bold"
-                    : "bg-gray-500 text-white font-bold"
-                } border-0 text-base sm:text-lg px-3 py-1.5`}
+                className={`${sellerProfile?.user?.availability_status === "online"
+                  ? "bg-[#FFEB3B] text-gray-900 font-bold"
+                  : "bg-gray-500 text-white font-bold"
+                  } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status
                   ? sellerProfile.availability_status.charAt(0).toUpperCase() +
-                    sellerProfile.availability_status.slice(1).toLowerCase()
+                  sellerProfile.availability_status.slice(1).toLowerCase()
                   : ""}
               </Badge>
               <div className="relative">
@@ -561,53 +596,74 @@ export default function SellerPortal() {
                 </div>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-2 z-50">
-                    {notifications.length === 0 ? (
-                      <p className="text-gray-500 text-sm text-center py-2">
-                        No notifications
+                  <div ref={notificationRef} className="absolute right-0 mt-3 w-80 bg-white shadow-2xl rounded-xl z-50 border border-gray-200">
+
+                    {/* Header */}
+                    <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                      <p className="text-sm font-semibold text-gray-800">
+                        Notifications
                       </p>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          className={`p-3 border-b last:border-0 text-sm cursor-pointer rounded-md transition-colors duration-200 ${
-                            n.read_at
-                              ? "bg-gray-800 text-white"
-                              : "bg-yellow-50 text-gray-900"
-                          } hover:bg-gray-700 hover:text-white`}
-                          onClick={() => {
-                            markNotificationAsRead(n.id);
+                      <p className="text-xs text-gray-500">
+                        {notifications.length} total
+                      </p>
+                    </div>
 
-                            if (n.data?.order_id) {
-                              setActiveTab("active");
-                              setHighlightOrderId(n.data.order_id);
+                    {/* Scrollable Body */}
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-6">
+                          No notifications
+                        </p>
+                      ) : (
+                        notifications.map((n) => (
+                          <div
+                            key={n.id}
+                            className={`px-4 py-3 text-sm cursor-pointer transition
+                            ${n.read_at
+                                ? "bg-white hover:bg-gray-50"
+                                : "bg-yellow-50 hover:bg-yellow-100"
+                              }
+                              border-b last:border-0
+                            `}
+                            onClick={() => {
+                              markNotificationAsRead(n.id);
 
-                              setTimeout(() => {
-                                const el = document.getElementById(
-                                  `order-${n.data.order_id}`,
-                                );
-                                el?.scrollIntoView({
-                                  behavior: "smooth",
-                                  block: "center",
-                                });
-                              }, 200);
-                            }
-                          }}
-                        >
-                          <p className="font-semibold">
-                            {n.data?.order_id
-                              ? `Order #${n.data.order_id}`
-                              : "Notification"}
-                          </p>
-                          <p className="text-sm mt-1">{n.data?.message}</p>
-                          {n.data?.amount && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Amount: ₹{n.data.amount}
+                              if (n.data?.order_id) {
+                                const tab = getOrderTab(n.data.order_id);
+                                if (tab) {
+                                  setActiveTab(tab);
+                                  setScrollToOrderId(n.data.order_id);
+                                }
+                                setShowDropdown(false);
+                              }
+                            }}
+
+                          >
+                            <p className="font-medium text-black leading-tight">
+                              {n.data?.order_id
+                                ? `Order #${n.data.order_id}`
+                                : "Notification"}
                             </p>
-                          )}
-                        </div>
-                      ))
-                    )}
+                            <p className="text-sm text-gray-600 mt-1">{n.data?.message}</p>
+                            {n.data?.amount && (
+                              <p className="text-xs text-black mt-1">
+                                Amount: ₹{n.data.amount}
+                              </p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Footer (optional) */}
+                    <div className="px-4 py-2 border-t bg-gray-50 text-center rounded-b-xl">
+                      <button
+                        onClick={markAllAsRead}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Mark all as read
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -754,6 +810,8 @@ export default function SellerPortal() {
                 <AvailableOrders
                   orders={availableOrders}
                   retailerId={sellerProfile?.id}
+                  scrollToOrderId={scrollToOrderId}
+                  clearScrollTarget={() => setScrollToOrderId(null)}
                   highlightOrderId={sessionStorage.getItem(
                     "highlight_order_id",
                   )}
@@ -768,6 +826,8 @@ export default function SellerPortal() {
                 <ActiveDeliveries
                   orders={activeOrders}
                   retailerId={sellerProfile?.id}
+                  scrollToOrderId={scrollToOrderId}
+                  clearScrollTarget={() => setScrollToOrderId(null)}
                   highlightOrderId={sessionStorage.getItem(
                     "highlight_order_id",
                   )}
@@ -788,12 +848,20 @@ export default function SellerPortal() {
               </TabsContent>
 
               <TabsContent value="completed">
-                <CompletedOrders orders={completedOrders} />
+                <CompletedOrders
+                  scrollToOrderId={scrollToOrderId}
+                  clearScrollTarget={() => setScrollToOrderId(null)}
+                  orders={completedOrders} />
               </TabsContent>
 
               <TabsContent value="rejected">
-                <RejectedOrders orders={rejectedOrders} />
+                <RejectedOrders
+                  orders={rejectedOrders}
+                  scrollToOrderId={scrollToOrderId}
+                  clearScrollTarget={() => setScrollToOrderId(null)}
+                />
               </TabsContent>
+
 
               <TabsContent value="delivery_boys" className="mt-0">
                 <ManageDeliveryBoys retailerId={sellerProfile?.id} />

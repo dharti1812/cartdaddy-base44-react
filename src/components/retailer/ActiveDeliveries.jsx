@@ -48,6 +48,8 @@ export default function ActiveDeliveries({
   deliverySettings,
   onAssignDeliveryBoy,
   onHandoffDeliveryBoy,
+  scrollToOrderId,
+  clearScrollTarget,
 }) {
   const [updating, setUpdating] = useState(null);
   const [showPaylinkDialog, setShowPaylinkDialog] = useState(false);
@@ -78,6 +80,7 @@ export default function ActiveDeliveries({
   const [imeiOrder, setImeiOrder] = useState(null);
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const containerRef = useRef(null);
   const [lockedUploads, setLockedUploads] = useState({
     imei: [],
     video: [],
@@ -380,6 +383,28 @@ export default function ActiveDeliveries({
     return () => clearInterval(timer);
   }, [resendTimer]);
 
+  useEffect(() => {
+    if (!scrollToOrderId) return;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`active-order-${scrollToOrderId}`);
+      if (!el) return;
+
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      el.classList.add("ring-2", "ring-yellow-400");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-yellow-400");
+      }, 2000);
+
+      clearScrollTarget?.();
+    });
+  }, [scrollToOrderId, clearScrollTarget]);
+
+    
   const handleGeneratePaylink = (order) => {
     setSelectedOrder(order);
     setShowPaylinkDialog(true);
@@ -641,7 +666,10 @@ export default function ActiveDeliveries({
         />
       )}
 
-      <div className="space-y-3">
+        <div
+          ref={containerRef}
+          className="space-y-3 max-h-[70vh] overflow-y-auto pr-2"
+        >
         {orders.length === 0 ? (
           <Card className="border-none shadow-md">
             <CardContent className="p-12 text-center">

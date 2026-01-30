@@ -51,6 +51,8 @@ export default function AvailableOrders({
   onAccept,
   deliverySettings,
   retailerProfile,
+  scrollToOrderId,
+  clearScrollTarget
 }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [accepting, setAccepting] = useState(null);
@@ -83,6 +85,7 @@ export default function AvailableOrders({
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const containerRef = useRef(null);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   useEffect(() => {
     setOrders(initialOrders || []);
@@ -310,6 +313,29 @@ export default function AvailableOrders({
     };
   }, [showImeiDialog, scannerActive]);
 
+  useEffect(() => {
+    if (!scrollToOrderId) return;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`order-${scrollToOrderId}`);
+      if (!el) return;
+
+      el.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      // highlight
+      el.classList.add("ring-2", "ring-yellow-400");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-yellow-400");
+      }, 2000);
+
+      clearScrollTarget?.();
+    });
+  }, [scrollToOrderId, clearScrollTarget]);
+
+  
   useEffect(() => {
     if (!scannerActive || !scanAttempted) return;
 
@@ -721,7 +747,11 @@ export default function AvailableOrders({
         animation: running-border 1.5s linear infinite;
       }
     `}</style>
-      <div className="space-y-4">
+        <div
+          ref={containerRef}
+          className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
+        >
+
         {filteredOrders.map((order) => {
           const amount = parseFloat(
             (order.amount || order.total_amount || "0")
