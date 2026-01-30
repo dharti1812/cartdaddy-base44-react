@@ -1578,11 +1578,11 @@ export default function ActiveDeliveries({
                         Evidence Photo
                       </p>
                       <img
-                        src={`${API_BASE_URL}/${encodeURI(rej.photo_path)}`}
+                        src={`${API_BASE_URL}/public/${encodeURI(rej.photo_path)}`}
                         className="w-full h-48 object-cover rounded border cursor-zoom-in"
                         onClick={() =>
                           setZoomPhoto(
-                            `${API_BASE_URL}/${encodeURI(rej.photo_path)}`,
+                            `${API_BASE_URL}/public/${encodeURI(rej.photo_path)}`,
                           )
                         }
                       />
@@ -1598,7 +1598,7 @@ export default function ActiveDeliveries({
                       <video
                         controls
                         className="w-full h-56 rounded bg-black"
-                        src={`${API_BASE_URL}/${encodeURI(rej.video_path)}`}
+                        src={`${API_BASE_URL}/public/${encodeURI(rej.video_path)}`}
                       />
                     </div>
                   )}
