@@ -11,7 +11,8 @@ import {
   Gift,
   Settings,
   Menu,
-  Shield,
+  Shield, 
+  XCircle,
   CreditCard,
   UserCheck,
   LogOut
@@ -73,6 +74,11 @@ const adminNavigationItems = [
     url: createPageUrl("Orders"),
     icon: Package,
   },
+  {
+  title: "Rejections",
+  url: createPageUrl("Rejections"),
+  icon: XCircle,
+},
   // {
   //   title: "Sellers",
   //   url: createPageUrl("Retailers"),

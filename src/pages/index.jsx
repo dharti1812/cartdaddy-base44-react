@@ -72,7 +72,7 @@ import ProductGenerator from "./ProductGenerator";
 import ProtectedRoute from "./ProtectedRoute";
 
 import RetailerProfile from "./RetailerProfile.jsx";
-
+import Rejections from "./Rejections"
 import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import BankOffersPage from "./BankOffers.jsx";
 import OfferDetails from "./OfferDetails.jsx";
@@ -278,6 +278,8 @@ function PagesContent() {
                 <Route path="/SuperAdminLogin" element={<SuperAdminLogin />} />
 
                 <Route path="/ProductGenerator" element={<ProductGenerator />} />
+
+                <Route path="/Rejections" element={<Rejections />} />
 
             </Routes>
         </Layout>
