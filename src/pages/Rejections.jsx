@@ -90,14 +90,14 @@ export default function RejectionsPage() {
       <div className="p-6 min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54]">
         <div className="max-w-7xl mx-auto space-y-6">
           <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-            <XCircle className="w-8 h-8 text-red-400" />
+           
             Rejected IMEI / Packaging Videos
           </h1>
 
           <Card className="shadow-xl">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-                <XCircle className="w-5 h-5 text-red-500" />
+               
                 Verification Rejections
               </CardTitle>
             </CardHeader>
