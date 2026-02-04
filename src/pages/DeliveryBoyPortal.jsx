@@ -117,7 +117,6 @@ export default function DeliveryBoyPortal() {
     };
   }, [showDropdown]);
 
-
   useEffect(() => {
     if (!scrollToOrderId) return;
 
@@ -152,7 +151,6 @@ export default function DeliveryBoyPortal() {
       setScrollToOrderId(null);
     });
   }, [scrollToOrderId, orders, partner]);
-
 
   useEffect(() => {
     loadData();
@@ -215,7 +213,6 @@ export default function DeliveryBoyPortal() {
 
       setPartner(partnerData);
 
-
       // const notifyData = await deliveryPartnerApi.getNotifications(token);
       // setNotifications(notifyData.notifications);
       // setUnreadCount(notifyData.unread_count);
@@ -268,7 +265,7 @@ export default function DeliveryBoyPortal() {
   };
 
   const getOrderTab = (orderId) => {
-    const order = orders.find(o => o.id === orderId);
+    const order = orders.find((o) => o.id === orderId);
 
     if (!order) return null;
 
@@ -278,7 +275,6 @@ export default function DeliveryBoyPortal() {
 
     return "available";
   };
-
 
   useEffect(() => {
     fetchDeliverySettings();
@@ -298,7 +294,6 @@ export default function DeliveryBoyPortal() {
       );
 
       const settingsData = await resSettings.json();
-
 
       if (Array.isArray(settingsData) && settingsData.length > 0) {
         setDeliverySettings(settingsData[0]);
@@ -459,7 +454,7 @@ export default function DeliveryBoyPortal() {
 
   const callCustomer = async (order) => {
     try {
-      await fetch(`${API_BASE_URL}/api/click-to-call`, {
+      const res = await fetch(`${API_BASE_URL}/api/click-to-call`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -467,8 +462,14 @@ export default function DeliveryBoyPortal() {
           to: order.customer_phone,
         }),
       });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        alert("Call failed: " + data.response);
+      }
     } catch (error) {
-      console.error("SARV call failed", error);
+      console.error("Call failed", error);
       alert("Unable to connect call");
     }
   };
@@ -651,9 +652,9 @@ export default function DeliveryBoyPortal() {
             <p className="text-white mb-4">Complete onboarding first.</p>
             <Button
               onClick={() =>
-              (window.location.href = createPageUrl(
-                "DeliveryPartnerOnboarding",
-              ))
+                (window.location.href = createPageUrl(
+                  "DeliveryPartnerOnboarding",
+                ))
               }
               className="bg-[#FFEB3B] text-black"
             >
@@ -701,8 +702,9 @@ export default function DeliveryBoyPortal() {
   // MAIN RENDER
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] ${mobileView ? "max-w-md mx-auto" : ""
-        }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] ${
+        mobileView ? "max-w-md mx-auto" : ""
+      }`}
     >
       <audio
         ref={notificationAudioRef}
@@ -780,8 +782,10 @@ export default function DeliveryBoyPortal() {
                     </div>
 
                     {showDropdown && (
-                      <div ref={notificationRef} className="absolute right-0 mt-3 w-80 bg-white shadow-2xl rounded-xl z-50 border border-gray-200">
-
+                      <div
+                        ref={notificationRef}
+                        className="absolute right-0 mt-3 w-80 bg-white shadow-2xl rounded-xl z-50 border border-gray-200"
+                      >
                         {/* Header */}
                         <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
                           <p className="text-sm font-semibold text-gray-800">
@@ -803,10 +807,11 @@ export default function DeliveryBoyPortal() {
                               <div
                                 key={n.id}
                                 className={`px-4 py-3 text-sm cursor-pointer transition
-              ${n.read_at
-                                    ? "bg-white hover:bg-gray-50"
-                                    : "bg-yellow-50 hover:bg-yellow-100"
-                                  }
+              ${
+                n.read_at
+                  ? "bg-white hover:bg-gray-50"
+                  : "bg-yellow-50 hover:bg-yellow-100"
+              }
               border-b last:border-0
             `}
                                 onClick={() => {
@@ -841,7 +846,6 @@ export default function DeliveryBoyPortal() {
                         </div>
                       </div>
                     )}
-
                   </div>
 
                   {/* 🚪 Logout Button */}
@@ -943,7 +947,6 @@ export default function DeliveryBoyPortal() {
                 ref={availableTabRef}
                 className="mt-0 max-h-[75vh] overflow-y-auto"
               >
-
                 {availableOrders.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -1044,18 +1047,18 @@ export default function DeliveryBoyPortal() {
                                   </p>
                                   {order.distances
                                     ?.delivery_boy_to_pickup_km && (
-                                      <p>
-                                        🚴{" "}
-                                        <span className="font-semibold">
-                                          You → Pickup:
-                                        </span>{" "}
-                                        {
-                                          order.distances
-                                            .delivery_boy_to_pickup_km
-                                        }{" "}
-                                        km
-                                      </p>
-                                    )}
+                                    <p>
+                                      🚴{" "}
+                                      <span className="font-semibold">
+                                        You → Pickup:
+                                      </span>{" "}
+                                      {
+                                        order.distances
+                                          .delivery_boy_to_pickup_km
+                                      }{" "}
+                                      km
+                                    </p>
+                                  )}
                                 </div>
                               </div>
 
@@ -1087,14 +1090,14 @@ export default function DeliveryBoyPortal() {
 
                                   {order.distances
                                     ?.delivery_boy_to_delivery_km && (
-                                      <p>
-                                        🚴{" "}
-                                        <span className="font-semibold">
-                                          Pickup → Delivery:
-                                        </span>{" "}
-                                        {order.distances.pickup_to_delivery_km} km
-                                      </p>
-                                    )}
+                                    <p>
+                                      🚴{" "}
+                                      <span className="font-semibold">
+                                        Pickup → Delivery:
+                                      </span>{" "}
+                                      {order.distances.pickup_to_delivery_km} km
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1271,7 +1274,6 @@ export default function DeliveryBoyPortal() {
                           className="border-2 border-blue-500"
                         >
                           <CardContent className="p-4">
-
                             <h3 className="font-bold text-lg mb-2">
                               {order.website_ref || `Order #${order.id}`} (
                               {order.created_at})
@@ -1354,7 +1356,7 @@ export default function DeliveryBoyPortal() {
                                       item.imei_verified !== 1 &&
                                       item.imei_upload_count <= 2 &&
                                       item.imei_reject_count <
-                                      item.imei_upload_count && (
+                                        item.imei_upload_count && (
                                         <>
                                           <button
                                             className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -1444,7 +1446,7 @@ export default function DeliveryBoyPortal() {
                                           item.video_verified !== 1 &&
                                           item.video_upload_count <= 2 &&
                                           item.video_reject_count <
-                                          item.video_upload_count && (
+                                            item.video_upload_count && (
                                             <>
                                               <button
                                                 className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -1684,7 +1686,6 @@ export default function DeliveryBoyPortal() {
                 ref={completedTabRef}
                 className="mt-0 max-h-[75vh] overflow-y-auto"
               >
-
                 {completedDeliveries.length === 0 ? (
                   <p className="text-center text-gray-500 py-6">
                     No active deliveries found.
