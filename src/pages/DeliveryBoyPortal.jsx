@@ -466,8 +466,12 @@ export default function DeliveryBoyPortal() {
       const data = await res.json();
 
       if (!data.success) {
-        alert("Call failed: " + data.response);
+        alert("Call failed: " + data.message);
+        console.log("Deepcall Error:", data);
+        return;
       }
+
+      alert("Call started successfully!");
     } catch (error) {
       console.error("Call failed", error);
       alert("Unable to connect call");
