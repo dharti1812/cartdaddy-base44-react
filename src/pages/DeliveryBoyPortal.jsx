@@ -1339,21 +1339,21 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
-                                    {/* ✅ VERIFIED */}
+                                   
                                     {item.imei_verified === 1 && (
                                       <span className="text-green-600 font-semibold ml-2">
                                         ✅ Verified
                                       </span>
                                     )}
-                                    {/* ❌ REJECTED */}
+                                  
                                     {item.imei_verified === 0 &&
                                       item.imei_reject_count > 0 &&
-                                      item.imei_reject_count == 1 && (
+                                      item.imei_reject_count >= item.imei_upload_count && (
                                         <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
                                           ❌ Rejected
                                         </span>
                                       )}
-                                    {/* 🔘 VERIFY / REJECT BUTTONS */}
+                                    
                                     {order.delivery_status ===
                                       "reached_to_seller" &&
                                       item.imei_number &&
@@ -1489,12 +1489,12 @@ export default function DeliveryBoyPortal() {
                                         )}
 
                                         {item.video_verified === 0 &&
-                                          item.video_reject_count > 0 &&
-                                          item.video_upload_count != 2 && (
-                                            <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
-                                              ❌ Rejected
-                                            </span>
-                                          )}
+                                              item.video_reject_count > 0 &&
+                                              item.video_reject_count >= item.video_upload_count && (
+                                                <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
+                                                  ❌ Rejected
+                                                </span>
+                                              )}
                                       </>
                                     ) : (
                                       <span className="text-red-600 ml-2">
