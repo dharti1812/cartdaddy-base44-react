@@ -66,6 +66,7 @@ export default function ActiveDeliveries({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
+   const [status, setStatus] = useState({});
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const [rejectPreview, setRejectPreview] = useState(null);
   const [zoomPhoto, setZoomPhoto] = useState(null);
@@ -190,6 +191,15 @@ export default function ActiveDeliveries({
     }
   };
 
+  const updateList = async (setStatus) => {
+    try {
+      const data = await OrderApi.list();
+      setStatus(data.orders); 
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
 
@@ -210,7 +220,7 @@ export default function ActiveDeliveries({
         const res = await OrderApi.storeVideo(formData, true);
         if (res.success) {
           toast.success("Video uploaded successfully!");
-
+          await updateList(setStatus);
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
