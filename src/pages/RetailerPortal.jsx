@@ -831,6 +831,7 @@ export default function SellerPortal() {
                   highlightOrderId={sessionStorage.getItem(
                     "highlight_order_id",
                   )}
+                  loadData={loadData}
                   deliverySettings={deliverySettings}
                   config={sellerProfile}
                   onUpdate={loadData}

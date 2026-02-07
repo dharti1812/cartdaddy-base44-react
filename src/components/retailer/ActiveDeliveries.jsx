@@ -50,6 +50,7 @@ export default function ActiveDeliveries({
   onHandoffDeliveryBoy,
   scrollToOrderId,
   clearScrollTarget,
+  loadData
 }) {
   const [updating, setUpdating] = useState(null);
   const [showPaylinkDialog, setShowPaylinkDialog] = useState(false);
@@ -66,7 +67,7 @@ export default function ActiveDeliveries({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
-   const [status, setStatus] = useState({});
+ const [status, setStatus] = useState([]);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const [rejectPreview, setRejectPreview] = useState(null);
   const [zoomPhoto, setZoomPhoto] = useState(null);
@@ -184,6 +185,7 @@ export default function ActiveDeliveries({
       }
 
       toast.success("IMEI saved successfully");
+      loadData();
       setShowImeiDialog(false);
     } catch (err) {
       toast.error("Failed to save IMEI");
@@ -200,6 +202,8 @@ export default function ActiveDeliveries({
       console.log(err);
     }
   };
+
+  
 
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
@@ -221,19 +225,8 @@ export default function ActiveDeliveries({
         const res = await OrderApi.storeVideo(formData, true);
         if (res.success) {
           toast.success("Video uploaded successfully!");
-          setOrderItems((prevItems) =>
-            prevItems.map((item) =>
-              item.id === imeiOrder.id
-                ? {
-                    ...item,
-                    video_upload_count: item.video_upload_count + 1,
-                    video_reject_count: 0,
-                    video_verified: 0,
-                  }
-                : item
-            )
-          );
-          await updateList(setStatus);
+         loadData();
+          
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
