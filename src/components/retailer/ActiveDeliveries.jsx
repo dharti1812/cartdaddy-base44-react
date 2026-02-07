@@ -82,6 +82,7 @@ export default function ActiveDeliveries({
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const containerRef = useRef(null);
+  const [orderItems, setOrderItems] = useState([]);
   const [lockedUploads, setLockedUploads] = useState({
     imei: [],
     video: [],
@@ -220,6 +221,18 @@ export default function ActiveDeliveries({
         const res = await OrderApi.storeVideo(formData, true);
         if (res.success) {
           toast.success("Video uploaded successfully!");
+          setOrderItems((prevItems) =>
+            prevItems.map((item) =>
+              item.id === imeiOrder.id
+                ? {
+                    ...item,
+                    video_upload_count: item.video_upload_count + 1,
+                    video_reject_count: 0,
+                    video_verified: 0,
+                  }
+                : item
+            )
+          );
           await updateList(setStatus);
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
