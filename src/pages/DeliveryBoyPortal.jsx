@@ -1535,7 +1535,7 @@ export default function DeliveryBoyPortal() {
                                     {order.drop_address?.pincode}
                                   </p>
                                   <div className="flex items-center text-gray-700 text-sm gap-3">
-                                    {order.delivery_status === "picked_up" && (
+                                    {(order.delivery_status === "picked_up" || order.delivery_status === "out_for_delivery") && (
                                       <>
                                         <p className="text-gray-700 text-sm">
                                           <span className="font-semibold">
