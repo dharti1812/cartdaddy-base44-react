@@ -193,18 +193,7 @@ export default function ActiveDeliveries({
       setSubmitting(false);
     }
   };
-
-  const updateList = async (setStatus) => {
-    try {
-      const data = await OrderApi.updateList();
-      setStatus(data.orders); 
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
   
-
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
 

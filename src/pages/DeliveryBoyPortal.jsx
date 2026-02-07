@@ -1339,21 +1339,19 @@ export default function DeliveryBoyPortal() {
                                   <p>
                                     <span className="font-semibold">IMEI:</span>{" "}
                                     {item.imei_number || "Not Available"}
-                                   
                                     {item.imei_verified === 1 && (
                                       <span className="text-green-600 font-semibold ml-2">
                                         ✅ Verified
                                       </span>
                                     )}
-                                  
                                     {item.imei_verified === 0 &&
                                       item.imei_reject_count > 0 &&
-                                      item.imei_reject_count >= item.imei_upload_count && (
+                                      item.imei_reject_count >=
+                                        item.imei_upload_count && (
                                         <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
                                           ❌ Rejected
                                         </span>
                                       )}
-                                    
                                     {order.delivery_status ===
                                       "reached_to_seller" &&
                                       item.imei_number &&
@@ -1489,12 +1487,13 @@ export default function DeliveryBoyPortal() {
                                         )}
 
                                         {item.video_verified === 0 &&
-                                              item.video_reject_count > 0 &&
-                                              item.video_reject_count >= item.video_upload_count && (
-                                                <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
-                                                  ❌ Rejected
-                                                </span>
-                                              )}
+                                          item.video_reject_count > 0 &&
+                                          item.video_reject_count >=
+                                            item.video_upload_count && (
+                                            <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
+                                              ❌ Rejected
+                                            </span>
+                                          )}
                                       </>
                                     ) : (
                                       <span className="text-red-600 ml-2">
@@ -1535,7 +1534,9 @@ export default function DeliveryBoyPortal() {
                                     {order.drop_address?.pincode}
                                   </p>
                                   <div className="flex items-center text-gray-700 text-sm gap-3">
-                                    {(order.delivery_status === "picked_up" || order.delivery_status === "out_for_delivery") && (
+                                    {(order.delivery_status === "picked_up" ||
+                                      order.delivery_status ===
+                                        "out_for_delivery") && (
                                       <>
                                         <p className="text-gray-700 text-sm">
                                           <span className="font-semibold">
@@ -1894,9 +1895,11 @@ export default function DeliveryBoyPortal() {
             <label className="font-semibold text-sm">
               Upload Photo <span className="text-red-500">*</span>
             </label>
+
             <input
               type="file"
               accept="image/*"
+              capture="environment"
               className="mt-1"
               onChange={(e) =>
                 setRejectData({ ...rejectData, photo: e.target.files[0] })
@@ -1909,9 +1912,11 @@ export default function DeliveryBoyPortal() {
             <label className="font-semibold text-sm">
               Upload Video <span className="text-red-500">*</span>
             </label>
+
             <input
               type="file"
               accept="video/*"
+              capture="environment"
               className="mt-1"
               onChange={(e) =>
                 setRejectData({ ...rejectData, video: e.target.files[0] })
