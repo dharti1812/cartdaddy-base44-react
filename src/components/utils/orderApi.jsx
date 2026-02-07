@@ -18,7 +18,7 @@ export const OrderApi = {
   updateList: async () => {
     const token = sessionStorage.getItem("token");
 
-    const res = await fetch(`${API_BASE_URL}/api/ordersList`, {
+    const res = await fetch(`${API_BASE_URL}/api/retailer/ordersList`, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
