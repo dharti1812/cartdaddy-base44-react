@@ -15,6 +15,20 @@ export const OrderApi = {
     return res.json();
   },
 
+  updateList: async () => {
+    const token = sessionStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE_URL}/api/ordersList`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch retailers");
+    return res.json();
+  },
+
   PendingAcceptanceOrders: async () => {
     const token = sessionStorage.getItem("token");
 

@@ -193,7 +193,7 @@ export default function ActiveDeliveries({
 
   const updateList = async (setStatus) => {
     try {
-      const data = await OrderApi.list();
+      const data = await OrderApi.updateList();
       setStatus(data.orders); 
     } catch (err) {
       console.log(err);
