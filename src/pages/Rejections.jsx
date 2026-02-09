@@ -13,6 +13,7 @@ import {
 import { Calendar, XCircle, CheckCircle, Eye, Phone } from "lucide-react";
 import { rejectionsApi } from "@/components/utils/rejectionsApi";
 import toast from "react-hot-toast";
+import { API_BASE_URL } from "@/config";
 
 export default function RejectionsPage() {
   const [rejections, setRejections] = useState([]);
@@ -90,14 +91,12 @@ export default function RejectionsPage() {
       <div className="p-6 min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54]">
         <div className="max-w-7xl mx-auto space-y-6">
           <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-           
-            Rejected IMEI / Packaging Videos
+            Rejected IMEI / Sealed box Video
           </h1>
 
           <Card className="shadow-xl">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-               
                 Verification Rejections
               </CardTitle>
             </CardHeader>
@@ -177,8 +176,8 @@ export default function RejectionsPage() {
                           onClick={() =>
                             setPreview({
                               open: true,
-                              photo: rejection.photo_url,
-                              video: rejection.video_url,
+                              photo: rejection.photo_path,
+                              video: rejection.video_path,
                             })
                           }
                         >
@@ -246,14 +245,14 @@ export default function RejectionsPage() {
             </button>
 
             <h2 className="text-xl font-semibold mb-4">
-              IMEI / Packaging Verification
+              IMEI / Video Verification
             </h2>
 
             {preview.photo && (
               <div className="mb-6">
                 <p className="font-medium mb-2">Photo</p>
                 <img
-                  src={preview.photo}
+                  src={`${API_BASE_URL}/${preview.photo}`}
                   alt="Verification"
                   className="w-full rounded-lg border"
                 />
@@ -264,7 +263,7 @@ export default function RejectionsPage() {
               <div>
                 <p className="font-medium mb-2">Video</p>
                 <video
-                  src={preview.video}
+                  src={`${API_BASE_URL}/${preview.video}`}
                   controls
                   className="w-full rounded-lg border"
                 />
