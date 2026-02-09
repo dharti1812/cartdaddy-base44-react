@@ -50,7 +50,7 @@ export default function ActiveDeliveries({
   onHandoffDeliveryBoy,
   scrollToOrderId,
   clearScrollTarget,
-  loadData
+  loadData,
 }) {
   const [updating, setUpdating] = useState(null);
   const [showPaylinkDialog, setShowPaylinkDialog] = useState(false);
@@ -67,7 +67,7 @@ export default function ActiveDeliveries({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [showVerifyOtpDialog, setShowVerifyOtpDialog] = useState(false);
   const [otpStatus, setOtpStatus] = useState({});
- const [status, setStatus] = useState([]);
+  const [status, setStatus] = useState([]);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const [rejectPreview, setRejectPreview] = useState(null);
   const [zoomPhoto, setZoomPhoto] = useState(null);
@@ -82,6 +82,8 @@ export default function ActiveDeliveries({
   const [imeiOrder, setImeiOrder] = useState(null);
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoPreviewRef = useRef(null);
   const containerRef = useRef(null);
   const [orderItems, setOrderItems] = useState([]);
   const [lockedUploads, setLockedUploads] = useState({
@@ -193,7 +195,7 @@ export default function ActiveDeliveries({
       setSubmitting(false);
     }
   };
-  
+
   const handleConfirmVideo = async () => {
     if (!videoRef.current) return;
 
@@ -214,8 +216,8 @@ export default function ActiveDeliveries({
         const res = await OrderApi.storeVideo(formData, true);
         if (res.success) {
           toast.success("Video uploaded successfully!");
-         loadData();
-          
+          loadData();
+
           if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
@@ -409,7 +411,6 @@ export default function ActiveDeliveries({
     });
   }, [scrollToOrderId, clearScrollTarget]);
 
-    
   const handleGeneratePaylink = (order) => {
     setSelectedOrder(order);
     setShowPaylinkDialog(true);
@@ -585,6 +586,35 @@ export default function ActiveDeliveries({
     }
   };
 
+  const fileAppeal = async (item) => {
+    console.log("Filing appeal for item:", item);
+    const token = sessionStorage.getItem("token");
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/retailer/orders/file-appeal`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            order_detail_id: item.order_detail_id,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Appeal submitted successfully!");
+        loadData();
+      }
+    } catch (error) {
+      console.log("Appeal Error:", error);
+    }
+  };
+
   const handleGenerateOtp = async (order) => {
     const token = sessionStorage.getItem("token");
     const orderId = order.id;
@@ -671,10 +701,10 @@ export default function ActiveDeliveries({
         />
       )}
 
-        <div
-          ref={containerRef}
-          className="space-y-3 max-h-[70vh] overflow-y-auto pr-2"
-        >
+      <div
+        ref={containerRef}
+        className="space-y-3 max-h-[70vh] overflow-y-auto pr-2"
+      >
         {orders.length === 0 ? (
           <Card className="border-none shadow-md">
             <CardContent className="p-12 text-center">
@@ -792,56 +822,58 @@ export default function ActiveDeliveries({
                             PRODUCT DETAILS
                           </p>
                           <div className="space-y-1">
-                            {order.items.map((item, idx) => (
-                              <div
-                                key={idx}
-                                className="bg-gray-50 p-3 rounded space-y-3"
-                              >
-                                {/* Product name & price */}
-                                <div className="flex justify-between items-center text-sm">
-                                  <span className="text-gray-700 font-medium">
-                                    {item.name}
-                                  </span>
-                                  <span className="font-bold text-gray-900">
-                                    ₹{item.price}
-                                  </span>
-                                </div>
+                            {order.items.map((item, idx) => {
+                              
+                              const isAppealPending =
+                                item.appeal_status == "pending";
+                              console.log("isAppealPending:", isAppealPending); 
+                              console.log("Full item:", item);
+console.log("Appeal Status from API:", item.appeal_status);
+                              return (
+                                <div
+                                  key={idx}
+                                  className="bg-gray-50 p-3 rounded space-y-3"
+                                >
+                                 
+                                  <div className="flex justify-between items-center text-sm">
+                                    <span className="text-gray-700 font-medium">
+                                      {item.name}
+                                    </span>
+                                    <span className="font-bold text-gray-900">
+                                      ₹{item.price}
+                                    </span>
+                                  </div>
 
-                                {/* Verification Section */}
+                                  {/* IMEI Section */}
+                                  <div className="space-y-2">
+                                    {/* IMEI Status */}
+                                    <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-sm font-medium text-gray-700">
+                                          IMEI Verification
+                                        </p>
 
-                                <div className="space-y-2">
-                                  {/* IMEI Status */}
-                                  <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-sm font-medium text-gray-700">
-                                        IMEI Verification
-                                      </p>
+                                        {item.imei_verified === 1 ? (
+                                          <Badge className="bg-emerald-600 text-white">
+                                            Verified
+                                          </Badge>
+                                        ) : item.imei_reject_count > 0 ? (
+                                          <Badge className="bg-red-500 text-white">
+                                            Rejected
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-amber-500 text-white">
+                                            Pending
+                                          </Badge>
+                                        )}
+                                      </div>
 
-                                      {item.imei_verified === 1 ? (
-                                        <Badge className="bg-emerald-600 text-white">
-                                          Verified
-                                        </Badge>
-                                      ) : item.imei_upload_count >= 2 ? (
-                                        <Badge className="bg-blue-600 text-white">
-                                          Uploaded
-                                        </Badge>
-                                      ) : item.imei_reject_count > 0 ? (
-                                        <Badge className="bg-red-500 text-white">
-                                          Rejected
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-amber-500 text-white">
-                                          Pending
-                                        </Badge>
-                                      )}
-                                    </div>
-
-                                    {item.imei_reject_count > 0 &&
-                                      item.imei_verified !== 1 &&
-                                      item.imei_upload_count < 2 && (
-                                        <div className="flex items-center justify-between pt-2 border-t">
+                                      {/* IMEI Actions */}
+                                      {item.imei_reject_count > 0 && (
+                                        <div className="flex justify-between pt-2 border-t">
+                                          {/* View Reason */}
                                           <button
-                                            className="text-sm text-gray-600 hover:text-gray-900 underline"
+                                            className="text-sm text-gray-600 underline"
                                             onClick={() =>
                                               setRejectPreview({
                                                 open: true,
@@ -854,53 +886,53 @@ export default function ActiveDeliveries({
                                             View rejection reason
                                           </button>
 
-                                          <span
-                                            onClick={() =>
-                                              openImeiReuploadDialog(item)
-                                            }
-                                            className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
-                                          >
-                                            Re-upload IMEI
-                                          </span>
+                                          {/* Appeal Pending Check */}
+                                          {isAppealPending ? (
+                                            <span className="text-sm text-orange-600 font-medium">
+                                              Appeal filed. Waiting for admin
+                                              approval...
+                                            </span>
+                                          ) : (
+                                            <span
+                                              onClick={() =>
+                                                openImeiReuploadDialog(item)
+                                              }
+                                              className="text-sm font-medium text-blue-600 cursor-pointer"
+                                            >
+                                              Re-upload IMEI
+                                            </span>
+                                          )}
                                         </div>
-                                      )}
-                                  </div>
-
-                                  {/* Video Status */}
-
-                                  <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-sm font-medium text-gray-700">
-                                        Packaging Video
-                                      </span>
-
-                                      {item.video_verified === 1 ? (
-                                        <Badge className="bg-emerald-600 text-white">
-                                          Verified
-                                        </Badge>
-                                      ) : item.video_upload_count >= 2 ? (
-                                        <Badge className="bg-blue-600 text-white">
-                                          Uploaded
-                                        </Badge>
-                                      ) : item.video_reject_count > 0 ? (
-                                        <Badge className="bg-red-500 text-white">
-                                          Rejected
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-amber-500 text-white">
-                                          Pending
-                                        </Badge>
                                       )}
                                     </div>
 
-                                    {/* Actions */}
-                                    {item.video_reject_count > 0 &&
-                                      item.video_verified !== 1 &&
-                                      item.video_upload_count < 2 && (
-                                        <div className="flex items-center justify-between pt-2 border-t">
+                                    {/* Video Section */}
+                                    <div className="bg-white rounded-lg border px-4 py-3 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-gray-700">
+                                          Video Details
+                                        </span>
+
+                                        {item.video_verified === 1 ? (
+                                          <Badge className="bg-emerald-600 text-white">
+                                            Verified
+                                          </Badge>
+                                        ) : item.video_reject_count > 0 ? (
+                                          <Badge className="bg-red-500 text-white">
+                                            Rejected
+                                          </Badge>
+                                        ) : (
+                                          <Badge className="bg-amber-500 text-white">
+                                            Pending
+                                          </Badge>
+                                        )}
+                                      </div>
+
+                                      {/* Video Actions */}
+                                      {item.video_reject_count > 0 && (
+                                        <div className="flex justify-between pt-2 border-t">
                                           <button
-                                            type="button"
-                                            className="text-sm text-gray-600 hover:text-gray-900 underline"
+                                            className="text-sm text-gray-600 underline"
                                             onClick={() =>
                                               setRejectPreview({
                                                 open: true,
@@ -913,20 +945,42 @@ export default function ActiveDeliveries({
                                             View rejection reason
                                           </button>
 
-                                          <span
-                                            onClick={() =>
-                                              openVideoReuploadDialog(item)
-                                            }
-                                            className="text-sm font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                                          {/* Block Video Reupload also */}
+                                          {isAppealPending ? (
+                                            <span className="text-sm text-orange-600 font-medium">
+                                              Appeal filed. Waiting...
+                                            </span>
+                                          ) : (
+                                            <span
+                                              onClick={() =>
+                                                openVideoReuploadDialog(item)
+                                              }
+                                              className="text-sm font-medium text-blue-600 cursor-pointer"
+                                            >
+                                              Re-upload video
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* File Appeal Button */}
+                                    {(item.imei_reject_count === 1 ||
+                                      item.video_reject_count === 1) &&
+                                      !isAppealPending && (
+                                        <div className="pt-3 border-t text-right">
+                                          <button
+                                            onClick={() => fileAppeal(item)}
+                                            className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
                                           >
-                                            Re-upload video
-                                          </span>
+                                            File Appeal
+                                          </button>
                                         </div>
                                       )}
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -1570,7 +1624,7 @@ export default function ActiveDeliveries({
               <AlertCircle className="w-5 h-5 text-red-600" />
               {rejectPreview?.type === "imei"
                 ? "IMEI Rejection Details"
-                : "Packaging Video Rejection"}
+                : "Video Rejection Details"}
             </DialogTitle>
           </DialogHeader>
 
@@ -1665,12 +1719,12 @@ export default function ActiveDeliveries({
             <DialogTitle>
               {imeiStep === "imei"
                 ? "Scan / Enter IMEI"
-                : "Record Packaging Video"}
+                : "Record Packed Product Video"}
             </DialogTitle>
             <DialogDescription>
               {imeiStep === "imei"
                 ? "Scan or manually enter the IMEI number"
-                : "Record a sealed-box packaging video"}
+                : "Record a sealed-box Packed video"}
             </DialogDescription>
           </DialogHeader>
 

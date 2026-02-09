@@ -90,7 +90,7 @@ export default function DeliveryBoyPortal() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const videoPreviewRef = useRef(null);
-   const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
 
   const videoRef = useRef(null);
@@ -1456,196 +1456,225 @@ export default function DeliveryBoyPortal() {
                               <p className="font-semibold text-gray-800 mb-1">
                                 📦 Product Details
                               </p>
-                              {order.items?.map((item, index) => (
-                                <div
-                                  key={item.order_detail_id || item.id}
-                                  className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
-                                >
-                                  <p className="font-semibold">{item.name}</p>
 
-                                  <p>
-                                    Qty: {item.quantity} | Price: ₹{item.price}
-                                  </p>
-                                  <p>
-                                    <span className="font-semibold">IMEI:</span>{" "}
-                                    {item.imei_number || "Not Available"}
-                                    {item.imei_verified === 1 && (
-                                      <span className="text-green-600 font-semibold ml-2">
-                                        ✅ Verified
-                                      </span>
-                                    )}
-                                    {item.imei_verified === 0 &&
-                                      item.imei_reject_count > 0 &&
-                                      item.imei_reject_count >=
-                                        item.imei_upload_count && (
-                                        <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
-                                          ❌ Rejected
+                              {order.items?.map((item, index) => {
+                                const isAppealPending =
+                                  order.appeal_status === "pending";
+
+                                return (
+                                  <div
+                                    key={item.order_detail_id || item.id}
+                                    className="text-sm text-gray-700 leading-5 border-b pb-2 mb-2"
+                                  >
+                                    <p className="font-semibold">{item.name}</p>
+
+                                    <p>
+                                      Qty: {item.quantity} | Price: ₹
+                                      {item.price}
+                                    </p>
+
+                                    <p>
+                                      <span className="font-semibold">
+                                        IMEI:
+                                      </span>{" "}
+                                      {item.imei_number || "Not Available"}
+                                      {/* Verified */}
+                                      {item.imei_verified === 1 && (
+                                        <span className="text-green-600 font-semibold ml-2">
+                                          ✅ Verified
                                         </span>
                                       )}
-                                    {order.delivery_status ===
-                                      "reached_to_seller" &&
-                                      item.imei_number &&
-                                      item.imei_verified !== 1 &&
-                                      item.imei_upload_count <= 2 &&
-                                      item.imei_reject_count <
-                                        item.imei_upload_count && (
-                                        <>
-                                          <button
-                                            className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                            onClick={() =>
-                                              setConfirmVerify({
-                                                open: true,
-                                                type: "imei",
-                                                orderDetailId: item.order_id,
-                                              })
-                                            }
-                                          >
-                                            Verify
-                                          </button>
-
-                                          <button
-                                            className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                                            onClick={() =>
-                                              setRejectModal({
-                                                open: true,
-                                                type: "imei",
-                                                orderDetailId: item.order_id,
-                                              })
-                                            }
-                                          >
-                                            Reject
-                                          </button>
-                                        </>
-                                      )}
-                                  </p>
-
-                                  {/* Packaging Video */}
-                                  <p>
-                                    <span className="font-semibold">
-                                      Packaging Video:
-                                    </span>{" "}
-                                    {item.video_path ? (
-                                      <>
-                                        <button
-                                          className="ml-2 text-blue-600 underline"
-                                          onClick={() =>
-                                            setShowVideoModal(item.order_id)
-                                          }
-                                        >
-                                          View Video
-                                        </button>
-
-                                        {/* Video Modal */}
-                                        <Dialog
-                                          open={
-                                            showVideoModal === item.order_id
-                                          }
-                                          onOpenChange={() =>
-                                            setShowVideoModal(null)
-                                          }
-                                        >
-                                          <DialogContent className="max-w-lg">
-                                            <DialogHeader>
-                                              <DialogTitle>
-                                                📹 Packaging Video
-                                              </DialogTitle>
-                                            </DialogHeader>
-
-                                            <video
-                                              controls
-                                              autoPlay
-                                              className="w-full h-64 rounded-md bg-black"
-                                              src={`${API_BASE_URL}/public/${item.video_path}`}
-                                            ></video>
-
-                                            <div className="mt-4 text-right">
-                                              <button
-                                                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                                                onClick={() =>
-                                                  setShowVideoModal(null)
-                                                }
-                                              >
-                                                Close
-                                              </button>
-                                            </div>
-                                          </DialogContent>
-                                        </Dialog>
-
-                                        {/* Video Verify Button */}
-                                        {order.delivery_status ===
-                                          "reached_to_seller" &&
-                                          item.video_path &&
-                                          item.video_verified !== 1 &&
-                                          item.video_upload_count <= 2 &&
-                                          item.video_reject_count <
-                                            item.video_upload_count && (
-                                            <>
-                                              <button
-                                                className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                                                onClick={() =>
-                                                  setConfirmVerify({
-                                                    open: true,
-                                                    type: "video",
-                                                    orderDetailId:
-                                                      item.order_id,
-                                                  })
-                                                }
-                                              >
-                                                Verify
-                                              </button>
-
-                                              <button
-                                                className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                                                onClick={() =>
-                                                  setRejectModal({
-                                                    open: true,
-                                                    type: "video",
-                                                    orderDetailId:
-                                                      item.order_id,
-                                                  })
-                                                }
-                                              >
-                                                Reject
-                                              </button>
-                                            </>
-                                          )}
-
-                                        {item.video_verified === 1 && (
-                                          <span className="text-green-600 font-semibold ml-2">
-                                            ✅ Verified
+                                      {/* Rejected */}
+                                      {item.imei_verified === 0 &&
+                                        item.imei_reject_count > 0 &&
+                                        item.imei_reject_count >=
+                                          item.imei_upload_count && (
+                                          <span className="text-red-600 font-semibold ml-2 inline-flex items-center gap-1">
+                                            ❌ Rejected
                                           </span>
                                         )}
+                                      {order.delivery_status ===
+                                        "reached_to_seller" &&
+                                        item.imei_number &&
+                                        item.imei_verified !== 1 &&
+                                        item.imei_upload_count <= 2 &&
+                                        item.imei_reject_count <
+                                          item.imei_upload_count &&
+                                        !isAppealPending && (
+                                          <>
+                                            <button
+                                              className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                              onClick={() =>
+                                                setConfirmVerify({
+                                                  open: true,
+                                                  type: "imei",
+                                                  orderDetailId: item.order_id,
+                                                })
+                                              }
+                                            >
+                                              Verify
+                                            </button>
 
-                                        {item.video_verified === 0 &&
-                                          item.video_reject_count > 0 &&
-                                          item.video_reject_count >=
-                                            item.video_upload_count && (
-                                            <span className="text-red-600 font-semibold ml-2 flex items-center gap-1 inline-flex">
-                                              ❌ Rejected
+                                            <button
+                                              className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                              onClick={() =>
+                                                setRejectModal({
+                                                  open: true,
+                                                  type: "imei",
+                                                  orderDetailId: item.order_id,
+                                                })
+                                              }
+                                            >
+                                              Reject
+                                            </button>
+                                          </>
+                                        )}
+                                      {isAppealPending && (
+                                        <span className="ml-2 text-orange-600 font-semibold text-sm">
+                                          🟠 Seller Appeal filed. Waiting for
+                                          admin approval...
+                                        </span>
+                                      )}
+                                    </p>
+
+                                    <p>
+                                      <span className="font-semibold">
+                                        Sealed Product Video:
+                                      </span>{" "}
+                                      {item.video_path ? (
+                                        <>
+                                          {/* View Video Button */}
+                                          <button
+                                            className="ml-2 text-blue-600 underline"
+                                            onClick={() =>
+                                              setShowVideoModal(item.order_id)
+                                            }
+                                          >
+                                            View Video
+                                          </button>
+
+                                          {/* Video Modal */}
+                                          <Dialog
+                                            open={
+                                              showVideoModal === item.order_id
+                                            }
+                                            onOpenChange={() =>
+                                              setShowVideoModal(null)
+                                            }
+                                          >
+                                            <DialogContent className="max-w-lg">
+                                              <DialogHeader>
+                                                <DialogTitle>
+                                                  📹 Sealed Product Video
+                                                </DialogTitle>
+                                              </DialogHeader>
+
+                                              <video
+                                                controls
+                                                autoPlay
+                                                className="w-full h-64 rounded-md bg-black"
+                                                src={`${API_BASE_URL}/public/${item.video_path}`}
+                                              ></video>
+
+                                              <div className="mt-4 text-right">
+                                                <button
+                                                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                                                  onClick={() =>
+                                                    setShowVideoModal(null)
+                                                  }
+                                                >
+                                                  Close
+                                                </button>
+                                              </div>
+                                            </DialogContent>
+                                          </Dialog>
+
+                                          {/* Verify/Reject Buttons (Only if Appeal NOT Pending) */}
+                                          {order.delivery_status ===
+                                            "reached_to_seller" &&
+                                            item.video_path &&
+                                            item.video_verified !== 1 &&
+                                            item.video_upload_count <= 2 &&
+                                            item.video_reject_count <
+                                              item.video_upload_count &&
+                                            !isAppealPending && (
+                                              <>
+                                                <button
+                                                  className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                                  onClick={() =>
+                                                    setConfirmVerify({
+                                                      open: true,
+                                                      type: "video",
+                                                      orderDetailId:
+                                                        item.order_id,
+                                                    })
+                                                  }
+                                                >
+                                                  Verify
+                                                </button>
+
+                                                <button
+                                                  className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                                  onClick={() =>
+                                                    setRejectModal({
+                                                      open: true,
+                                                      type: "video",
+                                                      orderDetailId:
+                                                        item.order_id,
+                                                    })
+                                                  }
+                                                >
+                                                  Reject
+                                                </button>
+                                              </>
+                                            )}
+
+                                          {/* Appeal Pending Message */}
+                                          {isAppealPending && (
+                                            <span className="ml-2 text-orange-600 font-semibold text-sm">
+                                              🟠 Appeal filed. Waiting for admin
+                                              approval...
                                             </span>
                                           )}
-                                      </>
-                                    ) : (
-                                      <span className="text-red-600 ml-2">
-                                        Not Uploaded
-                                      </span>
-                                    )}
-                                  </p>
 
-                                  {/* Pickup OTP */}
-                                  {item.imei_verified === 1 &&
-                                    item.video_verified === 1 &&
-                                    item.pickup_otp !== null &&
-                                    item.pickup_otp !== 0 && (
-                                      <div className="mt-2 bg-green-100 text-green-800 px-4 rounded-full text-sm font-semibold w-max shadow-sm">
-                                        Pickup OTP:{" "}
-                                        <span className="ml-1 text-lg">
-                                          {item.pickup_otp}
+                                          {/* Verified */}
+                                          {item.video_verified === 1 && (
+                                            <span className="text-green-600 font-semibold ml-2">
+                                              ✅ Verified
+                                            </span>
+                                          )}
+
+                                          {item.video_verified === 0 &&
+                                            item.video_reject_count > 0 &&
+                                            item.video_reject_count >=
+                                              item.video_upload_count && (
+                                              <span className="text-red-600 font-semibold ml-2 inline-flex items-center gap-1">
+                                                ❌ Rejected
+                                              </span>
+                                            )}
+                                        </>
+                                      ) : (
+                                        <span className="text-red-600 ml-2">
+                                          Not Uploaded
                                         </span>
-                                      </div>
-                                    )}
-                                </div>
-                              ))}
+                                      )}
+                                    </p>
+
+                                    {/* ================= PICKUP OTP ================= */}
+                                    {item.imei_verified === 1 &&
+                                      item.video_verified === 1 &&
+                                      item.pickup_otp !== null &&
+                                      item.pickup_otp !== 0 && (
+                                        <div className="mt-2 bg-green-100 text-green-800 px-4 rounded-full text-sm font-semibold w-max shadow-sm">
+                                          Pickup OTP:{" "}
+                                          <span className="ml-1 text-lg">
+                                            {item.pickup_otp}
+                                          </span>
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              })}
                             </div>
 
                             <div className="bg-gray-50 rounded-xl p-4">
@@ -2109,7 +2138,6 @@ export default function DeliveryBoyPortal() {
                     Stop
                   </button>
                 </div>
-
               </div>
             </div>
 
