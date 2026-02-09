@@ -233,41 +233,61 @@ export default function RejectionsPage() {
         </div>
       </div>
 
+      
       {/* PREVIEW MODAL */}
       {preview.open && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
-          <div className="bg-white rounded-xl w-[90%] max-w-3xl p-6 relative">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-3">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6 relative shadow-xl">
+            {/* Close Button */}
             <button
-              onClick={() => setPreview({ open: false })}
-              className="absolute top-3 right-3 text-gray-500 hover:text-black"
+              onClick={() =>
+                setPreview({ open: false, photo: null, video: null })
+              }
+              className="absolute top-3 right-3 text-gray-500 hover:text-black text-xl"
             >
               ✕
             </button>
 
-            <h2 className="text-xl font-semibold mb-4">
-              IMEI / Video Verification
+            {/* Title */}
+            <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">
+              IMEI / Video Verification Preview
             </h2>
 
+            {/* Photo Preview */}
             {preview.photo && (
               <div className="mb-6">
-                <p className="font-medium mb-2">Photo</p>
+                <p className="font-medium mb-2 text-sm sm:text-base">
+                  📷 Rejected Photo
+                </p>
+
                 <img
                   src={`${API_BASE_URL}/public/${preview.photo}`}
                   alt="Verification"
-                  className="w-full rounded-lg border"
+                  className="w-full max-h-[300px] sm:max-h-[450px] object-contain rounded-xl border"
                 />
               </div>
             )}
 
+            {/* Video Preview */}
             {preview.video && (
               <div>
-                <p className="font-medium mb-2">Video</p>
+                <p className="font-medium mb-2 text-sm sm:text-base">
+                  🎥 Rejected Video
+                </p>
+
                 <video
                   src={`${API_BASE_URL}/public/${preview.video}`}
                   controls
-                  className="w-full rounded-lg border"
+                  className="w-full max-h-[300px] sm:max-h-[450px] object-contain rounded-xl border"
                 />
               </div>
+            )}
+
+            {/* No Media */}
+            {!preview.photo && !preview.video && (
+              <p className="text-center text-gray-500 mt-6">
+                No photo or video available
+              </p>
             )}
           </div>
         </div>
