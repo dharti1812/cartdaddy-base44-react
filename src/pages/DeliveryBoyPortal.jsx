@@ -87,6 +87,151 @@ export default function DeliveryBoyPortal() {
   const notificationAudioRef = useRef(null);
   const prevUnreadCountRef = useRef(0);
   const [verifying, setVerifying] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoPreviewRef = useRef(null);
+   const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+
+  const videoRef = useRef(null);
+  const recordedChunksRef = useRef([]);
+  useEffect(() => {
+    if (rejectModal.open) {
+      setRejectData({
+        reason: "",
+        photo: null,
+        video: null,
+      });
+
+      setIsCameraOpen(false);
+      setRecording(false);
+
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop());
+        setCameraStream(null);
+      }
+
+      if (videoPreviewRef.current?.srcObject) {
+        videoPreviewRef.current.srcObject.getTracks().forEach((t) => t.stop());
+        videoPreviewRef.current.srcObject = null;
+      }
+
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+        videoRef.current.srcObject = null;
+      }
+    }
+  }, [rejectModal.open]);
+
+  useEffect(() => {
+    if (isCameraOpen && cameraStream && videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = cameraStream;
+    }
+  }, [isCameraOpen, cameraStream]);
+
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      setCameraStream(stream);
+      setIsCameraOpen(true);
+    } catch (err) {
+      alert("Camera access denied");
+    }
+  };
+
+  const capturePhoto = () => {
+    const video = videoPreviewRef.current;
+
+    if (!video) return;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+
+      const file = new File([blob], "photo.jpg", {
+        type: "image/jpeg",
+      });
+
+      setRejectData((prev) => ({
+        ...prev,
+        photo: file,
+      }));
+
+      closeCamera();
+    }, "image/jpeg");
+  };
+
+  const closeCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+
+    setCameraStream(null);
+    setIsCameraOpen(false);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: true,
+      });
+
+      setCameraStream(stream);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      const recorder = new MediaRecorder(stream);
+      recordedChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
+
+        const file = new File([blob], "video.webm", {
+          type: "video/webm",
+        });
+
+        setRejectData((prev) => ({
+          ...prev,
+          video: file,
+        }));
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch (err) {
+      alert("Cannot access camera");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) mediaRecorder.stop();
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+    }
+
+    setRecording(false);
+  };
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -142,7 +287,6 @@ export default function DeliveryBoyPortal() {
         block: "center",
       });
 
-      // highlight
       el.classList.add("ring-2", "ring-yellow-400");
       setTimeout(() => {
         el.classList.remove("ring-2", "ring-yellow-400");
@@ -165,7 +309,6 @@ export default function DeliveryBoyPortal() {
         const newUnread = data.unread_count || 0;
         const oldUnread = prevUnreadCountRef.current;
 
-        // 🔔 Only play if new unread notifications appear
         if (newUnread > oldUnread && notificationAudioRef.current) {
           notificationAudioRef.current.currentTime = 0;
           notificationAudioRef.current.play().catch((err) => {
@@ -505,9 +648,8 @@ export default function DeliveryBoyPortal() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        setLocationEnabled(true); // ✅ location working
+        setLocationEnabled(true);
 
-        // send location to server
         try {
           await fetch(`${API_BASE_URL}/api/delivery-partner/live-location`, {
             method: "POST",
@@ -524,10 +666,8 @@ export default function DeliveryBoyPortal() {
         }
       },
 
-      // ❌ ERROR CALLBACK: location disabled
       (err) => {
         if (err.code === 1) {
-          // permission denied
           setLocationEnabled(false);
         } else {
           console.error("Geolocation error:", err);
@@ -631,7 +771,7 @@ export default function DeliveryBoyPortal() {
       </div>
     );
   }
-  // LOADING STATE
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center">
@@ -643,7 +783,6 @@ export default function DeliveryBoyPortal() {
     );
   }
 
-  // NO PARTNER STATE
   if (!partner) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] flex items-center justify-center p-4">
@@ -670,7 +809,6 @@ export default function DeliveryBoyPortal() {
     );
   }
 
-  // Calculate orders
   const availableOrders = orders.filter(
     (o) =>
       o.delivery_status !== "delivered" &&
@@ -703,7 +841,6 @@ export default function DeliveryBoyPortal() {
     );
   }).length;
 
-  // MAIN RENDER
   return (
     <div
       className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] ${
@@ -756,7 +893,6 @@ export default function DeliveryBoyPortal() {
 
                 <div className="flex items-center gap-4">
                   <button
-                    // 💡 CHANGE: Use state setter instead of window.location.href
                     onClick={() => setShowProfileModal(true)}
                     className="rounded-full overflow-hidden w-10 h-10 sm:w-12 sm:h-12 border-2 background-[#FFEB3B] border-[#FFEB3B] transition-shadow duration-300 hover:shadow-[0_0_0_4px_rgba(255,235,59,0.7)]"
                     title="View Profile Settings"
@@ -987,7 +1123,6 @@ export default function DeliveryBoyPortal() {
                         );
                       }
 
-                      // Delivery & fuel
                       const deliveryCharge = charges?.baseCharge || 0;
                       const fuelCost = charges?.fuelCost || 0;
 
@@ -998,8 +1133,6 @@ export default function DeliveryBoyPortal() {
                           className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
                         >
                           <CardContent className="p-4 space-y-4">
-                            {/* Header */}
-
                             <div className="flex justify-between items-center">
                               <h3 className="font-bold text-lg text-gray-900">
                                 {order.website_ref ||
@@ -1236,13 +1369,11 @@ export default function DeliveryBoyPortal() {
               </TabsContent>
 
               <TabsContent value="active" className="mt-0">
-                {/* If NO active deliveries */}
                 {myActiveDeliveries.length === 0 ? (
                   <p className="text-center text-gray-500 py-6">
                     No active deliveries found.
                   </p>
                 ) : (
-                  // If deliveries exist
                   <div className="space-y-4">
                     {myActiveDeliveries.map((order) => {
                       let charges = null;
@@ -1268,7 +1399,6 @@ export default function DeliveryBoyPortal() {
                         );
                       }
 
-                      // Delivery & fuel
                       const deliveryCharge = charges?.baseCharge || 0;
                       const fuelCost = charges?.fuelCost || 0;
                       return (
@@ -1696,7 +1826,6 @@ export default function DeliveryBoyPortal() {
                     No active deliveries found.
                   </p>
                 ) : (
-                  // If deliveries exist
                   <div className="space-y-4">
                     {completedDeliveries.map((order) => (
                       <Card
@@ -1705,7 +1834,6 @@ export default function DeliveryBoyPortal() {
                         className="border border-green-300 bg-green-50"
                       >
                         <CardContent className="p-4 space-y-3">
-                          {/* Header */}
                           <div className="flex items-center justify-between">
                             <h3 className="font-bold text-lg ">
                               {order.website_ref || `Order #${order.id}`}
@@ -1853,8 +1981,8 @@ export default function DeliveryBoyPortal() {
             <DeliveryBoyProfileSettings
               dBProfile={partner}
               onUpdateProfile={() => {
-                loadData(); // Reload seller profile and stats
-                setShowProfileModal(false); // Close modal on successful update
+                loadData();
+                setShowProfileModal(false);
               }}
             />
           </div>
@@ -1867,85 +1995,144 @@ export default function DeliveryBoyPortal() {
           setRejectModal({ open: false, orderDetailId: null })
         }
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl w-full p-6">
           <DialogHeader>
-            <DialogTitle className="text-red-600">
+            <DialogTitle className="text-red-600 text-lg font-bold flex items-center gap-2">
               ❌ Reject {rejectModal.type?.toUpperCase()}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Reason */}
-          <div className="mt-3">
-            <label className="font-semibold text-sm">
-              Rejection Reason <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              className="w-full border rounded-md p-2 mt-1 text-sm"
-              rows={3}
-              placeholder={`Explain why ${rejectModal.type} is rejected`}
-              value={rejectData.reason}
-              onChange={(e) =>
-                setRejectData({ ...rejectData, reason: e.target.value })
-              }
-            />
-          </div>
+          <div className="space-y-6 mt-4">
+            <div>
+              <label className="font-semibold text-sm block mb-1">
+                Rejection Reason <span className="text-red-500">*</span>
+              </label>
 
-          {/* Photo Upload */}
-          <div className="mt-3">
-            <label className="font-semibold text-sm">
-              Upload Photo <span className="text-red-500">*</span>
-            </label>
+              <textarea
+                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-400 outline-none"
+                rows={3}
+                placeholder={`Explain why ${rejectModal.type} is rejected`}
+                value={rejectData.reason}
+                onChange={(e) =>
+                  setRejectData({ ...rejectData, reason: e.target.value })
+                }
+              />
+            </div>
 
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="mt-1"
-              onChange={(e) =>
-                setRejectData({ ...rejectData, photo: e.target.files[0] })
-              }
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border rounded-xl p-4 shadow-sm bg-gray-50">
+                <h4 className="font-semibold text-sm mb-3">
+                  📸 Capture Photo <span className="text-red-500">*</span>
+                </h4>
 
-          {/* Video Upload */}
-          <div className="mt-3">
-            <label className="font-semibold text-sm">
-              Upload Video <span className="text-red-500">*</span>
-            </label>
+                <button
+                  type="button"
+                  className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                  onClick={openCamera}
+                >
+                  Open Camera
+                </button>
 
-            <input
-              type="file"
-              accept="video/*"
-              capture="environment"
-              className="mt-1"
-              onChange={(e) =>
-                setRejectData({ ...rejectData, video: e.target.files[0] })
-              }
-            />
-          </div>
+                {isCameraOpen && (
+                  <div className="mt-4 space-y-3">
+                    <video
+                      ref={videoPreviewRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-40 object-cover rounded-lg border"
+                    />
 
-          {/* Actions */}
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              className="px-4 py-2 bg-gray-200 rounded"
-              onClick={() =>
-                setRejectModal({ open: false, orderDetailId: null })
-              }
-            >
-              Cancel
-            </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="flex-1 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-700"
+                      >
+                        Capture
+                      </button>
 
-            <button
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              onClick={() => handleRejectImei()}
-            >
-              Reject {rejectModal.type?.toUpperCase()}
-            </button>
+                      <button
+                        type="button"
+                        onClick={closeCamera}
+                        className="flex-1 py-2 rounded-lg bg-gray-300 text-sm hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {rejectData.photo && (
+                  <div className="mt-4">
+                    <p className="text-xs text-gray-500 mb-2">
+                      Captured Photo:
+                    </p>
+                    <img
+                      src={URL.createObjectURL(rejectData.photo)}
+                      alt="Captured"
+                      className="w-full h-40 object-cover rounded-lg border"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="border rounded-xl p-4 shadow-sm bg-gray-50">
+                <h4 className="font-semibold text-sm mb-3">
+                  🎥 Record Video <span className="text-red-500">*</span>
+                </h4>
+
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-40 object-cover rounded-lg border"
+                />
+
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    disabled={recording}
+                    className="flex-1 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Start
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={stopRecording}
+                    disabled={!recording}
+                    className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50"
+                  >
+                    Stop
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+              <button
+                className="w-full sm:w-auto px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+                onClick={() =>
+                  setRejectModal({ open: false, orderDetailId: null })
+                }
+              >
+                Cancel
+              </button>
+
+              <button
+                className="w-full sm:w-auto px-5 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+                onClick={handleRejectImei}
+              >
+                Reject {rejectModal.type?.toUpperCase()}
+              </button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* ⬆️ END OF NEW PROFILE SETTINGS MODAL ⬆️ */}
     </div>
   );
 }
