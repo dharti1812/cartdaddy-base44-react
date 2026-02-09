@@ -19,6 +19,10 @@ export default function RejectionsPage() {
   const [rejections, setRejections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
+  const [zoomPhoto, setZoomPhoto] = useState({
+    open: false,
+    src: null,
+  });
 
   const [preview, setPreview] = useState({
     open: false,
@@ -233,7 +237,6 @@ export default function RejectionsPage() {
         </div>
       </div>
 
-      
       {/* PREVIEW MODAL */}
       {preview.open && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-3">
@@ -263,7 +266,13 @@ export default function RejectionsPage() {
                 <img
                   src={`${API_BASE_URL}/public/${preview.photo}`}
                   alt="Verification"
-                  className="w-full max-h-[300px] sm:max-h-[450px] object-contain rounded-xl border"
+                  onClick={() =>
+                    setZoomPhoto({
+                      open: true,
+                      src: `${API_BASE_URL}/public/${preview.photo}`,
+                    })
+                  }
+                  className="w-full max-h-[250px] object-contain rounded-xl border cursor-zoom-in hover:scale-[1.02] transition"
                 />
               </div>
             )}
@@ -278,7 +287,7 @@ export default function RejectionsPage() {
                 <video
                   src={`${API_BASE_URL}/public/${preview.video}`}
                   controls
-                  className="w-full max-h-[300px] sm:max-h-[450px] object-contain rounded-xl border"
+                  className="w-full max-h-[250px] sm:max-h-[250px] object-contain rounded-xl border"
                 />
               </div>
             )}
@@ -312,6 +321,27 @@ export default function RejectionsPage() {
               >
                 Approve
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {zoomPhoto.open && (
+        <div className="fixed inset-0 z-[999] bg-black/90 flex items-center justify-center px-3">
+          <div className="relative w-full max-w-5xl">
+            <button
+              onClick={() => setZoomPhoto({ open: false, src: null })}
+              className="absolute top-3 right-3 text-white text-3xl font-bold hover:text-gray-300"
+            >
+              ✕
+            </button>
+
+            <div className="overflow-auto max-h-[90vh] rounded-xl">
+              <img
+                src={zoomPhoto.src}
+                alt="Zoom Preview"
+                className="w-full object-contain rounded-xl cursor-zoom-out"
+              />
             </div>
           </div>
         </div>
