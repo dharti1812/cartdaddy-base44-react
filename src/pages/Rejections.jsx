@@ -252,7 +252,7 @@ export default function RejectionsPage() {
               <div className="mb-6">
                 <p className="font-medium mb-2">Photo</p>
                 <img
-                  src={`${API_BASE_URL}/${preview.photo}`}
+                  src={`${API_BASE_URL}/public/${preview.photo}`}
                   alt="Verification"
                   className="w-full rounded-lg border"
                 />
@@ -263,7 +263,7 @@ export default function RejectionsPage() {
               <div>
                 <p className="font-medium mb-2">Video</p>
                 <video
-                  src={`${API_BASE_URL}/${preview.video}`}
+                  src={`${API_BASE_URL}/public/${preview.video}`}
                   controls
                   className="w-full rounded-lg border"
                 />
