@@ -892,7 +892,7 @@ export default function ActiveDeliveries({
                                               Appeal filed. Waiting for admin
                                               approval...
                                             </span>
-                                          ) : item.imei_reject_count > 0 && item.imei_upload_count < 2 ? (
+                                          ) : item.imei_reject_count > 0 && item.imei_upload_count > 1 ?  (
                                             <span
                                               onClick={() =>
                                                 openImeiReuploadDialog(item)
@@ -957,7 +957,7 @@ export default function ActiveDeliveries({
                                             <span className="text-sm text-orange-600 font-medium">
                                               Appeal filed. Waiting...
                                             </span>
-                                          ) : item.video_upload_count < 2 ? (
+                                          ) : item.video_reject_count > 0 && item.video_upload_count > 1 ?  (
                                             <span
                                               onClick={() =>
                                                 openVideoReuploadDialog(item)
