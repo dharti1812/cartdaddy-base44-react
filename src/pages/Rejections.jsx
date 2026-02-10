@@ -71,9 +71,7 @@ export default function RejectionsPage() {
     try {
       await rejectionsApi.approve(rejectionId);
 
-      setRejections((prev) =>
-        prev.filter((item) => item.id !== rejectionId)
-      );
+      setRejections((prev) => prev.filter((item) => item.id !== rejectionId));
 
       toast.success("Appeal Approved Successfully!");
     } catch (error) {
@@ -92,9 +90,7 @@ export default function RejectionsPage() {
     try {
       await rejectionsApi.reject(rejectionId);
 
-      setRejections((prev) =>
-        prev.filter((item) => item.id !== rejectionId)
-      );
+      setRejections((prev) => prev.filter((item) => item.id !== rejectionId));
 
       toast.success("Appeal Rejected Successfully!");
     } catch (error) {
@@ -111,7 +107,7 @@ export default function RejectionsPage() {
     if (!date) return "-";
     const d = new Date(date);
     return `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
+      d.getMonth() + 1,
     ).padStart(2, "0")}/${d.getFullYear()}`;
   };
 
@@ -164,9 +160,7 @@ export default function RejectionsPage() {
 
                   {rejections.map((rejection, index) => (
                     <TableRow key={rejection.id}>
-                      <TableCell>
-                        {(page - 1) * perPage + index + 1}
-                      </TableCell>
+                      <TableCell>{(page - 1) * perPage + index + 1}</TableCell>
 
                       <TableCell className="font-semibold">
                         #{rejection.order_id}
@@ -262,38 +256,47 @@ export default function RejectionsPage() {
                         {rejection.appeal_status === "pending" && (
                           <>
                             {/* Approve */}
-                            <Button
-                              size="sm"
-                              disabled={actionLoadingId === rejection.id}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() =>
-                                setConfirm({
-                                  open: true,
-                                  rejectionId: rejection.id,
-                                  action: "approve",
-                                })
-                              }
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
-                            </Button>
+                            <div className="relative inline-block group">
+                              <Button
+                                size="sm"
+                                disabled={actionLoadingId === rejection.id}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() =>
+                                  setConfirm({
+                                    open: true,
+                                    rejectionId: rejection.id,
+                                    action: "approve",
+                                  })
+                                }
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </Button>
 
-                            {/* Reject */}
-                            <Button
-                              size="sm"
-                              disabled={actionLoadingId === rejection.id}
-                              className="bg-red-600 hover:bg-red-700 text-white"
-                              onClick={() =>
-                                setConfirm({
-                                  open: true,
-                                  rejectionId: rejection.id,
-                                  action: "reject",
-                                })
-                              }
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
+                              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 opacity-0 group-hover:opacity-100 transition duration-200 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none">
+                                Approve
+                              </span>
+                            </div>
+
+                            <div className="relative inline-block group">
+                              <Button
+                                size="sm"
+                                disabled={actionLoadingId === rejection.id}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                                onClick={() =>
+                                  setConfirm({
+                                    open: true,
+                                    rejectionId: rejection.id,
+                                    action: "reject",
+                                  })
+                                }
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </Button>
+
+                              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 opacity-0 group-hover:opacity-100 transition duration-200 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 pointer-events-none">
+                                Reject
+                              </span>
+                            </div>
                           </>
                         )}
                       </TableCell>
@@ -333,20 +336,78 @@ export default function RejectionsPage() {
         </div>
       </div>
 
-      {/* CONFIRM MODAL */}
+      {preview.open && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-xl w-[90%] max-w-2xl p-6 relative">
+            {/* Close Button */}
+            <button
+              onClick={() =>
+                setPreview({ open: false, photo: null, video: null })
+              }
+              className="absolute top-3 right-3 text-gray-500 hover:text-black"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-lg font-semibold mb-4">View Rejection Details</h2>
+
+            
+            {preview.photo && (
+              <div className="mb-4">
+                <p className="font-medium mb-2">Photo:</p>
+                <img
+                  src={`${API_BASE_URL}/public/${preview.photo}`}
+                  alt="Appeal Photo"
+                  className="w-full max-h-80 object-contain rounded-lg border"
+                   onClick={() =>
+                    setZoomPhoto({
+                      open: true,
+                      src: `${API_BASE_URL}/public/${preview.photo}`,
+                    })
+                  }
+                />
+              </div>
+            )}
+
+            
+            {preview.video && (
+              <div>
+                <p className="font-medium mb-2">Video:</p>
+                <video controls className="w-full max-h-80 rounded-lg border">
+                  <source
+                    src={`${API_BASE_URL}/public/${preview.video}`}
+                    type="video/mp4"
+                  />
+                </video>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {zoomPhoto.open && (
+        <div
+          className="fixed inset-0 z-[999] bg-black/80 flex items-center justify-center"
+          onClick={() => setZoomPhoto({ open: false, src: null })}
+        >
+          <img
+            src={zoomPhoto.src}
+            alt="Zoom"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg border shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+      
       {confirm.open && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Confirm Action
-            </h3>
+            <h3 className="text-lg font-semibold mb-4">Confirm Action</h3>
 
             <p className="mb-6">
               Are you sure you want to{" "}
               <span className="font-bold">
-                {confirm.action === "approve"
-                  ? "APPROVE"
-                  : "REJECT"}
+                {confirm.action === "approve" ? "APPROVE" : "REJECT"}
               </span>{" "}
               this appeal?
             </p>

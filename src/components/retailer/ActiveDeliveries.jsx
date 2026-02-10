@@ -823,18 +823,19 @@ export default function ActiveDeliveries({
                           </p>
                           <div className="space-y-1">
                             {order.items.map((item, idx) => {
-                              
                               const isAppealPending =
                                 item.appeal_status == "pending";
-                              console.log("isAppealPending:", isAppealPending); 
+                              console.log("isAppealPending:", isAppealPending);
                               console.log("Full item:", item);
-console.log("Appeal Status from API:", item.appeal_status);
+                              console.log(
+                                "Appeal Status from API:",
+                                item.appeal_status,
+                              );
                               return (
                                 <div
                                   key={idx}
                                   className="bg-gray-50 p-3 rounded space-y-3"
                                 >
-                                 
                                   <div className="flex justify-between items-center text-sm">
                                     <span className="text-gray-700 font-medium">
                                       {item.name}
@@ -860,6 +861,10 @@ console.log("Appeal Status from API:", item.appeal_status);
                                         ) : item.imei_reject_count > 0 ? (
                                           <Badge className="bg-red-500 text-white">
                                             Rejected
+                                          </Badge>
+                                        ) : item.imei_upload_count >= 2 ? (
+                                          <Badge className="bg-blue-600 text-white">
+                                            Uploaded
                                           </Badge>
                                         ) : (
                                           <Badge className="bg-amber-500 text-white">
@@ -921,6 +926,10 @@ console.log("Appeal Status from API:", item.appeal_status);
                                           <Badge className="bg-red-500 text-white">
                                             Rejected
                                           </Badge>
+                                        ) : item.video_upload_count >= 2 ? (
+                                          <Badge className="bg-blue-600 text-white">
+                                            Uploaded
+                                          </Badge>
                                         ) : (
                                           <Badge className="bg-amber-500 text-white">
                                             Pending
@@ -967,6 +976,7 @@ console.log("Appeal Status from API:", item.appeal_status);
                                     {/* File Appeal Button */}
                                     {(item.imei_reject_count === 1 ||
                                       item.video_reject_count === 1) &&
+                                      item.file_appeal_count !== 1 &&
                                       !isAppealPending && (
                                         <div className="pt-3 border-t text-right">
                                           <button
