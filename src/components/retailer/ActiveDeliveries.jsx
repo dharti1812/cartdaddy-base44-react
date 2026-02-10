@@ -853,15 +853,16 @@ export default function ActiveDeliveries({
                                           <Badge className="bg-emerald-600 text-white">
                                             Verified
                                           </Badge>
-                                        ) : item.imei_reject_count > 0 ? (
-                                          <Badge className="bg-red-500 text-white">
-                                            Rejected
-                                          </Badge>
                                         ) : item.imei_upload_count >= 2 ? (
                                           <Badge className="bg-blue-600 text-white">
                                             Uploaded
                                           </Badge>
-                                        ) : (
+                                        ) :
+                                        item.imei_reject_count > 0 ? (
+                                          <Badge className="bg-red-500 text-white">
+                                            Rejected
+                                          </Badge>
+                                        ) :  (
                                           <Badge className="bg-amber-500 text-white">
                                             Pending
                                           </Badge>
@@ -917,13 +918,14 @@ export default function ActiveDeliveries({
                                           <Badge className="bg-emerald-600 text-white">
                                             Verified
                                           </Badge>
-                                        ) : item.video_reject_count > 0 ? (
-                                          <Badge className="bg-red-500 text-white">
-                                            Rejected
-                                          </Badge>
                                         ) : item.video_upload_count >= 2 ? (
                                           <Badge className="bg-blue-600 text-white">
                                             Uploaded
+                                          </Badge>
+                                        ) :
+                                        item.video_reject_count > 0 ? (
+                                          <Badge className="bg-red-500 text-white">
+                                            Rejected
                                           </Badge>
                                         ) : (
                                           <Badge className="bg-amber-500 text-white">
