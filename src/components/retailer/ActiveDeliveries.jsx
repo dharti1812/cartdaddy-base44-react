@@ -825,7 +825,7 @@ export default function ActiveDeliveries({
                             {order.items.map((item, idx) => {
                               const isAppealPending =
                                 item.appeal_status == "pending";
-                             
+
                               return (
                                 <div
                                   key={idx}
@@ -857,12 +857,11 @@ export default function ActiveDeliveries({
                                           <Badge className="bg-blue-600 text-white">
                                             Uploaded
                                           </Badge>
-                                        ) :
-                                        item.imei_reject_count > 0 ? (
+                                        ) : item.imei_reject_count > 0 ? (
                                           <Badge className="bg-red-500 text-white">
                                             Rejected
                                           </Badge>
-                                        ) :  (
+                                        ) : (
                                           <Badge className="bg-amber-500 text-white">
                                             Pending
                                           </Badge>
@@ -893,7 +892,7 @@ export default function ActiveDeliveries({
                                               Appeal filed. Waiting for admin
                                               approval...
                                             </span>
-                                          ) : (
+                                          ) : item.imei_reject_count > 0 && item.imei_upload_count < 2 ? (
                                             <span
                                               onClick={() =>
                                                 openImeiReuploadDialog(item)
@@ -901,6 +900,10 @@ export default function ActiveDeliveries({
                                               className="text-sm font-medium text-blue-600 cursor-pointer"
                                             >
                                               Re-upload IMEI
+                                            </span>
+                                          ) : (
+                                            <span className="text-sm text-green-600 font-medium">
+                                              Re-upload submitted ✔
                                             </span>
                                           )}
                                         </div>
@@ -922,8 +925,7 @@ export default function ActiveDeliveries({
                                           <Badge className="bg-blue-600 text-white">
                                             Uploaded
                                           </Badge>
-                                        ) :
-                                        item.video_reject_count > 0 ? (
+                                        ) : item.video_reject_count > 0 ? (
                                           <Badge className="bg-red-500 text-white">
                                             Rejected
                                           </Badge>
@@ -951,12 +953,11 @@ export default function ActiveDeliveries({
                                             View rejection reason
                                           </button>
 
-                                          {/* Block Video Reupload also */}
                                           {isAppealPending ? (
                                             <span className="text-sm text-orange-600 font-medium">
                                               Appeal filed. Waiting...
                                             </span>
-                                          ) : (
+                                          ) : item.video_upload_count < 2 ? (
                                             <span
                                               onClick={() =>
                                                 openVideoReuploadDialog(item)
@@ -964,6 +965,10 @@ export default function ActiveDeliveries({
                                               className="text-sm font-medium text-blue-600 cursor-pointer"
                                             >
                                               Re-upload video
+                                            </span>
+                                          ) : (
+                                            <span className="text-sm text-green-600 font-medium">
+                                              Re-upload submitted ✔
                                             </span>
                                           )}
                                         </div>
