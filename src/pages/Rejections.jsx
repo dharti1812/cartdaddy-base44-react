@@ -358,7 +358,7 @@ export default function RejectionsPage() {
                 <img
                   src={`${API_BASE_URL}/public/${preview.photo}`}
                   alt="Appeal Photo"
-                  className="w-full max-h-80 object-contain rounded-lg border"
+                  className="w-full max-h-64 object-contain rounded-lg border"
                    onClick={() =>
                     setZoomPhoto({
                       open: true,
@@ -373,7 +373,7 @@ export default function RejectionsPage() {
             {preview.video && (
               <div>
                 <p className="font-medium mb-2">Video:</p>
-                <video controls className="w-full max-h-80 rounded-lg border">
+                <video controls className="w-full max-h-64 rounded-lg border">
                   <source
                     src={`${API_BASE_URL}/public/${preview.video}`}
                     type="video/mp4"
@@ -398,7 +398,7 @@ export default function RejectionsPage() {
           />
         </div>
       )}
-      
+
       {confirm.open && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6">

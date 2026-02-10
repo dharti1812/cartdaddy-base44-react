@@ -825,12 +825,7 @@ export default function ActiveDeliveries({
                             {order.items.map((item, idx) => {
                               const isAppealPending =
                                 item.appeal_status == "pending";
-                              console.log("isAppealPending:", isAppealPending);
-                              console.log("Full item:", item);
-                              console.log(
-                                "Appeal Status from API:",
-                                item.appeal_status,
-                              );
+                             
                               return (
                                 <div
                                   key={idx}
