@@ -86,6 +86,8 @@ export default function ActiveDeliveries({
   const videoPreviewRef = useRef(null);
   const containerRef = useRef(null);
   const [orderItems, setOrderItems] = useState([]);
+  const [imeiUploaded, setImeiUploaded] = useState(false);
+  const [videoUploaded, setVideoUploaded] = useState(false);
   const [lockedUploads, setLockedUploads] = useState({
     imei: [],
     video: [],
@@ -188,6 +190,7 @@ export default function ActiveDeliveries({
 
       toast.success("IMEI saved successfully");
       loadData();
+      setImeiUploaded(true);
       setShowImeiDialog(false);
     } catch (err) {
       toast.error("Failed to save IMEI");
@@ -224,8 +227,9 @@ export default function ActiveDeliveries({
               .forEach((track) => track.stop());
             videoRef.current.srcObject = null;
           }
-
+          setVideoUploaded(true); 
           setRecording(false);
+
           setVideoRecorded(false);
           setShowImeiDialog(false);
         } else {
@@ -892,18 +896,19 @@ export default function ActiveDeliveries({
                                               Appeal filed. Waiting for admin
                                               approval...
                                             </span>
-                                          ) : item.imei_reject_count > 0  ?  (
+                                          ) : item.imei_reject_count > 0 && item.imei_verified !== 1? (
                                             <span
                                               onClick={() =>
                                                 openImeiReuploadDialog(item)
                                               }
-                                              className="text-sm font-medium text-blue-600 cursor-pointer"
+                                              className={`text-sm font-medium text-blue-600 cursor-pointer 
+                                                  ${imeiUploaded ? "hidden" : ""}`}
                                             >
                                               Re-upload IMEI
                                             </span>
                                           ) : (
                                             <span className="text-sm text-green-600 font-medium">
-                                              Re-upload submitted ✔
+                                              
                                             </span>
                                           )}
                                         </div>
@@ -957,18 +962,18 @@ export default function ActiveDeliveries({
                                             <span className="text-sm text-orange-600 font-medium">
                                               Appeal filed. Waiting...
                                             </span>
-                                          ) : item.video_reject_count > 0  ?  (
+                                          ) : item.video_reject_count > 0 && item.video_verified !== 1 ? (
                                             <span
                                               onClick={() =>
                                                 openVideoReuploadDialog(item)
                                               }
-                                              className="text-sm font-medium text-blue-600 cursor-pointer"
+                                              className={`text-sm font-medium text-blue-600 cursor-pointer ${videoUploaded ? "hidden" : ""}`}
                                             >
                                               Re-upload video
                                             </span>
                                           ) : (
                                             <span className="text-sm text-green-600 font-medium">
-                                              Re-upload submitted ✔
+                                              
                                             </span>
                                           )}
                                         </div>
