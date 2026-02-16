@@ -4,22 +4,104 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="https://base44.com/logo_v2.svg" />
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
-  <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
-  <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cart Daddy</title>
 
+  <link rel="manifest" href="/manifest.json">
+
+  <style>
+    #installBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      background-color: #ffeb3b; /* bright yellow */
+      color: #000;               /* black text */
+      font-weight: bold;
+      font-size: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 9999;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    #installBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+
+    #iosMsg {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      background: #ffeb3b;
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      font-weight: bold;
+      display: none;
+      z-index: 9999;
+    }
+  </style>
 </head>
 
 <body>
   <div id="root"></div>
 
-  <!-- React entry -->
+  <!-- Install button -->
+  <button id="installBtn">📲 Install App</button>
+  <!-- iOS fallback message -->
+  <div id="iosMsg">Use Safari → Add to Home Screen to install</div>
+
   <script type="module" src="/src/main.jsx"></script>
 
+  <script>
+    // Hide install button initially
+    const installBtn = document.getElementById('installBtn');
+    installBtn.style.display = 'none';
+
+    const iosMsg = document.getElementById('iosMsg');
+
+    // Detect iOS
+    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+    const isInStandaloneMode = ('standalone' in window.navigator) && window.navigator.standalone;
+
+    if (isIos && !isInStandaloneMode) {
+      iosMsg.style.display = 'block';
+    }
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('Service Worker registered:', reg))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+
+    // Handle PWA install prompt
+    window.deferredPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      window.deferredPrompt = e;
+      installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+        const choiceResult = await window.deferredPrompt.userChoice;
+        console.log('User choice:', choiceResult.outcome);
+        window.deferredPrompt = null;
+        installBtn.style.display = 'none';
+      } else {
+        alert("Install prompt not available. Use Chrome on Android with HTTPS.");
+      }
+    });
+  </script>
 </body>
 
 </html>

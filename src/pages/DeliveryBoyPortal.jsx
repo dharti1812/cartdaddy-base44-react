@@ -40,6 +40,7 @@ import LiveTrackingMapAvailableOrders from "@/components/LiveTrackingMapAvailabl
 import DeliveryBoyProfileSettings from "@/components/DeliveryBoyProfileSettings";
 import { calculateDeliveryCharges } from "../components/utils/deliveryChargeCalculator";
 import { set } from "date-fns";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 export default function DeliveryBoyPortal() {
   const [partner, setPartner] = useState(null);
@@ -92,6 +93,7 @@ export default function DeliveryBoyPortal() {
   const videoPreviewRef = useRef(null);
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
+
 
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -1127,13 +1129,16 @@ export default function DeliveryBoyPortal() {
                       const fuelCost = charges?.fuelCost || 0;
 
                       return (
+                        
                         <Card
                           key={order.id}
                           id={`order-${order.id}`}
                           className="rounded-xl shadow-md border border-gray-300 overflow-hidden"
                         >
+
                           <CardContent className="p-4 space-y-4">
                             <div className="flex justify-between items-center">
+                             <PWAInstallPrompt />
                               <h3 className="font-bold text-lg text-gray-900">
                                 {order.website_ref ||
                                   `Order #${String(order.id)}`}{" "}

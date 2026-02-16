@@ -1,0 +1,24 @@
+{
+  "name": "CartDaddy - Retailer & Delivery Partner",
+  "short_name": "CartDaddy",
+  "description": "Mobile app for retailers and delivery partners to manage orders and deliveries",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#075E66",
+  "theme_color": "#075E66",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e16ead60e37f9dc085ad75/659db8ff0_aaaaa.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68e16ead60e37f9dc085ad75/659db8ff0_aaaaa.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

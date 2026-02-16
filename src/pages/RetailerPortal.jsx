@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AuthApi } from "@/components/utils/authApi";
-
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import {
   Bell,
   Package,
@@ -42,7 +42,6 @@ import RetailerProfileSettings from "../components/retailer/RetailerProfileSetti
 
 function useLocationChecker() {
   const [locationEnabled, setLocationEnabled] = useState(true);
-
 
   useEffect(() => {
     let watchId;
@@ -103,13 +102,13 @@ export default function SellerPortal() {
   const [scrollToOrderId, setScrollToOrderId] = useState(null);
 
   const getOrderTab = (orderId) => {
-    if (orders.some(o => o.id === orderId)) return "available";
+    if (orders.some((o) => o.id === orderId)) return "available";
 
-    if (myAcceptedOrders.some(o => o.id === orderId)) return "active";
+    if (myAcceptedOrders.some((o) => o.id === orderId)) return "active";
 
-    if (completedOrders.some(o => o.id === orderId)) return "completed";
+    if (completedOrders.some((o) => o.id === orderId)) return "completed";
 
-    if (rejectedOrders.some(o => o.id === orderId)) return "rejected";
+    if (rejectedOrders.some((o) => o.id === orderId)) return "rejected";
 
     return null;
   };
@@ -129,7 +128,7 @@ export default function SellerPortal() {
             audio.currentTime = 0;
             audio.muted = false;
           })
-          .catch(() => { });
+          .catch(() => {});
       });
     };
 
@@ -173,9 +172,6 @@ export default function SellerPortal() {
     const timer = setTimeout(() => setHighlightOrderId(null), 15000);
     return () => clearTimeout(timer);
   }, [highlightOrderId]);
-
-
-
 
   const loadData = async () => {
     try {
@@ -288,7 +284,6 @@ export default function SellerPortal() {
               latestUnread.data?.type === "ROUTE_DEVIATION");
 
           if (isEmergency && data.unread_count > prevUnreadCountRef.current) {
-
             const audio = emergencyAudioRef.current;
             if (audio) {
               audio.pause();
@@ -300,7 +295,7 @@ export default function SellerPortal() {
                 .catch((e) => console.warn("Emergency audio blocked", e));
             }
           } else if (data.unread_count > prevUnreadCountRef.current) {
-            notificationAudioRef.current?.play().catch(() => { });
+            notificationAudioRef.current?.play().catch(() => {});
           }
         }
 
@@ -515,14 +510,16 @@ export default function SellerPortal() {
 
   return (
     <div
-      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${mobileView ? "max-w-md mx-auto" : ""
-        }`}
+      className={`min-h-screen bg-gradient-to-br from-[#075E66] to-[#064d54] font-sans ${
+        mobileView ? "max-w-md mx-auto" : ""
+      }`}
     >
       <audio
         ref={notificationAudioRef}
         src="/notification.mp3"
         preload="auto"
       />
+      <PWAInstallPrompt />
 
       <audio ref={emergencyAudioRef} preload="auto">
         <source src="/emergency.mp3" type="audio/mpeg" />
@@ -555,7 +552,8 @@ export default function SellerPortal() {
                 <img
                   src={
                     sellerProfile?.image_url ||
-                    `https://ui-avatars.com/api/?name=${sellerProfile?.name || "Seller"
+                    `https://ui-avatars.com/api/?name=${
+                      sellerProfile?.name || "Seller"
                     }&background=FFEB3B&color=000&bold=true`
                   }
                   alt={`${sellerProfile?.name} profile`}
@@ -563,15 +561,16 @@ export default function SellerPortal() {
                 />
               </button>
               <Badge
-                className={`${sellerProfile?.user?.availability_status === "online"
-                  ? "bg-[#FFEB3B] text-gray-900 font-bold"
-                  : "bg-gray-500 text-white font-bold"
-                  } border-0 text-base sm:text-lg px-3 py-1.5`}
+                className={`${
+                  sellerProfile?.user?.availability_status === "online"
+                    ? "bg-[#FFEB3B] text-gray-900 font-bold"
+                    : "bg-gray-500 text-white font-bold"
+                } border-0 text-base sm:text-lg px-3 py-1.5`}
               >
                 <div className="w-2 h-2 bg-white rounded-full mr-1 sm:mr-2 animate-pulse"></div>
                 {sellerProfile?.availability_status
                   ? sellerProfile.availability_status.charAt(0).toUpperCase() +
-                  sellerProfile.availability_status.slice(1).toLowerCase()
+                    sellerProfile.availability_status.slice(1).toLowerCase()
                   : ""}
               </Badge>
               <div className="relative">
@@ -596,8 +595,10 @@ export default function SellerPortal() {
                 </div>
 
                 {showDropdown && (
-                  <div ref={notificationRef} className="absolute right-0 mt-3 w-80 bg-white shadow-2xl rounded-xl z-50 border border-gray-200">
-
+                  <div
+                    ref={notificationRef}
+                    className="absolute right-0 mt-3 w-80 bg-white shadow-2xl rounded-xl z-50 border border-gray-200"
+                  >
                     {/* Header */}
                     <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
                       <p className="text-sm font-semibold text-gray-800">
@@ -619,10 +620,11 @@ export default function SellerPortal() {
                           <div
                             key={n.id}
                             className={`px-4 py-3 text-sm cursor-pointer transition
-                            ${n.read_at
+                            ${
+                              n.read_at
                                 ? "bg-white hover:bg-gray-50"
                                 : "bg-yellow-50 hover:bg-yellow-100"
-                              }
+                            }
                               border-b last:border-0
                             `}
                             onClick={() => {
@@ -637,14 +639,15 @@ export default function SellerPortal() {
                                 setShowDropdown(false);
                               }
                             }}
-
                           >
                             <p className="font-medium text-black leading-tight">
                               {n.data?.order_id
                                 ? `Order #${n.data.order_id}`
                                 : "Notification"}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1">{n.data?.message}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {n.data?.message}
+                            </p>
                             {n.data?.amount && (
                               <p className="text-xs text-black mt-1">
                                 Amount: ₹{n.data.amount}
@@ -852,7 +855,8 @@ export default function SellerPortal() {
                 <CompletedOrders
                   scrollToOrderId={scrollToOrderId}
                   clearScrollTarget={() => setScrollToOrderId(null)}
-                  orders={completedOrders} />
+                  orders={completedOrders}
+                />
               </TabsContent>
 
               <TabsContent value="rejected">
@@ -862,7 +866,6 @@ export default function SellerPortal() {
                   clearScrollTarget={() => setScrollToOrderId(null)}
                 />
               </TabsContent>
-
 
               <TabsContent value="delivery_boys" className="mt-0">
                 <ManageDeliveryBoys retailerId={sellerProfile?.id} />
