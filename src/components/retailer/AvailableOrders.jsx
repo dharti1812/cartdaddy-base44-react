@@ -814,11 +814,15 @@ export default function AvailableOrders({
             (ar) => ar.retailer_id === retailerId,
           );
 
+          console.log(myAcceptance, "My acceptance for order", order.id);
+
           const myResponseStatus = myAcceptance?.response_status ?? "pending";
+          console.log(myResponseStatus, "My response status for order", order.id);
           const is_COD = order.payment_type === "cash_on_delivery";
           const isUnpaid = order.payment_status === "unpaid";
           const showAcceptButton =
             myResponseStatus === "pending" && (is_COD || isUnpaid);
+            console.log(showAcceptButton, "Show accept button for order", order.id);
           const showPaymentReceivedButton =
             !is_COD && myResponseStatus === "awaiting_payment_link";
           return (
