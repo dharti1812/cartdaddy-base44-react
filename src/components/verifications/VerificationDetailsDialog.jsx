@@ -62,12 +62,7 @@ export default function VerificationDetailsDialog({
   const resolveImageUrl = (url) => {
     if (!url) return "";
 
-    const finalUrl = url.replace(
-      /^https?:\/\/api\.cartdaddy\.in/i,
-      ASSET_BASE_URL
-    );
-
-    return finalUrl;
+    return url.replace(/^https?:\/\/cartdaddy\.online/i, ASSET_BASE_URL);
   };
 
   console.log("Parsed shop photos1:", shopPhotos);
@@ -128,7 +123,7 @@ export default function VerificationDetailsDialog({
               admin_notes: notes,
               is_physically_verified: physicalVerified ? 1 : 0,
             }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -152,7 +147,7 @@ export default function VerificationDetailsDialog({
               admin_approved_at: new Date().toISOString(),
               admin_notes: notes,
             }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -195,8 +190,8 @@ export default function VerificationDetailsDialog({
             ? 1
             : 0
           : policeVerified
-          ? 1
-          : 0,
+            ? 1
+            : 0,
 
         admin_approved_by: currentAdmin.id,
         admin_approved_at: new Date().toISOString(),
@@ -489,8 +484,8 @@ export default function VerificationDetailsDialog({
                       <Label className="text-gray-500">IFSC Code</Label>
                       <p className="font-mono">
                         {isRetailer
-                          ? data?.user?.bank_information?.ifsc ?? "-"
-                          : data?.user?.bank_information?.ifsc ?? "-"}
+                          ? (data?.user?.bank_information?.ifsc ?? "-")
+                          : (data?.user?.bank_information?.ifsc ?? "-")}
                       </p>
                     </div>
 
