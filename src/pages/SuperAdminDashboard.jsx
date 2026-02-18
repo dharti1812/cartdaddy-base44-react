@@ -710,7 +710,7 @@ export default function SuperAdminDashboard() {
                       <div className="flex items-center gap-4">
                         {seller.shop_photos?.[0]?.url ? (
                           <img
-                            src={seller.shop_photos[0].url}
+                            src={resolveImageUrl(seller.shop_photos[0].url)}
                             alt={seller.business_name}
                             className="w-12 h-12 rounded-full object-cover border-2 border-[#FFEB3B]"
                           />
