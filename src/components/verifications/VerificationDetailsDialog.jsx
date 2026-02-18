@@ -114,7 +114,7 @@ export default function VerificationDetailsDialog({
       const token = sessionStorage.getItem("token");
       if (isRetailer) {
         const response = await fetch(
-          `${API_BASE_URL}/api/retailers/${data.id}/approve`,
+          `${API_BASE_URL}/api/shops/${data.id}/approve`,
           {
             method: "POST",
             headers: {
