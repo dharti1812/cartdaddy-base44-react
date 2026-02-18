@@ -178,6 +178,18 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const resolveImageUrl = (url) => {
+      if (!url) return "";
+  
+      try {
+        const parsed = new URL(url);
+  
+        return `${ASSET_BASE_URL}${parsed.pathname}`;
+      } catch {
+        return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+      }
+    };
+
   const handleBanSeller = async (seller) => {
     const reason = prompt(`Enter ban reason`);
     if (!reason) return;
@@ -1017,7 +1029,7 @@ export default function SuperAdminDashboard() {
                     <div className="flex items-center gap-4">
                       {selectedDetail.data.shop_photos?.[0]?.url ? (
                         <img
-                          src={selectedDetail.data.shop_photos[0].url}
+                          src={resolveImageUrl(selectedDetail.data.shop_photos[0].url)}
                           alt={selectedDetail.data.business_name}
                           className="w-24 h-24 rounded-lg object-cover border-4 border-[#FFEB3B]"
                         />
@@ -1116,7 +1128,7 @@ export default function SuperAdminDashboard() {
                           {selectedDetail.data.shop_photos.map((photo, idx) => (
                             <img
                               key={idx}
-                              src={photo.url}
+                              src={resolveImageUrl(photo.url)}
                               alt={`Shop ${idx + 1}`}
                               className="w-full h-24 object-cover rounded border-2 border-[#FFEB3B]"
                             />

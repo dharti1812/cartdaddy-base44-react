@@ -59,17 +59,17 @@ export default function VerificationDetailsDialog({
     shopPhotos = [];
   }
 
- const resolveImageUrl = (url) => {
-  if (!url) return "";
+  const resolveImageUrl = (url) => {
+    if (!url) return "";
 
-  try {
-    const parsed = new URL(url);
+    try {
+      const parsed = new URL(url);
 
-    return `${ASSET_BASE_URL}${parsed.pathname}`;
-  } catch {
-    return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
-  }
-};
+      return `${ASSET_BASE_URL}${parsed.pathname}`;
+    } catch {
+      return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+    }
+  };
 
   console.log("Parsed shop photos1:", shopPhotos);
   const handleDownloadReport = async () => {
