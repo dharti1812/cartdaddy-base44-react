@@ -33,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { deliveryPartnerApi } from "@/components/utils/deliveryPartnerApi";
-import { API_BASE_URL } from "@/config";
+import { API_BASE_URL, ASSET_BASE_URL } from "@/config";
 
 export default function SuperAdminDashboard() {
   const [orders, setOrders] = useState([]);
