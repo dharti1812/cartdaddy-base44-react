@@ -126,7 +126,7 @@ const getCurrentLocation = () => {
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 0,
-      }
+      },
     );
   });
 };
@@ -272,15 +272,15 @@ export default function SellerOnboarding() {
           firstLocation.lat,
           firstLocation.lng,
           location.lat,
-          location.lng
+          location.lng,
         );
 
         const MAX_DISTANCE = 50; // Max 50 meters difference
         if (distance > MAX_DISTANCE) {
           setError(
             `Photos must be taken from the same location. Distance: ${Math.round(
-              distance
-            )}m. Please move within ${MAX_DISTANCE}m of the first photo location.`
+              distance,
+            )}m. Please move within ${MAX_DISTANCE}m of the first photo location.`,
           );
           return;
         }
@@ -306,7 +306,7 @@ export default function SellerOnboarding() {
       console.error("Camera error:", err);
       setError(
         err.message ||
-          "Unable to access camera. Please allow camera permissions."
+          "Unable to access camera. Please allow camera permissions.",
       );
     }
   };
@@ -346,7 +346,7 @@ export default function SellerOnboarding() {
 
       if (!video.videoWidth || !video.videoHeight) {
         throw new Error(
-          "Invalid video dimensions. Please close and reopen camera."
+          "Invalid video dimensions. Please close and reopen camera.",
         );
       }
 
@@ -365,7 +365,7 @@ export default function SellerOnboarding() {
             else reject(new Error("Failed to create image blob"));
           },
           "image/jpeg",
-          0.9
+          0.9,
         );
       });
 
@@ -462,7 +462,7 @@ export default function SellerOnboarding() {
   };
 
   const submitPhone = async () => {
-    if (!data.name || !data.phone) return setError("Enter name and mobile");
+    if (!data.phone) return setError("Enter mobile");
 
     const allSellers = await Retailer.list();
     const cleanPhone = data.phone.replace(/\D/g, "");
@@ -480,12 +480,12 @@ export default function SellerOnboarding() {
 
     if (existingSeller && existingSeller.user_id !== user.id) {
       return setError(
-        "This mobile number is already registered with another account."
+        "This mobile number is already registered with another account.",
       );
     }
 
     setLoading(true);
-    const otpResponse = await sendOTP(data.phone, data.name);
+    const otpResponse = await sendOTP(data.phone);
     if (otpResponse.success) {
       setSuccess("✅ OTP sent to your mobile");
       setStep(1.5);
@@ -553,6 +553,7 @@ export default function SellerOnboarding() {
   };
 
   const submitEmail = async () => {
+    if (!data.name) return setError("Enter name");
     if (!data.email) return setError("Enter email");
     if (!data.phone) return setError("Mobile number not verified");
 
@@ -563,6 +564,7 @@ export default function SellerOnboarding() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: data.name,
           email: data.email,
           phone: data.phone,
           user_type: "seller",
@@ -647,7 +649,7 @@ export default function SellerOnboarding() {
         });
         setError("");
         setSuccess(
-          "✅ GST verified - Business: " + result.trade_name_of_business
+          "✅ GST verified - Business: " + result.trade_name_of_business,
         );
 
         const nextStep = await UserApi.status(result.phone, "seller");
@@ -902,7 +904,7 @@ export default function SellerOnboarding() {
 
     if (!hasOutside || !hasInside) {
       return setError(
-        "Please upload at least one 'Outside Shop Front' and one 'Inside Shop View' photo."
+        "Please upload at least one 'Outside Shop Front' and one 'Inside Shop View' photo.",
       );
     }
     // Omitted the rest of the submitPhotos function for brevity
@@ -1031,14 +1033,6 @@ export default function SellerOnboarding() {
                 <h3 className="text-2xl font-bold">Your Details</h3>
               </div>
               <div>
-                <Label>Proprietor/Partner/Director Name *</Label>
-                <Input
-                  value={data.name}
-                  onChange={(e) => setData({ ...data, name: e.target.value })}
-                  placeholder="Owner/Manager Name"
-                />
-              </div>
-              <div>
                 <Label>Mobile *</Label>
                 <Input
                   value={data.phone}
@@ -1089,9 +1083,18 @@ export default function SellerOnboarding() {
 
           {step === 2 && (
             <div className="space-y-6">
+             
               <div className="text-center">
                 <Mail className="w-16 h-16 text-[#F4B321] mx-auto" />
                 <h3 className="text-2xl font-bold">Email</h3>
+              </div>
+               <div>
+                <Label>Proprietor/Partner/Director Name *</Label>
+                <Input
+                  value={data.name}
+                  onChange={(e) => setData({ ...data, name: e.target.value })}
+                  placeholder="Owner/Manager Name"
+                />
               </div>
               <Input
                 type="email"
@@ -1431,7 +1434,7 @@ export default function SellerOnboarding() {
                           const res = await sendAlternateOTP(
                             phone.number,
                             phone.label,
-                            phone.name
+                            phone.name,
                           );
                           setLoading(false);
                           if (res.success) {
@@ -1473,7 +1476,7 @@ export default function SellerOnboarding() {
                               setLoading(true);
                               const res = await verifyAlternateOTP(
                                 phone.number,
-                                phone.otp
+                                phone.otp,
                               );
                               setLoading(false);
                               if (res.success) {
@@ -1481,7 +1484,7 @@ export default function SellerOnboarding() {
                                 updated[index].verified = true;
                                 setData({ ...data, alternatePhones: updated });
                                 setSuccess(
-                                  `✅ ${phone.number} verified successfully`
+                                  `✅ ${phone.number} verified successfully`,
                                 );
                               } else {
                                 setError(res.message || "Invalid OTP");
@@ -1498,7 +1501,7 @@ export default function SellerOnboarding() {
                               const res = await sendAlternateOTP(
                                 phone.number,
                                 phone.label,
-                                phone.name
+                                phone.name,
                               );
                               console.log(res);
                               if (res.success) {

@@ -368,7 +368,7 @@ export default function AvailableOrders({
     const acceptedRetailers = Array.isArray(order.accepted_retailers)
       ? order.accepted_retailers
       : [];
-
+    console.log(acceptedRetailers, "Accepted retailers for order", order.id);
     const position =
       acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
