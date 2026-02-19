@@ -247,13 +247,23 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
             {status === "accepted_db" && (
               <Button
                 className="w-full bg-purple-500"
+                onClick={() => updateStatus("heading_to_seller")}
+              >
+                Heading to Seller
+              </Button>
+            )}
+
+            {status === "heading_to_seller" && (
+              <Button
+                className="w-full bg-purple-500"
                 onClick={() => updateStatus("reached_to_seller")}
               >
                 Reached Seller
               </Button>
             )}
 
-            {status === "reached_to_seller" && <p> </p>}
+          
+             
           </div>
         )}
 
