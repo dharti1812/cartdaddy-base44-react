@@ -1209,7 +1209,7 @@ export default function ActiveDeliveries({
                               </span>
                             )}
 
-                            {(order.delivery_status === "reached_to_seller" ||
+                            {(order.delivery_status === "verification_review" ||
                               order.delivery_status === "accepted_db") && (
                               <>
                                 <Button
