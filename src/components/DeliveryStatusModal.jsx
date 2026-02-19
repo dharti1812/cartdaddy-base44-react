@@ -66,7 +66,7 @@ export default function DeliveryStatusModal({ order, onClose, onUpdate }) {
       } else if (newStatus === "reached_to_customer") {
         await sendOtp("customer");
         setCustomerOtp(true); // show OTP modal
-      } else if (newStatus === "reached_to_seller") {
+      } else if (newStatus === "verification_review") {
         setCustomerOtp(false);
         await sendOtp("seller");
       }
