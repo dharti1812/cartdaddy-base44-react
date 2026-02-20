@@ -1499,7 +1499,7 @@ export default function DeliveryBoyPortal() {
                                           </span>
                                         )}
                                       {order.delivery_status ===
-                                        "reached_to_seller" &&
+                                        "authenticity_check" &&
                                         item.imei_number &&
                                         item.imei_verified !== 1 &&
                                         item.imei_upload_count <= 2 &&
@@ -1596,7 +1596,7 @@ export default function DeliveryBoyPortal() {
 
                                           {/* Verify/Reject Buttons (Only if Appeal NOT Pending) */}
                                           {order.delivery_status ===
-                                            "reached_to_seller" &&
+                                            "authenticity_check" &&
                                             item.video_path &&
                                             item.video_verified !== 1 &&
                                             item.video_upload_count <= 2 &&
@@ -1668,7 +1668,6 @@ export default function DeliveryBoyPortal() {
                                     {/* ================= PICKUP OTP ================= */}
                                     {item.imei_verified === 1 &&
                                       item.video_verified === 1 &&
-                                      item.pickup_otp !== null &&
                                       item.pickup_otp !== 0 && (
                                         <div className="mt-2 bg-green-100 text-green-800 px-4 rounded-full text-sm font-semibold w-max shadow-sm">
                                           Pickup OTP:{" "}
