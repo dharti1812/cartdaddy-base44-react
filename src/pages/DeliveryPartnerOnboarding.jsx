@@ -171,17 +171,13 @@ export default function DeliveryPartnerOnboarding() {
     }
 
     const phone = formData.phone;
-    const name = formData.full_name || "Delivery Partner";
-    const address = formData.address;
     const user_type = "delivery_boy";
 
     setSaving(true);
 
     const result = await AuthApi.sendOTPtoMobile(
       phone,
-      name,
       user_type,
-      address
     );
 
     if (result.success) {
@@ -233,20 +229,23 @@ export default function DeliveryPartnerOnboarding() {
 
   // Email OTP
   const handleSendEmailOTP = async () => {
+    const name = formData.full_name || "Delivery Partner";
+    const address = formData.address;
     if (!formData.email || !formData.email.includes("@")) {
       setError("Please enter a valid email address");
       return;
     }
-
+console.log(name, formData.email, formData.phone, address);
     setSaving(true);
     try {
       const result = await AuthApi.sendOTPtoEmail(
         formData.email,
         formData.phone,
         "delivery_boy",
-        formData.address
+        address,
+        name,
       );
-
+      console.log(result);
       // Always show the OTP field even if result.success is false
       setEmailOtpSent(true);
 
@@ -966,33 +965,6 @@ export default function DeliveryPartnerOnboarding() {
                 <h3 className="text-2xl font-bold text-black">Your Details</h3>
               </div>
 
-              {/* FULL NAME */}
-              <div>
-                <Label className="text-black">Full Name *</Label>
-                <Input
-                  value={formData.full_name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, full_name: e.target.value })
-                  }
-                  placeholder="As per Driving License"
-                  className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
-                />
-              </div>
-
-              {/* ADDRESS */}
-              <div>
-                <Label className="text-black">Current Address *</Label>
-                <textarea
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  placeholder="Your current address"
-                  className="border-2 border-[#075E66] focus:border-[#FFEB3B] w-full rounded-md p-2"
-                  rows={2}
-                />
-              </div>
-
               {/* PHONE */}
               <div>
                 <Label className="text-black">Phone Number *</Label>
@@ -1058,6 +1030,34 @@ export default function DeliveryPartnerOnboarding() {
                 <h3 className="text-2xl font-bold text-black">
                   Email Verification
                 </h3>
+              </div>
+
+              
+              {/* FULL NAME */}
+              <div>
+                <Label className="text-black">Full Name *</Label>
+                <Input
+                  value={formData.full_name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: e.target.value })
+                  }
+                  placeholder="As per Driving License"
+                  className="border-2 border-[#075E66] focus:border-[#FFEB3B]"
+                />
+              </div>
+
+              {/* ADDRESS */}
+              <div>
+                <Label className="text-black">Current Address *</Label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  placeholder="Your current address"
+                  className="border-2 border-[#075E66] focus:border-[#FFEB3B] w-full rounded-md p-2"
+                  rows={2}
+                />
               </div>
 
               <div>
