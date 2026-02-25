@@ -984,7 +984,7 @@ export default function ActiveDeliveries({
                                     {(item.imei_reject_count === 1 ||
                                       item.video_reject_count === 1) &&
                                       item.file_appeal_count !== 1 &&
-                                      !isAppealPending && (
+                                      !isAppealPending && !item.imei_verified === 1 && !item.video_verified === 1  (
                                         <div className="pt-3 border-t text-right">
                                           <button
                                             onClick={() => fileAppeal(item)}
