@@ -1095,7 +1095,7 @@ export default function ActiveDeliveries({
                             <div className="flex justify-between">
                               <span>{platformFeeLabel}</span>
                               <span className="font-semibold text-red-600">
-                                -₹{platformFeeAmount}
+                                ₹{platformFeeAmount}
                               </span>
                             </div>
 
