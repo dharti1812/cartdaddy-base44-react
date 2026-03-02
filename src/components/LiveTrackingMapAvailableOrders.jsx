@@ -170,7 +170,7 @@ export default function LiveTrackingMapAvailableOrders({
         const postPickupStatuses = [
           "picked_up",
           "out_for_delivery",
-          "reached_to_customer",
+          "reachd_to_customer",
           "delivered",
         ];
 
