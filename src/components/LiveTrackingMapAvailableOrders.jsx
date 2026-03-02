@@ -21,10 +21,8 @@ export default function LiveTrackingMapAvailableOrders({
   const directionsRendererToShopRef = useRef(null);
   const directionsRendererToCustomerRef = useRef(null);
 
-  const intervalRef = useRef(null);
-
   const [eta, setEta] = useState(null);
-  const [deliveryStatus, setDeliveryStatus] = useState(null);
+  const [reachedPickup, setReachedPickup] = useState(false);
 
   const MOVE_THRESHOLD = 15; // meters
   const PICKUP_RADIUS = 60; // meters
@@ -50,10 +48,7 @@ export default function LiveTrackingMapAvailableOrders({
 
     const interval = setInterval(() => {
       i++;
-      marker.setPosition({
-        lat: from.lat + dLat * i,
-        lng: from.lng + dLng * i,
-      });
+      marker.setPosition({ lat: from.lat + dLat * i, lng: from.lng + dLng * i });
       if (i === frames) clearInterval(interval);
     }, 16);
   };
@@ -74,19 +69,17 @@ export default function LiveTrackingMapAvailableOrders({
     directionsServiceRef.current = new window.google.maps.DirectionsService();
 
     // Directions Renderer for Delivery Boy -> Shop
-    directionsRendererToShopRef.current =
-      new window.google.maps.DirectionsRenderer({
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // orange
-      });
+    directionsRendererToShopRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // orange
+    });
     directionsRendererToShopRef.current.setMap(map);
 
     // Directions Renderer for Shop -> Customer
-    directionsRendererToCustomerRef.current =
-      new window.google.maps.DirectionsRenderer({
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // blue
-      });
+    directionsRendererToCustomerRef.current = new window.google.maps.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // blue
+    });
     directionsRendererToCustomerRef.current.setMap(map);
 
     mapRefInstance.current = map;
@@ -106,6 +99,8 @@ export default function LiveTrackingMapAvailableOrders({
       icon: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
       title: "Customer",
     });
+
+  
   }, []);
 
   // ---------- Live Tracking ----------
@@ -116,27 +111,8 @@ export default function LiveTrackingMapAvailableOrders({
     const fetchTracking = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`,
+          `${API_BASE_URL}/api/delivery-partner/track-order-delivery-boy/${deliveryBoyId}/${orderId}`
         );
-
-        const currentStatus = res.data.delivery_status;
-        console.log(currentStatus);
-        setDeliveryStatus(currentStatus);
-
-        if (currentStatus === "delivered") {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-
-          // Optional: clear routes
-          directionsRendererToShopRef.current?.setDirections({ routes: [] });
-          directionsRendererToCustomerRef.current?.setDirections({
-            routes: [],
-          });
-
-          console.log("Tracking stopped - Order Delivered");
-          return;
-        }
         const d = res.data.delivery_boy;
         if (!d) return;
 
@@ -145,6 +121,7 @@ export default function LiveTrackingMapAvailableOrders({
         if (isNaN(lat) || isNaN(lng)) return;
 
         const currentPos = { lat, lng };
+        
 
         // ---------- Animate delivery boy marker ----------
         if (!deliveryMarkerRef.current) {
@@ -158,81 +135,46 @@ export default function LiveTrackingMapAvailableOrders({
         } else {
           const prev = deliveryMarkerRef.current.getPosition();
           const movedDist = getDistance(prev.lat(), prev.lng(), lat, lng);
-          animateMarker(
-            deliveryMarkerRef.current,
-            { lat: prev.lat(), lng: prev.lng() },
-            currentPos,
-          );
-
-          map.panTo(currentPos);   
+          if (movedDist >= MOVE_THRESHOLD) {
+            animateMarker(deliveryMarkerRef.current, { lat: prev.lat(), lng: prev.lng() }, currentPos);
+            map.panTo(currentPos);
+          }
         }
 
         // ---------- Check if pickup reached ----------
-        // const distToPickup = getDistance(
-        //   lat,
-        //   lng,
-        //   Number(pickupLat),
-        //   Number(pickupLng),
-        // );
-        // if (distToPickup <= PICKUP_RADIUS && !reachedPickup) {
-        //   setReachedPickup(true);
-        // }
+        const distToPickup = getDistance(lat, lng, Number(pickupLat), Number(pickupLng));
+        if (distToPickup <= PICKUP_RADIUS && !reachedPickup) {
+          
+          setReachedPickup(true);
+        }
 
         // ---------- Route Delivery Boy -> Shop ----------
-        // directionsServiceRef.current.route(
-        //   {
-        //     origin: currentPos,
-        //     destination: { lat: Number(pickupLat), lng: Number(pickupLng) },
-        //     travelMode: window.google.maps.TravelMode.DRIVING,
-        //   },
-        //   (result, status) => {
-        //     if (status === "OK")
-        //       directionsRendererToShopRef.current.setDirections(result);
-        //   },
-        // );
+        directionsServiceRef.current.route(
+          {
+            origin: currentPos,
+            destination: { lat: Number(pickupLat), lng: Number(pickupLng) },
+            travelMode: window.google.maps.TravelMode.DRIVING,
+          },
+          (result, status) => {
+            if (status === "OK") directionsRendererToShopRef.current.setDirections(result);
+          }
+        );
 
-        const isPickupCompleted = [
-          "reached_to_seller",
-          "authenticity_check",
-          "verification_review",
-          "picked_up",
-          "out_for_delivery",
-        ].includes(currentStatus);
-
-        if (!isPickupCompleted) {
+        // ---------- Route Shop -> Customer (show only after pickup) ----------
+        if (reachedPickup) {
           directionsServiceRef.current.route(
             {
-              origin: currentPos,
-              destination: { lat: Number(pickupLat), lng: Number(pickupLng) },
-              travelMode: window.google.maps.TravelMode.DRIVING,
-            },
-            (result, status) => {
-              if (status === "OK") {
-                directionsRendererToShopRef.current.setDirections(result);
-                directionsRendererToCustomerRef.current.setDirections({
-                  routes: [],
-                });
-              }
-            },
-          );
-        } else {
-          directionsServiceRef.current.route(
-            {
-              origin: currentPos,
+              origin: { lat: Number(pickupLat), lng: Number(pickupLng) },
               destination: { lat: Number(dropLat), lng: Number(dropLng) },
               travelMode: window.google.maps.TravelMode.DRIVING,
             },
             (result, status) => {
               if (status === "OK") {
                 directionsRendererToCustomerRef.current.setDirections(result);
-                directionsRendererToShopRef.current.setDirections({
-                  routes: [],
-                });
-
                 const sec = result.routes[0].legs[0].duration?.value;
                 if (sec) setEta(Math.ceil(sec / 60));
               }
-            },
+            }
           );
         }
       } catch (err) {
@@ -241,14 +183,9 @@ export default function LiveTrackingMapAvailableOrders({
     };
 
     fetchTracking();
-    intervalRef.current = setInterval(fetchTracking, 15000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [orderId]);
+    const interval = setInterval(fetchTracking, 7000);
+    return () => clearInterval(interval);
+  }, [orderId, reachedPickup]);
 
   return (
     <div className="mt-3">
@@ -257,11 +194,7 @@ export default function LiveTrackingMapAvailableOrders({
           ⏱ ETA: <b>{eta} min</b>
         </div>
       )}
-      <div
-        ref={mapRef}
-        style={{ width: "100%", height: "380px" }}
-        className="rounded-xl border"
-      />
+      <div ref={mapRef} style={{ width: "100%", height: "380px" }} className="rounded-xl border" />
     </div>
   );
 }
