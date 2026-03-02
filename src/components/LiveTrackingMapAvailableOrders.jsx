@@ -11,7 +11,7 @@ export default function LiveTrackingMapAvailableOrders({
   dropLng,
 }) {
   const mapRef = useRef(null);
-  const mapRefInstance = useRef(null);
+  const mapInstance = useRef(null);
 
   const pickupMarkerRef = useRef(null);
   const dropMarkerRef = useRef(null);
@@ -60,7 +60,7 @@ export default function LiveTrackingMapAvailableOrders({
 
   // ---------- Initialize map ----------
   useEffect(() => {
-    if (!mapRef.current || mapRefInstance.current) return;
+    if (!mapRef.current || mapInstance.current) return;
 
     const map = new window.google.maps.Map(mapRef.current, {
       center: { lat: Number(pickupLat), lng: Number(pickupLng) },
@@ -73,23 +73,23 @@ export default function LiveTrackingMapAvailableOrders({
 
     directionsServiceRef.current = new window.google.maps.DirectionsService();
 
-    // Directions Renderer for Delivery Boy -> Shop
+    // Directions: Delivery Boy -> Shop
     directionsRendererToShopRef.current =
       new window.google.maps.DirectionsRenderer({
         suppressMarkers: true,
-        polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // orange
+        polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 },
       });
     directionsRendererToShopRef.current.setMap(map);
 
-    // Directions Renderer for Shop -> Customer
+    // Directions: Shop -> Customer
     directionsRendererToCustomerRef.current =
       new window.google.maps.DirectionsRenderer({
         suppressMarkers: true,
-        polylineOptions: { strokeColor: "#0066FF", strokeWeight: 4 }, // blue
+        polylineOptions: { strokeColor: "#FF6600", strokeWeight: 4 },
       });
     directionsRendererToCustomerRef.current.setMap(map);
 
-    mapRefInstance.current = map;
+    mapInstance.current = map;
 
     // Pickup marker (Shop)
     pickupMarkerRef.current = new window.google.maps.Marker({
@@ -110,8 +110,8 @@ export default function LiveTrackingMapAvailableOrders({
 
   // ---------- Live Tracking ----------
   useEffect(() => {
-    if (!orderId || !mapRefInstance.current) return;
-    const map = mapRefInstance.current;
+    if (!orderId || !mapInstance.current) return;
+    const map = mapInstance.current;
 
     const fetchTracking = async () => {
       try {
@@ -122,82 +122,60 @@ export default function LiveTrackingMapAvailableOrders({
         const currentStatus = res.data.delivery_status;
         setDeliveryStatus(currentStatus);
 
-        if (currentStatus === "delivered") {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-
-          // Optional: clear routes
-          directionsRendererToShopRef.current?.setDirections({ routes: [] });
-          directionsRendererToCustomerRef.current?.setDirections({
-            routes: [],
-          });
-
-          console.log("Tracking stopped - Order Delivered");
-          return;
-        }
         const d = res.data.delivery_boy;
         if (!d) return;
 
         const lat = Number(d.latitude);
         const lng = Number(d.longitude);
-        if (isNaN(lat) || isNaN(lng)) return;
+        const isLocked = !!d.locked;
 
+        if (isNaN(lat) || isNaN(lng)) return;
         const currentPos = { lat, lng };
 
-        // ---------- Animate delivery boy marker ----------
+        // ---------- Delivery Boy Marker ----------
         if (!deliveryMarkerRef.current) {
           deliveryMarkerRef.current = new window.google.maps.Marker({
             position: currentPos,
             map,
-            icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+            icon: isLocked
+              ? "http://maps.google.com/mapfiles/ms/icons/purple-dot.png"
+              : "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
             title: "Delivery Boy",
           });
           map.setCenter(currentPos);
         } else {
-          const prev = deliveryMarkerRef.current.getPosition();
-          const movedDist = getDistance(prev.lat(), prev.lng(), lat, lng);
-          if (movedDist >= MOVE_THRESHOLD) {
-            animateMarker(
-              deliveryMarkerRef.current,
-              { lat: prev.lat(), lng: prev.lng() },
-              currentPos,
-            );
-            map.panTo(currentPos);
+          if (!isLocked) {
+            const prev = deliveryMarkerRef.current.getPosition();
+            const movedDist = getDistance(prev.lat(), prev.lng(), lat, lng);
+            if (movedDist > MOVE_THRESHOLD) {
+              animateMarker(
+                deliveryMarkerRef.current,
+                { lat: prev.lat(), lng: prev.lng() },
+                currentPos,
+              );
+              map.panTo(currentPos);
+            }
+          } else {
+            deliveryMarkerRef.current.setPosition(currentPos);
           }
         }
 
-        // ---------- Check if pickup reached ----------
-        // const distToPickup = getDistance(
-        //   lat,
-        //   lng,
-        //   Number(pickupLat),
-        //   Number(pickupLng),
-        // );
-        // if (distToPickup <= PICKUP_RADIUS && !reachedPickup) {
-        //   setReachedPickup(true);
-        // }
-
-        // ---------- Route Delivery Boy -> Shop ----------
-        // directionsServiceRef.current.route(
-        //   {
-        //     origin: currentPos,
-        //     destination: { lat: Number(pickupLat), lng: Number(pickupLng) },
-        //     travelMode: window.google.maps.TravelMode.DRIVING,
-        //   },
-        //   (result, status) => {
-        //     if (status === "OK")
-        //       directionsRendererToShopRef.current.setDirections(result);
-        //   },
-        // );
-
-        const isPickupCompleted = [
+        // ---------- Route Handling ----------
+        const pickupStatuses = [
           "reached_to_seller",
+          "authenticity_check",
+          "verification_review",
+          "verification_completed"
+        ];
+        const postPickupStatuses = [
           "picked_up",
           "out_for_delivery",
-        ].includes(currentStatus);
+          "reached_to_customer",
+          "delivered",
+        ];
 
-        if (!isPickupCompleted) {
+        if (pickupStatuses.includes(currentStatus)) {
+          // Route to shop
           directionsServiceRef.current.route(
             {
               origin: currentPos,
@@ -213,7 +191,8 @@ export default function LiveTrackingMapAvailableOrders({
               }
             },
           );
-        } else {
+        } else if (postPickupStatuses.includes(currentStatus)) {
+          // Route to customer
           directionsServiceRef.current.route(
             {
               origin: currentPos,
@@ -233,18 +212,21 @@ export default function LiveTrackingMapAvailableOrders({
             },
           );
         }
+
+        // Stop tracking if delivered
+        if (currentStatus === "delivered") {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
       } catch (err) {
-        //console.error("Error fetching tracking:", err);
+        console.error("Error fetching tracking:", err);
       }
     };
 
     fetchTracking();
-    intervalRef.current = setInterval(fetchTracking, 15000);
+    intervalRef.current = setInterval(fetchTracking, 10000);
 
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [orderId]);
 
