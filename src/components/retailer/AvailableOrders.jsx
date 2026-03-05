@@ -958,7 +958,7 @@ export default function AvailableOrders({
                           </span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Delivery Charges:</span>
+                          <span>To be paid to the Delivery Boy:</span>
                           <span className="font-medium">
                             ₹{charges.baseCharge}
                           </span>
