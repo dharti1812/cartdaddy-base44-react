@@ -52,7 +52,7 @@ export default function AvailableOrders({
   deliverySettings,
   retailerProfile,
   scrollToOrderId,
-  clearScrollTarget
+  clearScrollTarget,
 }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [accepting, setAccepting] = useState(null);
@@ -335,7 +335,6 @@ export default function AvailableOrders({
     });
   }, [scrollToOrderId, clearScrollTarget]);
 
-  
   useEffect(() => {
     if (!scannerActive || !scanAttempted) return;
 
@@ -368,7 +367,7 @@ export default function AvailableOrders({
     const acceptedRetailers = Array.isArray(order.accepted_retailers)
       ? order.accepted_retailers
       : [];
-    console.log(acceptedRetailers, "Accepted retailers for order", order.id);
+    
     const position =
       acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
@@ -747,11 +746,10 @@ export default function AvailableOrders({
         animation: running-border 1.5s linear infinite;
       }
     `}</style>
-        <div
-          ref={containerRef}
-          className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
-        >
-
+      <div
+        ref={containerRef}
+        className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
+      >
         {filteredOrders.map((order) => {
           const amount = parseFloat(
             (order.amount || order.total_amount || "0")
@@ -761,16 +759,19 @@ export default function AvailableOrders({
 
           let charges = null;
 
+          const myAcceptance = order.accepted_retailers?.find(
+            (ar) => ar.retailer_id === retailerId,
+          );
+
           if (!deliverySettings) {
             console.warn("⚠️ Delivery settings not available");
           } else {
             charges = calculateDeliveryCharges(
               amount,
-              order.distance_km,
+              myAcceptance.distance_km,
               deliverySettings,
             );
           }
-
           const acceptedCount = order.accepted_retailers?.length || 0;
           const maxAcceptances =
             order.max_acceptances || config?.max_retailer_acceptances || 3;
@@ -779,8 +780,8 @@ export default function AvailableOrders({
 
           const productCost = amount;
 
-          const deliveryCharge = charges?.baseCharge || 0;
-          const fuelCost = charges?.fuelCost || 0;
+          const deliveryCharge = charges.baseCharge || 0;
+          const fuelCost = charges.fuelCost || 0;
 
           const commissionItem = order.items?.find(
             (item) =>
@@ -804,27 +805,22 @@ export default function AvailableOrders({
 
           const settlementAmount =
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
+         
           const roundedSettlementAmount = Math.round(settlementAmount);
 
           const isPaymentReceived = order.payment_status === "paid";
           const isImeiAdded = !!order.imei_number;
           const isAccepted = !!order.accepted_at;
 
-          const myAcceptance = order.accepted_retailers?.find(
-            (ar) => ar.retailer_id === retailerId,
-          );
-
-          console.log(myAcceptance, "My acceptance for order", order.id);
-
           const myResponseStatus = myAcceptance?.response_status ?? "pending";
-          console.log(myResponseStatus, "My response status for order", order.id);
+
           const is_COD = order.payment_type === "cash_on_delivery";
           const isUnpaid = order.payment_status === "unpaid";
           const showAcceptButton =
             myResponseStatus === "pending" && (is_COD || isUnpaid);
-            console.log(showAcceptButton, "Show accept button for order", order.id);
           const showPaymentReceivedButton =
             !is_COD && myResponseStatus === "awaiting_payment_link";
+          
           return (
             <Card
               id={`order-${order.id}`}
@@ -930,7 +926,7 @@ export default function AvailableOrders({
                   )}
 
                   {/* Delivery Earnings - Prominent Display */}
-                  {charges?.delivery_charge > 0 && (
+                  {charges.delivery_charge > 0 && (
                     <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
                       {/* <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-green-800 flex items-center gap-1">
@@ -945,7 +941,7 @@ export default function AvailableOrders({
                         <div className="flex justify-between">
                           <span>Distance:</span>
                           <span className="font-medium">
-                            {order.distance_km} km
+                            {myAcceptance.distance_km} km
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -960,7 +956,7 @@ export default function AvailableOrders({
                         <div className="flex justify-between">
                           <span>To be paid to the Delivery Boy:</span>
                           <span className="font-medium">
-                            ₹{charges.baseCharge}
+                            -₹{charges.baseCharge}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -1025,13 +1021,13 @@ export default function AvailableOrders({
                     </div>
 
                     {/* Distance */}
-                    {order.distance_km && (
+                    {myAcceptance.distance_km && (
                       <>
                         <span className="text-gray-400">•</span>
                         <div className="flex items-center gap-1">
                           <NavigationIcon className="w-4 h-4" />
                           <span className="font-medium">
-                            {order.distance_km} km away
+                            {myAcceptance.distance_km} km away
                           </span>
                         </div>
                       </>
@@ -1042,7 +1038,8 @@ export default function AvailableOrders({
                       <>
                         <span className="text-gray-400">•</span>
                         <span className="text-amber-600 font-medium">
-                          ⏱️ ~{Math.ceil(order.distance_km * 3)} min travel time
+                          ⏱️ ~{Math.ceil(myAcceptance.distance_km * 3)} min
+                          travel time
                         </span>
                       </>
                     )}
@@ -1115,15 +1112,16 @@ export default function AvailableOrders({
                           {order.drop_address}
                         </p>
 
-                        {order.distance_km && (
+                        {myAcceptance.distance_km && (
                           <div className="mt-2 flex items-center gap-3 text-xs">
                             <span className="text-blue-700 font-medium">
-                              📍 {order.distance_km} km from your location
+                              📍 {myAcceptance.distance_km} km from your
+                              location
                             </span>
                             {order.sla_minutes && (
                               <span className="text-amber-700 font-medium">
-                                ⏱️ ~{Math.ceil(order.distance_km * 3)} min
-                                travel time
+                                ⏱️ ~{Math.ceil(myAcceptance.distance_km * 3)}{" "}
+                                min travel time
                               </span>
                             )}
                           </div>
