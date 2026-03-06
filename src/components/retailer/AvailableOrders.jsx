@@ -367,7 +367,7 @@ export default function AvailableOrders({
     const acceptedRetailers = Array.isArray(order.accepted_retailers)
       ? order.accepted_retailers
       : [];
-    
+
     const position =
       acceptedRetailers.length > 0 ? acceptedRetailers.length : 1;
 
@@ -805,7 +805,7 @@ export default function AvailableOrders({
 
           const settlementAmount =
             productCost - platformFeeAmount - deliveryCharge - fuelCost;
-         
+
           const roundedSettlementAmount = Math.round(settlementAmount);
 
           const isPaymentReceived = order.payment_status === "paid";
@@ -820,7 +820,7 @@ export default function AvailableOrders({
             myResponseStatus === "pending" && (is_COD || isUnpaid);
           const showPaymentReceivedButton =
             !is_COD && myResponseStatus === "awaiting_payment_link";
-          
+          console.log(order.offer_details, order.id);
           return (
             <Card
               id={`order-${order.id}`}
@@ -902,29 +902,42 @@ export default function AvailableOrders({
                   )}
 
                   {order.payment_type === "needs_paylink" && (
-                    <div className="flex flex-col md:flex-row gap-2 mt-2">
-                      <Alert className="flex items-center gap-2 bg-amber-50 border-amber-200 md:w-[80%]">
-                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <AlertDescription className="text-amber-800 text-sm">
+                    <div className="grid grid-cols-12 gap-3 mt-3">
+                     
+                      <Alert className="col-span-12 lg:col-span-9 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <AlertCircle
+                          className="w-4 h-4 text-amber-600 shrink-0 mt-[2px]"
+                          style={{ marginTop: "-4px" }}
+                        />
+                        <AlertDescription className="text-amber-800 text-sm leading-relaxed">
                           <strong>Payment Link Required</strong> — Generate and
                           send a payment link to proceed.
                         </AlertDescription>
                       </Alert>
 
+                     
                       {order.offer_details && (
-                        <div className="flex items-center justify-center p-3 rounded-md bg-green-100 border-2 border-green-400 md:w-[20%]">
-                          <span className="font-semibold text-green-900 text-sm truncate text-center">
+                        <div
+                          className="col-span-12 lg:col-span-3 flex items-center justify-between gap-2 p-3 rounded-lg 
+                   bg-green-100 border border-green-400 cursor-pointer 
+                   hover:bg-green-200 transition-all duration-200"
+                          onClick={() => setSelectedOffer(order.offer_details)}
+                        >
+                          <div className="text-green-900 font-semibold text-sm">
                             🎁 Offer{" "}
                             <span className="text-green-700 underline">
                               {order.offer_details.code}
                             </span>{" "}
                             Applied
+                          </div>
+
+                          <span className="text-xs text-green-700 font-medium whitespace-nowrap">
+                            View →
                           </span>
                         </div>
                       )}
                     </div>
                   )}
-
                   {/* Delivery Earnings - Prominent Display */}
                   {charges.delivery_charge > 0 && (
                     <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg">
