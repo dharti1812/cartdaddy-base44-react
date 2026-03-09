@@ -41,16 +41,16 @@ export default function ScannerView({ onScan, isActive }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 4096 },
-          height: { ideal: 2160 },
-          focusMode: { ideal: "continuous" },
-          focusDistance: { ideal: 0 },
-          zoom: { ideal: 1 },
-          exposureCompensation: { ideal: -1 },
-        },
-      });
+          video: {
+            facingMode: facingMode,
+            width: { ideal: 4096 },
+            height: { ideal: 2160 },
+            focusMode: { ideal: "continuous" },
+            focusDistance: { ideal: 0 },
+            zoom: { ideal: 1 },
+            exposureCompensation: { ideal: -1 },
+          },
+        });
      
       streamRef.current = stream;
       if (videoRef.current) {
@@ -291,7 +291,7 @@ export default function ScannerView({ onScan, isActive }) {
   return (
     <div className="relative w-full h-full bg-black flex flex-col items-center justify-center overflow-hidden">
       <div className="relative w-full max-w-sm h-96 bg-black rounded-lg overflow-hidden border-2 border-cyan-400/30">
-        <video ref__={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay onWheel={handleWheel} style={{ cursor: "zoom-in" }} />
+        <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay onWheel={handleWheel} style={{ cursor: "zoom-in" }} />
         <canvas ref__={canvasRef} className="hidden" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="relative w-72 h-20">
