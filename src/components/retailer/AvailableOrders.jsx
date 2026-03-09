@@ -220,11 +220,16 @@ export default function AvailableOrders({
 
   const handleScan = useCallback(
     (result) => {
-      setIsActive(false);
+      setIsActive(false); // stop scanning
+
+      // ✅ Show scanned value
+      alert(`Scanned IMEI / Barcode: ${result.value}`);
+
       if (onScan) {
-        onScan(result.value);
+        onScan(result.value); // pass to parent
         return;
       }
+
       setScanResult(result);
       if (navigator.vibrate) navigator.vibrate(50);
     },
@@ -1677,19 +1682,19 @@ export default function AvailableOrders({
         <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
           <div className="relative w-full h-full">
             <ScannerView
-                isActive={isActive}
-                facingMode="environment" // Add this line
-                onScan={(value) => {
-                  const cleaned = value.replace(/\D/g, "").slice(0, 15);
-                  setImeiValue(cleaned);
-                  setIsActive(false);
-                  setShowScanner(false);
-                }}
-                onClose={() => {
-                  setIsActive(false);
-                  setShowScanner(false);
-                }}
-              />
+              isActive={isActive}
+              facingMode="environment" // Add this line
+              onScan={(value) => {
+                const cleaned = value.replace(/\D/g, "").slice(0, 15);
+                setImeiValue(cleaned);
+                setIsActive(false);
+                setShowScanner(false);
+              }}
+              onClose={() => {
+                setIsActive(false);
+                setShowScanner(false);
+              }}
+            />
 
             <button
               onClick={() => {
