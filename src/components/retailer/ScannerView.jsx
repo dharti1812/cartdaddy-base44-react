@@ -48,48 +48,32 @@ export default function ScannerView({ onScan, isActive }) {
 
   const startCamera = useCallback(async () => {
     try {
-      if (streamRef.current) return;
-      if (streamRef.current) {
-  streamRef.current.getTracks().forEach((t) => t.stop());
-  streamRef.current = null;
-}
-      if (!videoRef.current) {
-        setTimeout(startCamera, 100);
-        return;
-      }
+      if (streamRef.current) stopCamera(); // Clean up existing
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: {
-          facingMode:
-            facingMode === "environment" ? { ideal: "environment" } : "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          advanced: [{ focusMode: "continuous" }],
+          facingMode: facingMode === "environment" ? "environment" : "user",
+          width: { ideal: 1920 }, // Higher resolution helps with small IMEI bars
+          height: { ideal: 1080 },
         },
-      });
+      };
 
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-
       videoRef.current.srcObject = stream;
-      videoRef.current.muted = true;
-      await new Promise((resolve) => {
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play();
-          resolve();
-        };
-      });
 
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities?.();
+      const caps = track.getCapabilities?.();
 
-      if (capabilities?.torch) setTorchSupported(true);
+      // Force high-quality settings for IMEI detection
+      const advancedConstraints = {};
+      if (caps?.focusMode?.includes("continuous"))
+        advancedConstraints.focusMode = "continuous";
+      if (caps?.whiteBalanceMode?.includes("continuous"))
+        advancedConstraints.whiteBalanceMode = "continuous";
 
-      if (capabilities?.exposureCompensation) {
-        setExposureSupported(true);
-        exposureRangeRef.current = {
-          min: capabilities.exposureCompensation.min,
-          max: capabilities.exposureCompensation.max,
-        };
+      if (Object.keys(advancedConstraints).length > 0) {
+        await track.applyConstraints({ advanced: [advancedConstraints] });
       }
 
       setScanning(true);
@@ -97,7 +81,7 @@ export default function ScannerView({ onScan, isActive }) {
       console.error("Camera error:", err);
       setHasCamera(false);
     }
-  }, [facingMode]);
+  }, [facingMode, stopCamera]);
 
   useEffect(() => {
     if (!("BarcodeDetector" in window)) {

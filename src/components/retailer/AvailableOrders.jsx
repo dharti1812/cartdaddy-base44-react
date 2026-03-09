@@ -104,7 +104,7 @@ export default function AvailableOrders({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: "environment" },
+          facingMode: { exact: "environment" },
           width: 1280,
           height: 720,
         },
@@ -1677,18 +1677,19 @@ export default function AvailableOrders({
         <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
           <div className="relative w-full h-full">
             <ScannerView
-              isActive={isActive}
-              onScan={(value) => {
-                const cleaned = value.replace(/\D/g, "").slice(0, 15);
-                setImeiValue(cleaned);
-                setIsActive(false);
-                setShowScanner(false);
-              }}
-              onClose={() => {
-                setIsActive(false);
-                setShowScanner(false);
-              }}
-            />
+                isActive={isActive}
+                facingMode="environment" // Add this line
+                onScan={(value) => {
+                  const cleaned = value.replace(/\D/g, "").slice(0, 15);
+                  setImeiValue(cleaned);
+                  setIsActive(false);
+                  setShowScanner(false);
+                }}
+                onClose={() => {
+                  setIsActive(false);
+                  setShowScanner(false);
+                }}
+              />
 
             <button
               onClick={() => {
