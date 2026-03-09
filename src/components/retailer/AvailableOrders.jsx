@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { Order, Retailer } from "@/api/entities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import Quagga from "quagga";
 
 import {
   Dialog,
@@ -100,11 +99,7 @@ export default function AvailableOrders({
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
-  {
-    !startCamera && (
-      <Button onClick={() => setStartCamera(true)}>Start Camera Scanner</Button>
-    );
-  }
+ 
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -345,14 +340,7 @@ export default function AvailableOrders({
     return () => clearTimeout(timeout);
   }, [scannerActive, scanAttempted]);
 
-  const stopScanner = () => {
-    try {
-      Quagga.stop();
-      Quagga.offDetected();
-    } catch (e) {}
-
-    setScannerActive(false);
-  };
+ 
 
   const handleScanAgain = () => {
     setImeiValue("");
@@ -1227,7 +1215,6 @@ export default function AvailableOrders({
                     )}
                   </div>
                 </div>
-
               </CardContent>
             </Card>
           );
@@ -1607,7 +1594,11 @@ export default function AvailableOrders({
                 }
               />
 
-              <Button variant="outline" onClick={() => setShowScanner(true)}>
+              <Button
+                variant="outline"
+                disabled={showScanner}
+                onClick={() => setShowScanner(true)}
+              >
                 📷 Scan IMEI
               </Button>
             </div>
@@ -1682,22 +1673,25 @@ export default function AvailableOrders({
       </Dialog>
 
       {showScanner && (
-        <div className="fixed inset-0 z-50 bg-black">
-          <ScannerView
-            isActive={true}
-            onScan={(value) => {
-              const cleaned = value.replace(/\D/g, "").slice(0, 15);
-              setImeiValue(cleaned);
-              setShowScanner(false);
-            }}
-          />
+        <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
+          <div className="relative w-full h-full">
+            <ScannerView
+              isActive={true}
+              onScan={(value) => {
+                const cleaned = value.replace(/\D/g, "").slice(0, 15);
+                setImeiValue(cleaned);
+                setShowScanner(false);
+              }}
+              onClose={() => setShowScanner(false)}
+            />
 
-          <button
-            onClick={() => setShowScanner(false)}
-            className="absolute top-5 right-5 bg-red-600 text-white px-4 py-2 rounded"
-          >
-            Close
-          </button>
+            <button
+              onClick={() => setShowScanner(false)}
+              className="absolute top-6 right-6 bg-red-600 text-white px-4 py-2 rounded-lg"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </>
