@@ -35,7 +35,6 @@ export default function ScannerView({ onScan, isActive }) {
   const usePreprocessingRef = useRef(false);
 
   const stopCamera = useCallback(() => {
-    
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
@@ -48,55 +47,57 @@ export default function ScannerView({ onScan, isActive }) {
   }, []);
 
   const startCamera = useCallback(async () => {
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
+    try {
+      if (streamRef.current) return;
+      if (streamRef.current) {
+  streamRef.current.getTracks().forEach((t) => t.stop());
+  streamRef.current = null;
+}
+      if (!videoRef.current) {
+        setTimeout(startCamera, 100);
+        return;
+      }
 
-    const videoDevices = devices.filter(
-      (device) => device.kind === "videoinput"
-    );
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode:
+            facingMode === "environment" ? { ideal: "environment" } : "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          advanced: [{ focusMode: "continuous" }],
+        },
+      });
 
-    const backCamera =
-      videoDevices.find((d) => d.label.toLowerCase().includes("back")) ||
-      videoDevices.find((d) => d.label.toLowerCase().includes("rear")) ||
-      videoDevices[videoDevices.length - 1];
+      streamRef.current = stream;
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        deviceId: backCamera?.deviceId
-          ? { exact: backCamera.deviceId }
-          : undefined,
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-    });
-
-    streamRef.current = stream;
-
-    const track = stream.getVideoTracks()[0];
-    const capabilities = track.getCapabilities?.();
-
-    if (capabilities?.torch) setTorchSupported(true);
-
-    if (capabilities?.exposureCompensation) {
-      setExposureSupported(true);
-      exposureRangeRef.current = {
-        min: capabilities.exposureCompensation.min,
-        max: capabilities.exposureCompensation.max,
-      };
-    }
-
-    if (videoRef.current) {
       videoRef.current.srcObject = stream;
-      await videoRef.current.play();
-    }
+      videoRef.current.muted = true;
+      await new Promise((resolve) => {
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
+          resolve();
+        };
+      });
 
-    setScanning(true);
-  } catch (err) {
-    console.error("Camera error:", err);
-    setHasCamera(false);
-  }
-}, []);
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.();
+
+      if (capabilities?.torch) setTorchSupported(true);
+
+      if (capabilities?.exposureCompensation) {
+        setExposureSupported(true);
+        exposureRangeRef.current = {
+          min: capabilities.exposureCompensation.min,
+          max: capabilities.exposureCompensation.max,
+        };
+      }
+
+      setScanning(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      setHasCamera(false);
+    }
+  }, [facingMode]);
 
   useEffect(() => {
     if (!("BarcodeDetector" in window)) {
@@ -123,13 +124,17 @@ export default function ScannerView({ onScan, isActive }) {
   }, []);
 
   useEffect(() => {
-    if (isActive) {
-      startCamera();
-    } else {
+    if (!isActive) {
       stopCamera();
+      return;
     }
-    return stopCamera;
-  }, [isActive, startCamera, stopCamera]);
+
+    startCamera();
+
+    return () => {
+      stopCamera();
+    };
+  }, [isActive]);
 
   const calculateBrightness = (imageData) => {
     const data = imageData.data;
@@ -261,28 +266,15 @@ export default function ScannerView({ onScan, isActive }) {
   }, [scanning, onScan]);
 
   const toggleFacing = async () => {
-  const newMode = facingMode === "environment" ? "user" : "environment";
-  setFacingMode(newMode);
+    const newMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newMode);
 
-  stopCamera();
+    stopCamera();
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: newMode,
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
-    },
-  });
-
-  streamRef.current = stream;
-
-  if (videoRef.current) {
-    videoRef.current.srcObject = stream;
-    await videoRef.current.play();
-  }
-
-  setScanning(true);
-};
+    setTimeout(() => {
+      startCamera();
+    }, 200);
+  };
 
   const toggleTorch = async () => {
     if (!streamRef.current) return;
@@ -375,13 +367,16 @@ export default function ScannerView({ onScan, isActive }) {
     <div className="relative w-full h-full bg-black flex flex-col items-center justify-center overflow-hidden">
       <div className="relative w-full max-w-sm h-96 bg-black rounded-lg overflow-hidden border-2 border-cyan-400/30">
         <video
+          key={facingMode}
           ref={videoRef}
           className="w-full h-full object-cover"
           playsInline
           muted
           autoPlay
+          onLoadedMetadata={() => {
+            videoRef.current?.play();
+          }}
           onWheel={handleWheel}
-          style={{ cursor: "zoom-in" }}
         />
         <canvas ref={canvasRef} className="hidden" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

@@ -99,7 +99,7 @@ export default function AvailableOrders({
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
- 
+
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -339,8 +339,6 @@ export default function AvailableOrders({
 
     return () => clearTimeout(timeout);
   }, [scannerActive, scanAttempted]);
-
- 
 
   const handleScanAgain = () => {
     setImeiValue("");
@@ -1597,7 +1595,10 @@ export default function AvailableOrders({
               <Button
                 variant="outline"
                 disabled={showScanner}
-                onClick={() => setShowScanner(true)}
+                onClick={() => {
+                  setIsActive(true);
+                  setShowScanner(true);
+                }}
               >
                 📷 Scan IMEI
               </Button>
@@ -1673,20 +1674,27 @@ export default function AvailableOrders({
       </Dialog>
 
       {showScanner && (
-        <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
+        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
           <div className="relative w-full h-full">
             <ScannerView
-              isActive={true}
+              isActive={isActive}
               onScan={(value) => {
                 const cleaned = value.replace(/\D/g, "").slice(0, 15);
                 setImeiValue(cleaned);
+                setIsActive(false);
                 setShowScanner(false);
               }}
-              onClose={() => setShowScanner(false)}
+              onClose={() => {
+                setIsActive(false);
+                setShowScanner(false);
+              }}
             />
 
             <button
-              onClick={() => setShowScanner(false)}
+              onClick={() => {
+                setIsActive(false);
+                setShowScanner(false);
+              }}
               className="absolute top-6 right-6 bg-red-600 text-white px-4 py-2 rounded-lg"
             >
               Close
