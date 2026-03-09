@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BrowserMultiFormatReader } from "@zxing/browser";
+
 import {
   Wallet,
   Smartphone,
@@ -73,7 +73,9 @@ export default function AvailableOrders({
   const [imeiOrder, setImeiOrder] = useState(null);
   const [scannerActive, setScannerActive] = useState(false);
   const scannerVideoRef = useRef(null);
-  const scannerRef = useRef(null);
+const scannerStreamRef = useRef(null);
+const scanAnimationRef = useRef(null);
+
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
   const [recording, setRecording] = useState(false);
@@ -348,6 +350,15 @@ export default function AvailableOrders({
     return () => clearTimeout(timeout);
   }, [scannerActive, scanAttempted]);
 
+  const stopScanner = () => {
+    try {
+      Quagga.stop();
+      Quagga.offDetected();
+    } catch (e) {}
+
+    setScannerActive(false);
+  };
+
   const handleScanAgain = () => {
     setImeiValue("");
     setScannerActive(true);
@@ -443,44 +454,6 @@ export default function AvailableOrders({
 
     setAccepting(null);
     onAccept();
-  };
-
-  const codeReader = new BrowserMultiFormatReader();
-
-  const startScanner = async () => {
-    try {
-      const videoInputDevices = await codeReader.listVideoInputDevices();
-
-      const selectedDeviceId = videoInputDevices[0].deviceId;
-
-      codeReader.decodeFromVideoDevice(
-        selectedDeviceId,
-        scannerVideoRef.current,
-        (result, err) => {
-          if (result) {
-            const scannedValue = result.getText();
-
-            if (scannedValue.length === 15) {
-              setImeiValue(scannedValue);
-              toast.success("IMEI scanned");
-
-              codeReader.reset();
-              setScannerActive(false);
-            }
-          }
-        },
-      );
-
-      setScannerActive(true);
-    } catch (error) {
-      console.error(error);
-      toast.error("Camera access failed");
-    }
-  };
-
-  const stopScanner = () => {
-    codeReader.reset();
-    setScannerActive(false);
   };
 
   const paymentInfo = {
@@ -609,55 +582,65 @@ export default function AvailableOrders({
   };
 
   const startBarcodeScanner = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+    });
 
-      if (scannerVideoRef.current) {
-        scannerVideoRef.current.srcObject = stream;
-      }
+    scannerStreamRef.current = stream;
 
-      setScannerActive(true);
+    if (scannerVideoRef.current) {
+      scannerVideoRef.current.srcObject = stream;
+      await scannerVideoRef.current.play();
+    }
 
-      const detector = new BarcodeDetector({
-        formats: ["ean_13", "code_128", "upc_a"],
-      });
+    setScannerActive(true);
 
-      const scan = async () => {
-        if (!scannerVideoRef.current || !scannerActive) return;
+    const detector = new BarcodeDetector({
+      formats: ["code_128", "ean_13", "ean_8", "upc_a"]
+    });
 
+    const detect = async () => {
+      if (!scannerVideoRef.current) return;
+
+      try {
         const barcodes = await detector.detect(scannerVideoRef.current);
 
         if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
+          const value = barcodes[0].rawValue;
 
-          if (code.length === 15) {
-            setImeiValue(code);
-            toast.success("IMEI scanned successfully");
+          if (/^\d{15}$/.test(value)) {
+            setImeiValue(value);
+            toast.success("IMEI scanned");
 
             stopBarcodeScanner();
+            return;
           }
         }
+      } catch (e) {}
 
-        requestAnimationFrame(scan);
-      };
+      scanAnimationRef.current = requestAnimationFrame(detect);
+    };
 
-      scan();
-    } catch (err) {
-      console.error(err);
-      toast.error("Camera access denied");
-    }
-  };
+    detect();
 
-  const stopBarcodeScanner = () => {
-    setScannerActive(false);
+  } catch (error) {
+    console.error(error);
+    toast.error("Camera access failed");
+  }
+};
 
-    const stream = scannerVideoRef.current?.srcObject;
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-  };
+const stopBarcodeScanner = () => {
+  if (scanAnimationRef.current) {
+    cancelAnimationFrame(scanAnimationRef.current);
+  }
+
+  if (scannerStreamRef.current) {
+    scannerStreamRef.current.getTracks().forEach(track => track.stop());
+  }
+
+  setScannerActive(false);
+};
 
   const handleConfirmImeiAndNotify = async () => {
     if (!imeiOrder || submitting) return;
@@ -902,7 +885,7 @@ export default function AvailableOrders({
             myResponseStatus === "pending" && (is_COD || isUnpaid);
           const showPaymentReceivedButton =
             !is_COD && myResponseStatus === "awaiting_payment_link";
-          console.log(order.offer_details, order.id);
+         
           return (
             <Card
               id={`order-${order.id}`}
@@ -1677,32 +1660,47 @@ export default function AvailableOrders({
 
           {/* STEP 1 — IMEI */}
           {imeiStep === "imei" && (
-            <div className="space-y-4 py-4">
-              <Label>IMEI Number</Label>
+  <div className="space-y-4 py-4">
 
-              <Input
-                placeholder="Enter IMEI"
-                maxLength={15}
-                value={imeiValue}
-                onChange={(e) =>
-                  setImeiValue(e.target.value.replace(/\D/g, ""))
-                }
-              />
+    <Label>IMEI Number</Label>
 
-              <Button variant="outline" onClick={startScanner}>
-                📷 Scan IMEI
-              </Button>
+    <Input
+      placeholder="Enter IMEI"
+      maxLength={15}
+      value={imeiValue}
+      onChange={(e) =>
+        setImeiValue(e.target.value.replace(/\D/g, ""))
+      }
+    />
 
-              {scannerActive && (
-                <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
-                  <video
-                    ref={scannerVideoRef}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-            </div>
-          )}
+    <Button
+      variant="outline"
+      onClick={scannerActive ? stopBarcodeScanner : startBarcodeScanner}
+    >
+      {scannerActive ? "❌ Stop Scanner" : "📷 Scan IMEI Barcode"}
+    </Button>
+
+    {scannerActive && (
+      <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
+
+        <video
+          ref={scannerVideoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover"
+        />
+
+        {/* Scan box overlay */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-72 h-24 border-2 border-cyan-400 rounded-md"></div>
+        </div>
+
+      </div>
+    )}
+
+  </div>
+)}
 
           {/* STEP 2 — VIDEO */}
           {imeiStep === "video" && (
