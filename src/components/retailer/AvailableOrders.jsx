@@ -1659,7 +1659,7 @@ export default function AvailableOrders({
               Cancel
             </Button>
 
-            {/* {imeiStep === "imei" ? (
+            {imeiStep === "imei" ? (
               <Button
                 className="flex-1"
                 disabled={imeiValue.length !== 15 || submitting}
@@ -1675,7 +1675,7 @@ export default function AvailableOrders({
               >
                 Confirm & Continue
               </Button>
-            )} */}
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
