@@ -36,57 +36,42 @@ export default function ScannerView({ onScan, isActive }) {
     setScanning(false);
   }, []);
 
-  const startCamera = useCallback(async () => {
-    stopCamera();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        
-          video: {
-            facingMode: facingMode,
-            width: { ideal: 4096 },
-            height: { ideal: 2160 },
-            focusMode: { ideal: "continuous" },
-            focusDistance: { ideal: 0 },
-            zoom: { ideal: 1 },
-            exposureCompensation: { ideal: -1 },
-          },
-        });
-     
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+  const startCamera = async () => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    const videoDevices = devices.filter(
+      (device) => device.kind === "videoinput"
+    );
+
+    // Try to find back camera
+    const backCamera =
+      videoDevices.find((d) =>
+        d.label.toLowerCase().includes("back")
+      ) ||
+      videoDevices.find((d) =>
+        d.label.toLowerCase().includes("rear")
+      ) ||
+      videoDevices[videoDevices.length - 1];
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: backCamera?.deviceId
+          ? { exact: backCamera.deviceId }
+          : undefined,
+        facingMode: "environment"
       }
+    });
 
-      const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities?.();
-      setTorchSupported(capabilities?.torch === true);
-
-      if (capabilities?.exposureCompensation) {
-        exposureRangeRef.current = {
-          min: capabilities.exposureCompensation.min || -2,
-          max: capabilities.exposureCompensation.max || 2,
-        };
-        setExposureSupported(true);
-      } else {
-        setExposureSupported(false);
-      }
-
-      const advancedConstraints = [{ frameRate: { ideal: 60 } }];
-      if (capabilities?.exposureCompensation) {
-        advancedConstraints.push({ exposureCompensation: { ideal: -1 } });
-      }
-
-      await track.applyConstraints({ advanced: advancedConstraints });
-      setTorchOn(false);
-      setExposure(0);
-      setHasCamera(true);
-      setScanning(true);
-    } catch (err) {
-      console.error("Camera error:", err);
-      setHasCamera(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play();
     }
-  }, [facingMode, stopCamera]);
+
+  } catch (err) {
+    console.error("Camera error:", err);
+  }
+};
 
   useEffect(() => {
     if (!("BarcodeDetector" in window)) {
