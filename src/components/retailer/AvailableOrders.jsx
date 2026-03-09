@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import ScannerView from "@/components/retailer/ScannerView";
+import ImageUpload from "@/components/retailer/ImageUpload";
 import {
   Wallet,
   Smartphone,
@@ -54,6 +55,7 @@ export default function AvailableOrders({
   retailerProfile,
   scrollToOrderId,
   clearScrollTarget,
+  onScan, onClose
 }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [accepting, setAccepting] = useState(null);
@@ -91,6 +93,8 @@ export default function AvailableOrders({
   const recordedChunksRef = useRef([]);
   const containerRef = useRef(null);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
+   const [scanResult, setScanResult] = useState(null);
+  const [isActive, setIsActive] = useState(true);
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
@@ -212,6 +216,48 @@ export default function AvailableOrders({
       setImeiStep("imei");
     }
   };
+
+  const handleScan = useCallback(
+    (result) => {
+      setIsActive(false);
+      if (onScan) {
+        onScan(result.value);
+        return;
+      }
+      setScanResult(result);
+      if (navigator.vibrate) navigator.vibrate(50);
+    },
+    [onScan]
+  );
+
+  const handleImageSelected = async (dataUrl) => {
+    setIsActive(false);
+    try {
+      const img = new Image();
+      img.onload = async () => {
+        if (window.BarcodeDetector) {
+          const detector = new window.BarcodeDetector({
+            formats: ["qr_code","ean_13","ean_8","upc_a","upc_e","code_128","code_39","code_93","codabar","itf","data_matrix","aztec","pdf417"],
+          });
+          const barcodes = await detector.detect(img);
+          if (barcodes.length > 0) {
+            const code = barcodes[0];
+            handleScan({ value: code.rawValue, format: code.format });
+          }
+        }
+      };
+      img.src = dataUrl;
+    } catch (err) {
+      console.error("Image detection error:", err);
+      setIsActive(true);
+    }
+  };
+
+  const handleClose = () => {
+    setIsActive(false);
+    if (onClose) onClose();
+  };
+
   const handleSaveImeiOnly = async () => {
     const imeiRegex = /^[38]\d{14}$/;
 
@@ -1607,16 +1653,26 @@ export default function AvailableOrders({
                 📷 Scan IMEI Barcode
               </Button>
 
-              {scannerActive && (
-                <div className="relative w-full max-w-md h-64 mx-auto bg-black rounded-md overflow-hidden">
-                  <div id="scanner" className="absolute inset-0" />
+              <div className="relative h-full w-full bg-black">
+                <ScannerView onScan={handleScan} isActive={isActive} />
 
-                  {/* Scan box */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-64 h-24 border-4 border-green-500 rounded-lg"></div>
-                  </div>
+                <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+
+                <div className="absolute top-0 left-0 right-0 z-10 pt-4 px-4 flex items-start justify-between">
+                 
+                  {onClose && (
+                    <button
+                      onClick={handleClose}
+                      className="flex items-center gap-1.5 mt-1 bg-red-600/80 hover:bg-red-600 text-white text-sm font-semibold px-3 py-2 rounded-xl backdrop-blur-sm border border-red-400/40 transition-all"
+                    >
+                      <span className="text-base leading-none">✕</span>
+                      Close Camera
+                    </button>
+                  )}
                 </div>
-              )}
+
+                <ImageUpload onImageSelected={handleImageSelected} />
+              </div>
             </div>
           )}
 
@@ -1667,7 +1723,7 @@ export default function AvailableOrders({
               Cancel
             </Button>
 
-            {imeiStep === "imei" ? (
+            {/* {imeiStep === "imei" ? (
               <Button
                 className="flex-1"
                 disabled={imeiValue.length !== 15 || submitting}
@@ -1683,7 +1739,7 @@ export default function AvailableOrders({
               >
                 Confirm & Continue
               </Button>
-            )}
+            )} */}
           </DialogFooter>
         </DialogContent>
       </Dialog>

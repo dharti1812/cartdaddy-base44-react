@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AuthApi } from "@/components/utils/authApi";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+
 import {
   Bell,
   Package,
