@@ -40,6 +40,7 @@ export default function ScannerView({ onScan, isActive }) {
     stopCamera();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
+        
         video: {
           facingMode: facingMode,
           width: { ideal: 4096 },
@@ -50,6 +51,7 @@ export default function ScannerView({ onScan, isActive }) {
           exposureCompensation: { ideal: -1 },
         },
       });
+     
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

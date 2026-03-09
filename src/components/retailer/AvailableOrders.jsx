@@ -55,7 +55,8 @@ export default function AvailableOrders({
   retailerProfile,
   scrollToOrderId,
   clearScrollTarget,
-  onScan, onClose
+  onScan,
+  onClose,
 }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [accepting, setAccepting] = useState(null);
@@ -77,7 +78,7 @@ export default function AvailableOrders({
   const scannerVideoRef = useRef(null);
   const scannerStreamRef = useRef(null);
   const scanAnimationRef = useRef(null);
-  const[showScanner, setShowScanner] = useState(false);  
+  const [showScanner, setShowScanner] = useState(false);
 
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
@@ -89,17 +90,21 @@ export default function AvailableOrders({
   const [videoRecorded, setVideoRecorded] = useState(false);
   const [scanAttempted, setScanAttempted] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
-
+  const [startCamera, setStartCamera] = useState(false);
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const containerRef = useRef(null);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
-   const [scanResult, setScanResult] = useState(null);
+  const [scanResult, setScanResult] = useState(null);
   const [isActive, setIsActive] = useState(true);
   useEffect(() => {
     setOrders(initialOrders || []);
   }, [initialOrders]);
-
+  {
+    !startCamera && (
+      <Button onClick={() => setStartCamera(true)}>Start Camera Scanner</Button>
+    );
+  }
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -228,7 +233,7 @@ export default function AvailableOrders({
       setScanResult(result);
       if (navigator.vibrate) navigator.vibrate(50);
     },
-    [onScan]
+    [onScan],
   );
 
   const handleImageSelected = async (dataUrl) => {
@@ -238,7 +243,21 @@ export default function AvailableOrders({
       img.onload = async () => {
         if (window.BarcodeDetector) {
           const detector = new window.BarcodeDetector({
-            formats: ["qr_code","ean_13","ean_8","upc_a","upc_e","code_128","code_39","code_93","codabar","itf","data_matrix","aztec","pdf417"],
+            formats: [
+              "qr_code",
+              "ean_13",
+              "ean_8",
+              "upc_a",
+              "upc_e",
+              "code_128",
+              "code_39",
+              "code_93",
+              "codabar",
+              "itf",
+              "data_matrix",
+              "aztec",
+              "pdf417",
+            ],
           });
           const barcodes = await detector.detect(img);
           if (barcodes.length > 0) {
@@ -556,8 +575,6 @@ export default function AvailableOrders({
       toast.error("Failed to confirm payment");
     }
   };
-
- 
 
   const handleConfirmImeiAndNotify = async () => {
     if (!imeiOrder || submitting) return;
@@ -1210,6 +1227,26 @@ export default function AvailableOrders({
                     )}
                   </div>
                 </div>
+
+                <div className="relative h-full w-full bg-black">
+                  <ScannerView onScan={handleScan} isActive={isActive} />
+
+                  <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
+
+                  <div className="absolute top-0 left-0 right-0 z-10 pt-4 px-4 flex items-start justify-between">
+                    {onClose && (
+                      <button
+                        onClick={handleClose}
+                        className="flex items-center gap-1.5 mt-1 bg-red-600/80 hover:bg-red-600 text-white text-sm font-semibold px-3 py-2 rounded-xl backdrop-blur-sm border border-red-400/40 transition-all"
+                      >
+                        <span className="text-base leading-none">✕</span>
+                        Close Camera
+                      </button>
+                    )}
+                  </div>
+
+                  <ImageUpload onImageSelected={handleImageSelected} />
+                </div>
               </CardContent>
             </Card>
           );
@@ -1589,41 +1626,9 @@ export default function AvailableOrders({
                 }
               />
 
-             
-
-              <div className="relative h-full w-full bg-black">
-                <ScannerView onScan={handleScan} isActive={isActive} />
-
-                <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none z-10" />
-
-                <div className="absolute top-0 left-0 right-0 z-10 pt-4 px-4 flex items-start justify-between">
-                 
-                  {onClose && (
-                    <button
-                      onClick={handleClose}
-                      className="flex items-center gap-1.5 mt-1 bg-red-600/80 hover:bg-red-600 text-white text-sm font-semibold px-3 py-2 rounded-xl backdrop-blur-sm border border-red-400/40 transition-all"
-                    >
-                      <span className="text-base leading-none">✕</span>
-                      Close Camera
-                    </button>
-                  )}
-                </div>
-
-                <ImageUpload onImageSelected={handleImageSelected} />
-              </div>
-            </div>
-          )}
-
-          {showScanner && (
-            <div className="fixed inset-0 z-50">
-              <Scanner
-                onScan={(value) => {
-                  console.log("Scanned IMEI:", value);
-                  setShowScanner(false);
-                  // do something with value
-                }}
-                onClose={() => setShowScanner(false)}
-              />
+              <Button variant="outline" onClick={() => setShowScanner(true)}>
+                📷 Scan IMEI
+              </Button>
             </div>
           )}
 
@@ -1694,6 +1699,25 @@ export default function AvailableOrders({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {showScanner && (
+        <div className="fixed inset-0 z-50 bg-black">
+          <ScannerView
+            isActive={true}
+            onScan={(value) => {
+              setImeiValue(value);
+              setShowScanner(false);
+            }}
+          />
+
+          <button
+            onClick={() => setShowScanner(false)}
+            className="absolute top-5 right-5 bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Close
+          </button>
+        </div>
+      )}
     </>
   );
 }
