@@ -61,7 +61,10 @@ export default function ScannerView({ onScan, isActive }) {
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     streamRef.current = stream;
-    videoRef.current.srcObject = stream;
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play(); // ensure video starts
+    }
 
     const track = stream.getVideoTracks()[0];
     const caps = track.getCapabilities?.();
