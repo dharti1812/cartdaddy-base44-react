@@ -45,7 +45,6 @@ import {
 import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
 import { OrderApi } from "../utils/orderApi";
 import toast from "react-hot-toast";
-import BarcodeScannerComponent from "react-qr-barcode-scanner";
 export default function AvailableOrders({
   orders: initialOrders,
   retailerId,
@@ -556,68 +555,7 @@ export default function AvailableOrders({
     }
   };
 
-  const startBarcodeScanner = () => {
-    setScannerActive(true);
-
-    setTimeout(() => {
-      Quagga.init(
-        {
-          inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector("#scanner"),
-            constraints: {
-              facingMode: "environment",
-            },
-          },
-
-          locator: {
-            patchSize: "medium",
-            halfSample: true,
-          },
-
-          frequency: 10,
-
-          decoder: {
-            readers: ["code_128_reader"], // IMEI boxes use CODE128
-          },
-
-          locate: true,
-        },
-        function (err) {
-          if (err) {
-            console.error(err);
-            return;
-          }
-
-          Quagga.start();
-        },
-      );
-
-      Quagga.onDetected((data) => {
-        const raw = data.codeResult.code;
-
-        const imei = raw.replace(/\D/g, "");
-
-        // Only accept 15 digit IMEI
-        if (/^\d{15}$/.test(imei)) {
-          setImeiValue(imei);
-
-          toast.success("IMEI scanned");
-
-          stopBarcodeScanner();
-        }
-      });
-    }, 300);
-  };
-  const stopBarcodeScanner = () => {
-    try {
-      Quagga.offDetected();
-      Quagga.stop();
-    } catch {}
-
-    setScannerActive(false);
-  };
+ 
 
   const handleConfirmImeiAndNotify = async () => {
     if (!imeiOrder || submitting) return;
@@ -1649,9 +1587,7 @@ export default function AvailableOrders({
                 }
               />
 
-              <Button variant="outline" onClick={startBarcodeScanner}>
-                📷 Scan IMEI Barcode
-              </Button>
+             
 
               <div className="relative h-full w-full bg-black">
                 <ScannerView onScan={handleScan} isActive={isActive} />
