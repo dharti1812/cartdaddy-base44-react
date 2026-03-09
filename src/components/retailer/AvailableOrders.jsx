@@ -44,7 +44,7 @@ import {
 import { calculateDeliveryCharges } from "../utils/deliveryChargeCalculator";
 import { OrderApi } from "../utils/orderApi";
 import toast from "react-hot-toast";
-
+import BarcodeScannerComponent from "react-qr-barcode-scanner";
 export default function AvailableOrders({
   orders: initialOrders,
   retailerId,
@@ -73,8 +73,8 @@ export default function AvailableOrders({
   const [imeiOrder, setImeiOrder] = useState(null);
   const [scannerActive, setScannerActive] = useState(false);
   const scannerVideoRef = useRef(null);
-const scannerStreamRef = useRef(null);
-const scanAnimationRef = useRef(null);
+  const scannerStreamRef = useRef(null);
+  const scanAnimationRef = useRef(null);
 
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
@@ -245,77 +245,6 @@ const scanAnimationRef = useRef(null);
       setSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    if (!showImeiDialog || !scannerActive) return;
-
-    let stableCount = 0;
-
-    Quagga.init(
-      {
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.getElementById("imei-scanner"),
-          constraints: {
-            facingMode: "environment",
-            width: { min: 500 },
-            height: { min: 360 },
-          },
-
-          area: {
-            top: "10%",
-            bottom: "10%",
-            left: "5%",
-            right: "5%",
-          },
-        },
-
-        locator: {
-          patchSize: "medium",
-          halfSample: false,
-        },
-
-        decoder: {
-          readers: ["code_128_reader"],
-          multiple: false,
-        },
-
-        locate: true,
-        frequency: 15,
-        numOfWorkers: 0,
-      },
-      (err) => {
-        if (err) {
-          console.error("❌ Quagga init failed", err);
-          return;
-        }
-        Quagga.start();
-      },
-    );
-
-    let detected = false;
-
-    Quagga.onDetected((result) => {
-      if (detected) return;
-
-      const code = result?.codeResult?.code || "";
-      const imei = code.replace(/\D/g, "");
-
-      if (imei.length === 15) {
-        detected = true;
-        setImeiValue(imei);
-        stopScanner();
-      }
-    });
-
-    return () => {
-      try {
-        Quagga.offDetected();
-        Quagga.stop();
-      } catch {}
-    };
-  }, [showImeiDialog, scannerActive]);
 
   useEffect(() => {
     if (!scrollToOrderId) return;
@@ -581,66 +510,68 @@ const scanAnimationRef = useRef(null);
     }
   };
 
-  const startBarcodeScanner = async () => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-    });
-
-    scannerStreamRef.current = stream;
-
-    if (scannerVideoRef.current) {
-      scannerVideoRef.current.srcObject = stream;
-      await scannerVideoRef.current.play();
-    }
-
+  const startBarcodeScanner = () => {
     setScannerActive(true);
 
-    const detector = new BarcodeDetector({
-      formats: ["code_128", "ean_13", "ean_8", "upc_a"]
-    });
+    setTimeout(() => {
+      Quagga.init(
+        {
+          inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: document.querySelector("#scanner"),
+            constraints: {
+              facingMode: "environment",
+            },
+          },
 
-    const detect = async () => {
-      if (!scannerVideoRef.current) return;
+          locator: {
+            patchSize: "medium",
+            halfSample: true,
+          },
 
-      try {
-        const barcodes = await detector.detect(scannerVideoRef.current);
+          frequency: 10,
 
-        if (barcodes.length > 0) {
-          const value = barcodes[0].rawValue;
+          decoder: {
+            readers: ["code_128_reader"], // IMEI boxes use CODE128
+          },
 
-          if (/^\d{15}$/.test(value)) {
-            setImeiValue(value);
-            toast.success("IMEI scanned");
-
-            stopBarcodeScanner();
+          locate: true,
+        },
+        function (err) {
+          if (err) {
+            console.error(err);
             return;
           }
+
+          Quagga.start();
+        },
+      );
+
+      Quagga.onDetected((data) => {
+        const raw = data.codeResult.code;
+
+        const imei = raw.replace(/\D/g, "");
+
+        // Only accept 15 digit IMEI
+        if (/^\d{15}$/.test(imei)) {
+          setImeiValue(imei);
+
+          toast.success("IMEI scanned");
+
+          stopBarcodeScanner();
         }
-      } catch (e) {}
+      });
+    }, 300);
+  };
+  const stopBarcodeScanner = () => {
+    try {
+      Quagga.offDetected();
+      Quagga.stop();
+    } catch {}
 
-      scanAnimationRef.current = requestAnimationFrame(detect);
-    };
-
-    detect();
-
-  } catch (error) {
-    console.error(error);
-    toast.error("Camera access failed");
-  }
-};
-
-const stopBarcodeScanner = () => {
-  if (scanAnimationRef.current) {
-    cancelAnimationFrame(scanAnimationRef.current);
-  }
-
-  if (scannerStreamRef.current) {
-    scannerStreamRef.current.getTracks().forEach(track => track.stop());
-  }
-
-  setScannerActive(false);
-};
+    setScannerActive(false);
+  };
 
   const handleConfirmImeiAndNotify = async () => {
     if (!imeiOrder || submitting) return;
@@ -885,7 +816,7 @@ const stopBarcodeScanner = () => {
             myResponseStatus === "pending" && (is_COD || isUnpaid);
           const showPaymentReceivedButton =
             !is_COD && myResponseStatus === "awaiting_payment_link";
-         
+
           return (
             <Card
               id={`order-${order.id}`}
@@ -1660,47 +1591,34 @@ const stopBarcodeScanner = () => {
 
           {/* STEP 1 — IMEI */}
           {imeiStep === "imei" && (
-  <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4">
+              <Label>IMEI Number</Label>
 
-    <Label>IMEI Number</Label>
+              <Input
+                placeholder="Enter IMEI"
+                maxLength={15}
+                value={imeiValue}
+                onChange={(e) =>
+                  setImeiValue(e.target.value.replace(/\D/g, ""))
+                }
+              />
 
-    <Input
-      placeholder="Enter IMEI"
-      maxLength={15}
-      value={imeiValue}
-      onChange={(e) =>
-        setImeiValue(e.target.value.replace(/\D/g, ""))
-      }
-    />
+              <Button variant="outline" onClick={startBarcodeScanner}>
+                📷 Scan IMEI Barcode
+              </Button>
 
-    <Button
-      variant="outline"
-      onClick={scannerActive ? stopBarcodeScanner : startBarcodeScanner}
-    >
-      {scannerActive ? "❌ Stop Scanner" : "📷 Scan IMEI Barcode"}
-    </Button>
+              {scannerActive && (
+                <div className="relative w-full max-w-md h-64 mx-auto bg-black rounded-md overflow-hidden">
+                  <div id="scanner" className="absolute inset-0" />
 
-    {scannerActive && (
-      <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
-
-        <video
-          ref={scannerVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover"
-        />
-
-        {/* Scan box overlay */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-72 h-24 border-2 border-cyan-400 rounded-md"></div>
-        </div>
-
-      </div>
-    )}
-
-  </div>
-)}
+                  {/* Scan box */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-64 h-24 border-4 border-green-500 rounded-lg"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* STEP 2 — VIDEO */}
           {imeiStep === "video" && (
