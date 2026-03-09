@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
   Wallet,
   Smartphone,
@@ -70,7 +71,8 @@ export default function AvailableOrders({
   const [imeiValue, setImeiValue] = useState("");
   const [imeiStep, setImeiStep] = useState("imei");
   const [imeiOrder, setImeiOrder] = useState(null);
-  const [scannerActive, setScannerActive] = useState(true);
+  const [scannerActive, setScannerActive] = useState(false);
+  const scannerVideoRef = useRef(null);
   const scannerRef = useRef(null);
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
@@ -346,15 +348,6 @@ export default function AvailableOrders({
     return () => clearTimeout(timeout);
   }, [scannerActive, scanAttempted]);
 
-  const stopScanner = () => {
-    try {
-      Quagga.stop();
-      Quagga.offDetected();
-    } catch (e) {}
-
-    setScannerActive(false);
-  };
-
   const handleScanAgain = () => {
     setImeiValue("");
     setScannerActive(true);
@@ -450,6 +443,44 @@ export default function AvailableOrders({
 
     setAccepting(null);
     onAccept();
+  };
+
+  const codeReader = new BrowserMultiFormatReader();
+
+  const startScanner = async () => {
+    try {
+      const videoInputDevices = await codeReader.listVideoInputDevices();
+
+      const selectedDeviceId = videoInputDevices[0].deviceId;
+
+      codeReader.decodeFromVideoDevice(
+        selectedDeviceId,
+        scannerVideoRef.current,
+        (result, err) => {
+          if (result) {
+            const scannedValue = result.getText();
+
+            if (scannedValue.length === 15) {
+              setImeiValue(scannedValue);
+              toast.success("IMEI scanned");
+
+              codeReader.reset();
+              setScannerActive(false);
+            }
+          }
+        },
+      );
+
+      setScannerActive(true);
+    } catch (error) {
+      console.error(error);
+      toast.error("Camera access failed");
+    }
+  };
+
+  const stopScanner = () => {
+    codeReader.reset();
+    setScannerActive(false);
   };
 
   const paymentInfo = {
@@ -574,6 +605,57 @@ export default function AvailableOrders({
     } catch (err) {
       console.error("💥 Error in payment confirmation:", err);
       toast.error("Failed to confirm payment");
+    }
+  };
+
+  const startBarcodeScanner = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+
+      if (scannerVideoRef.current) {
+        scannerVideoRef.current.srcObject = stream;
+      }
+
+      setScannerActive(true);
+
+      const detector = new BarcodeDetector({
+        formats: ["ean_13", "code_128", "upc_a"],
+      });
+
+      const scan = async () => {
+        if (!scannerVideoRef.current || !scannerActive) return;
+
+        const barcodes = await detector.detect(scannerVideoRef.current);
+
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+
+          if (code.length === 15) {
+            setImeiValue(code);
+            toast.success("IMEI scanned successfully");
+
+            stopBarcodeScanner();
+          }
+        }
+
+        requestAnimationFrame(scan);
+      };
+
+      scan();
+    } catch (err) {
+      console.error(err);
+      toast.error("Camera access denied");
+    }
+  };
+
+  const stopBarcodeScanner = () => {
+    setScannerActive(false);
+
+    const stream = scannerVideoRef.current?.srcObject;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
     }
   };
 
@@ -903,7 +985,6 @@ export default function AvailableOrders({
 
                   {order.payment_type === "needs_paylink" && (
                     <div className="grid grid-cols-12 gap-3 mt-3">
-                     
                       <Alert className="col-span-12 lg:col-span-9 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <AlertCircle
                           className="w-4 h-4 text-amber-600 shrink-0 mt-[2px]"
@@ -915,7 +996,6 @@ export default function AvailableOrders({
                         </AlertDescription>
                       </Alert>
 
-                     
                       {order.offer_details && (
                         <div
                           className="col-span-12 lg:col-span-3 flex items-center justify-between gap-2 p-3 rounded-lg 
@@ -932,7 +1012,7 @@ export default function AvailableOrders({
                           </div>
 
                           <span className="text-xs text-green-700 font-medium whitespace-nowrap">
-                            View →
+                            View Details→
                           </span>
                         </div>
                       )}
@@ -1599,6 +1679,7 @@ export default function AvailableOrders({
           {imeiStep === "imei" && (
             <div className="space-y-4 py-4">
               <Label>IMEI Number</Label>
+
               <Input
                 placeholder="Enter IMEI"
                 maxLength={15}
@@ -1607,6 +1688,19 @@ export default function AvailableOrders({
                   setImeiValue(e.target.value.replace(/\D/g, ""))
                 }
               />
+
+              <Button variant="outline" onClick={startScanner}>
+                📷 Scan IMEI
+              </Button>
+
+              {scannerActive && (
+                <div className="relative w-full aspect-video bg-black rounded-md overflow-hidden">
+                  <video
+                    ref={scannerVideoRef}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
             </div>
           )}
 
