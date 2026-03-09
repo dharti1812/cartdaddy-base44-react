@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import ScannerView from "@/components/retailer/ScannerView";
 import ImageUpload from "@/components/retailer/ImageUpload";
+
 import {
   Wallet,
   Smartphone,
@@ -76,6 +77,7 @@ export default function AvailableOrders({
   const scannerVideoRef = useRef(null);
   const scannerStreamRef = useRef(null);
   const scanAnimationRef = useRef(null);
+  const[showScanner, setShowScanner] = useState(false);  
 
   const [imeiAddedOrders, setImeiAddedOrders] = useState([]);
 
@@ -1609,6 +1611,19 @@ export default function AvailableOrders({
 
                 <ImageUpload onImageSelected={handleImageSelected} />
               </div>
+            </div>
+          )}
+
+          {showScanner && (
+            <div className="fixed inset-0 z-50">
+              <Scanner
+                onScan={(value) => {
+                  console.log("Scanned IMEI:", value);
+                  setShowScanner(false);
+                  // do something with value
+                }}
+                onClose={() => setShowScanner(false)}
+              />
             </div>
           )}
 
