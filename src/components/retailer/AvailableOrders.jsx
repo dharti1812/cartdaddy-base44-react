@@ -1619,7 +1619,9 @@ export default function AvailableOrders({
                   autoPlay
                   muted
                   playsInline
+                  onWheel={handleWheel}
                   className="absolute inset-0 w-full h-full object-cover"
+                   style={{ cursor: "zoom-in" }}
                 />
               </div>
 

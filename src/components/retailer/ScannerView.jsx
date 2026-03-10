@@ -12,7 +12,27 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function ScannerView({ onScan, isActive }) {
+const DEFAULT_FORMATS = [
+  "qr_code",
+  "ean_13",
+  "ean_8",
+  "upc_a",
+  "upc_e",
+  "code_128",
+  "code_39",
+  "code_93",
+  "codabar",
+  "itf",
+  "data_matrix",
+  "aztec",
+  "pdf417",
+];
+
+export default function ScannerView({
+  onScan,
+  isActive = true,
+  supportedFormats = DEFAULT_FORMATS,
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -46,91 +66,83 @@ export default function ScannerView({ onScan, isActive }) {
     setScanning(false);
   }, []);
 
- const startCamera = useCallback(async () => {
-  try {
-    if (streamRef.current) stopCamera();
+  const startCamera = useCallback(async () => {
+    stopCamera();
+    try {
+      // REQUEST 4K RESOLUTION WITH CONTINUOUS AUTOFOCUS AND EXPOSURE OPTIMIZATION
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 4096 }, // 4K width
+          height: { ideal: 2160 }, // 4K height
+          focusMode: { ideal: "continuous" },
+          focusDistance: { ideal: 0 },
+          zoom: { ideal: 1 },
+          exposureCompensation: { ideal: -1 }, // -1 EV for better contrast
+        },
+      });
 
-    // Use facingMode (environment for back, user for front)
-    const constraints = {
-      video: {
-        facingMode: facingMode,
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    };
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play(); // ensure video starts
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.();
+
+      // Check torch support
+      setTorchSupported(capabilities?.torch === true);
+
+      // Get exposure range for manual control
+      if (capabilities?.exposureCompensation) {
+        exposureRangeRef.current = {
+          min: capabilities.exposureCompensation.min || -2,
+          max: capabilities.exposureCompensation.max || 2,
+        };
+        setExposureSupported(true);
+      } else {
+        setExposureSupported(false);
+      }
+
+      // APPLY ADVANCED CONSTRAINTS: 60 FPS + EXPOSURE OPTIMIZATION
+      const advancedConstraints = [{ frameRate: { ideal: 60 } }];
+      if (capabilities?.exposureCompensation) {
+        advancedConstraints.push({
+          exposureCompensation: { ideal: -1 },
+        });
+      }
+
+      await track.applyConstraints({ advanced: advancedConstraints });
+
+      setTorchOn(false);
+      setExposure(0);
+      setHasCamera(true);
+      setScanning(true);
+    } catch (err) {
+      console.error("Camera error:", err);
+      setHasCamera(false);
     }
-
-    const track = stream.getVideoTracks()[0];
-    const caps = track.getCapabilities?.();
-
-    // Apply advanced constraints if supported
-    const advancedConstraints = {};
-    if (caps?.focusMode?.includes("continuous"))
-      advancedConstraints.focusMode = "continuous";
-    if (caps?.whiteBalanceMode?.includes("continuous"))
-      advancedConstraints.whiteBalanceMode = "continuous";
-    if (Object.keys(advancedConstraints).length > 0)
-      await track.applyConstraints({ advanced: [advancedConstraints] });
-
-    setTorchSupported(caps?.torch || false);
-    setExposureSupported(!!caps?.exposureCompensation);
-
-    setScanning(true);
-    setHasCamera(true);
-  } catch (err) {
-    console.error("Camera error:", err);
-    setHasCamera(false);
-  }
-}, [facingMode, stopCamera]);
-
-const toggleFacing = useCallback(() => {
-  setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
-}, []);
-
-
+  }, [facingMode, stopCamera]);
 
   useEffect(() => {
     if (!("BarcodeDetector" in window)) {
       detectorRef.current = null;
     } else {
       detectorRef.current = new window.BarcodeDetector({
-        formats: [
-          "qr_code",
-          "ean_13",
-          "ean_8",
-          "upc_a",
-          "upc_e",
-          "code_128",
-          "code_39",
-          "code_93",
-          "codabar",
-          "itf",
-          "data_matrix",
-          "aztec",
-          "pdf417",
-        ],
+        formats: supportedFormats,
       });
     }
-  }, []);
+  }, [supportedFormats]);
 
   useEffect(() => {
-    if (!isActive) {
+    if (isActive) {
+      startCamera();
+    } else {
       stopCamera();
-      return;
     }
-
-    startCamera();
-
-    return () => {
-      stopCamera();
-    };
-  }, [isActive]);
+    return stopCamera;
+  }, [isActive, startCamera, stopCamera]);
 
   const calculateBrightness = (imageData) => {
     const data = imageData.data;
@@ -144,11 +156,14 @@ const toggleFacing = useCallback(() => {
 
   const autoAdjustExposure = async (brightness) => {
     if (!autoExposure || !exposureSupported || !streamRef.current) return;
+
     const now = Date.now();
     if (now - lastAutoAdjustRef.current < 100) return;
     lastAutoAdjustRef.current = now;
+
     const targetBrightness = 128;
     const diff = targetBrightness - brightness;
+
     let newExposure = exposure;
     if (Math.abs(diff) > 20) {
       const step = Math.sign(diff) * Math.min(0.4, Math.abs(diff) / 100);
@@ -157,6 +172,7 @@ const toggleFacing = useCallback(() => {
         Math.min(exposureRangeRef.current.max, exposure + step),
       );
     }
+
     if (Math.abs(newExposure - exposure) > 0.05) {
       setExposure(newExposure);
       try {
@@ -172,8 +188,10 @@ const toggleFacing = useCallback(() => {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
+
     const brightness = calculateBrightness(imageData);
     autoAdjustExposure(brightness);
+
     const histogram = new Uint32Array(256);
     let totalPixels = 0;
     for (let i = 0; i < data.length; i += 4) {
@@ -183,11 +201,13 @@ const toggleFacing = useCallback(() => {
       histogram[gray]++;
       totalPixels++;
     }
+
     let pixelCount = 0;
     let p1 = 0,
       p99 = 255;
     const target1 = totalPixels * 0.01;
     const target99 = totalPixels * 0.99;
+
     for (let i = 0; i < 256; i++) {
       pixelCount += histogram[i];
       if (pixelCount >= target1 && p1 === 0) p1 = i;
@@ -198,15 +218,28 @@ const toggleFacing = useCallback(() => {
     }
     const range = Math.max(1, p99 - p1);
     for (let i = 0; i < data.length; i += 4) {
-      let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      // Convert to grayscale
+      let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      // Histogram stretching (0-255 range)
       gray = Math.max(0, Math.min(255, ((gray - p1) / range) * 255));
+
+      // Gamma correction (0.6 for detail preservation)
       const gamma = 0.6;
       gray = Math.pow(gray / 255, gamma) * 255;
+
+      // Sharpening boost (1.3x for dense barcode clarity)
       const sharpened = Math.min(255, gray * 1.3);
+
       data[i] = sharpened;
       data[i + 1] = sharpened;
       data[i + 2] = sharpened;
     }
+
     ctx.putImageData(imageData, 0, 0);
     return canvas;
   };
@@ -261,14 +294,23 @@ const toggleFacing = useCallback(() => {
     };
   }, [scanning, onScan]);
 
-
+  const toggleFacing = async () => {
+    const newMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newMode);
+    stopCamera();
+    setTimeout(() => startCamera(), 100);
+  };
 
   const toggleTorch = async () => {
     if (!streamRef.current) return;
     const track = streamRef.current.getVideoTracks()[0];
     const newTorch = !torchOn;
-    await track.applyConstraints({ advanced: [{ torch: newTorch }] });
-    setTorchOn(newTorch);
+    try {
+      await track.applyConstraints({ advanced: [{ torch: newTorch }] });
+      setTorchOn(newTorch);
+    } catch (err) {
+      console.error("Torch control failed:", err);
+    }
   };
 
   const handleZoomIn = async () => {
@@ -278,7 +320,11 @@ const toggleFacing = useCallback(() => {
     if (!capabilities?.zoom) return;
     const newZoom = Math.min(zoom + 0.5, capabilities.zoom.max || 4);
     setZoom(newZoom);
-    await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    } catch (err) {
+      console.error("Zoom failed:", err);
+    }
   };
 
   const handleZoomOut = async () => {
@@ -286,21 +332,30 @@ const toggleFacing = useCallback(() => {
     const track = streamRef.current.getVideoTracks()[0];
     const newZoom = Math.max(zoom - 0.5, 1);
     setZoom(newZoom);
-    await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    } catch (err) {
+      console.error("Zoom failed:", err);
+    }
   };
 
   const handleExposureChange = async (delta) => {
     if (!streamRef.current || !exposureSupported) return;
     setAutoExposure(false);
     const track = streamRef.current.getVideoTracks()[0];
+
     const newExposure = Math.max(
       exposureRangeRef.current.min,
       Math.min(exposureRangeRef.current.max, exposure + delta),
     );
     setExposure(newExposure);
-    await track.applyConstraints({
-      advanced: [{ exposureCompensation: newExposure }],
-    });
+    try {
+      await track.applyConstraints({
+        advanced: [{ exposureCompensation: newExposure }],
+      });
+    } catch (err) {
+      console.error("Exposure adjustment failed:", err);
+    }
   };
 
   const toggleAutoExposure = () => setAutoExposure(!autoExposure);
@@ -311,13 +366,18 @@ const toggleFacing = useCallback(() => {
     const track = streamRef.current.getVideoTracks()[0];
     const capabilities = track.getCapabilities?.();
     if (!capabilities?.zoom) return;
+
     const delta = e.deltaY > 0 ? -0.3 : 0.3;
     const newZoom = Math.max(
       1,
       Math.min(zoom + delta, capabilities.zoom.max || 4),
     );
     setZoom(newZoom);
-    await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: newZoom }] });
+    } catch (err) {
+      console.error("Zoom failed:", err);
+    }
   };
 
   if (!hasCamera) {
