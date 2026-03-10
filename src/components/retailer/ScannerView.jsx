@@ -68,6 +68,11 @@ export default function ScannerView({
 
   const startCamera = useCallback(async () => {
     stopCamera();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("Camera API not supported");
+      setHasCamera(false);
+      return;
+    }
     try {
       // REQUEST 4K RESOLUTION WITH CONTINUOUS AUTOFOCUS AND EXPOSURE OPTIMIZATION
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -85,7 +90,15 @@ export default function ScannerView({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+
+        try {
+          await videoRef.current.play();
+        } catch (err) {
+          console.warn("Video play failed, retrying...");
+          setTimeout(() => {
+            videoRef.current?.play();
+          }, 200);
+        }
       }
 
       const track = stream.getVideoTracks()[0];
@@ -136,12 +149,19 @@ export default function ScannerView({
   }, [supportedFormats]);
 
   useEffect(() => {
-    if (isActive) {
-      startCamera();
-    } else {
+    if (!isActive) {
       stopCamera();
+      return;
     }
-    return stopCamera;
+
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 300); // slightly longer delay for dialogs
+
+    return () => {
+      clearTimeout(timer);
+      stopCamera();
+    };
   }, [isActive, startCamera, stopCamera]);
 
   const calculateBrightness = (imageData) => {

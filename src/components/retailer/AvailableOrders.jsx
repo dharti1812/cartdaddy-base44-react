@@ -1684,19 +1684,13 @@ export default function AvailableOrders({
         <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
           <div className="relative w-full h-full">
             <ScannerView
-              isActive={isActive}
-              facingMode="environment" // Add this line
-              onScan={(value) => {
-                const cleaned = value.replace(/\D/g, "").slice(0, 15);
-                setImeiValue(cleaned);
-                setIsActive(false);
-                setShowScanner(false);
-              }}
-              onClose={() => {
-                setIsActive(false);
-                setShowScanner(false);
-              }}
-            />
+                isActive={showScanner}
+                onScan={(result) => {
+                  const cleaned = result.value.replace(/\D/g, "").slice(0, 15);
+                  setImeiValue(cleaned);
+                  setShowScanner(false);
+                }}
+              />
 
             <button
               onClick={() => {
