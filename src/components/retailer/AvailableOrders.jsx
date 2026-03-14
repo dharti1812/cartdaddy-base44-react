@@ -92,6 +92,7 @@ export default function AvailableOrders({
   const [startCamera, setStartCamera] = useState(false);
   const videoRef = useRef(null);
   const recordedChunksRef = useRef([]);
+  const mediaRecorderRef = useRef(null);
   const containerRef = useRef(null);
   const [highlightOrderId, setHighlightOrderId] = useState(null);
   const [scanResult, setScanResult] = useState(null);
