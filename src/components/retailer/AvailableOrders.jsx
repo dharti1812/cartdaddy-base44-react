@@ -154,54 +154,58 @@ export default function AvailableOrders({
   };
 
   const handleConfirmVideo = async () => {
-    if (!imeiOrder) return;
-    if (recordedChunksRef.current.length === 0) {
-      toast.error("No video recorded. Please record a video first.");
-      return;
+    if (!videoRef.current) return;
+
+    const stream = videoRef.current.srcObject;
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
     }
 
-    setSubmitting(true);
-
-    try {
+    if (recordedChunksRef.current.length > 0) {
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
       const formData = new FormData();
       formData.append("order_id", imeiOrder.id);
       formData.append("video", blob, "order_video.webm");
 
-      const res = await OrderApi.storeVideo(formData);
+      try {
+        const res = await OrderApi.storeVideo(formData, true);
 
-      if (!res.success) {
-        toast.error(res.message || "Failed to save video");
-        return;
-      }
+        if (res.success) {
+          await OrderApi.acceptOrder({
+            orderId: imeiOrder.code || imeiOrder.id,
+            retailerId,
+            notify_delivery_boys: true,
+          });
 
-      toast.success("Video saved! Notifying delivery boy...");
+          toast.success("Video saved successfully! Notifying delivery boy");
 
-      // Clean up video stream
-      if (videoRef.current?.srcObject) {
+          if (videoRef.current?.srcObject) {
             videoRef.current.srcObject
               .getTracks()
               .forEach((track) => track.stop());
             videoRef.current.srcObject = null;
           }
 
-      // Reset all state and close dialog
-      recordedChunksRef.current = [];
-      setRecording(false);
-      setVideoRecorded(false);
-      setShowImeiDialog(false);
-      setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
-      setImeiOrder(null);
-      setImeiValue("");
-      setImeiStep("imei");
-      setAwaitingPaymentConfirmation(false);
-      setPaymentConfirmedOrder(null);
-      onAccept()
-    } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong while saving video");
-    } finally {
-      setSubmitting(false);
+          setRecording(false);
+
+          setVideoRecorded(false);
+
+          setShowImeiDialog(false);
+          setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
+          setImeiOrder(null);
+          setImeiValue("");
+          setImeiStep("imei");
+          setAwaitingPaymentConfirmation(false);
+          setPaymentConfirmedOrder(null);
+          onAccept();
+        } else {
+          toast.error(res.message || "Failed to save video");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Something went wrong while saving video");
+      }
     }
   };
 
