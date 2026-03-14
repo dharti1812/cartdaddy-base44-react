@@ -103,11 +103,7 @@ export default function AvailableOrders({
   const handleStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { exact: "environment" },
-          width: 1280,
-          height: 720,
-        },
+        video: { facingMode: { ideal: "environment" }, width: 1280, height: 720 },
         audio: false,
       });
 
@@ -118,15 +114,23 @@ export default function AvailableOrders({
         await videoRef.current.play();
       }
 
-      const recorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp8,opus",
-      });
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+        ? "video/webm;codecs=vp8"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(stream, { mimeType });
       recordedChunksRef.current = [];
+
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunksRef.current.push(e.data);
       };
-      recorder.start();
 
+      recorder.onstop = () => {
+        setVideoRecorded(true);
+      };
+
+      recorder.start(100); // collect data every 100ms
+      mediaRecorderRef.current = recorder;
       setMediaRecorder(recorder);
       setRecording(true);
     } catch (err) {
@@ -136,72 +140,66 @@ export default function AvailableOrders({
   };
 
   const handleStopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
     }
-
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
-
     setRecording(false);
-    setVideoRecorded(true);
+    // videoRecorded will be set true by recorder.onstop
   };
 
   const handleConfirmVideo = async () => {
-    if (!videoRef.current) return;
-
-    const stream = videoRef.current.srcObject;
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
+    if (!imeiOrder) return;
+    if (recordedChunksRef.current.length === 0) {
+      toast.error("No video recorded. Please record a video first.");
+      return;
     }
 
-    if (recordedChunksRef.current.length > 0) {
+    setSubmitting(true);
+
+    try {
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
       const formData = new FormData();
       formData.append("order_id", imeiOrder.id);
       formData.append("video", blob, "order_video.webm");
 
-      try {
-        const res = await OrderApi.storeVideo(formData, true);
+      const res = await OrderApi.storeVideo(formData);
 
-        if (res.success) {
-          await OrderApi.acceptOrder({
-            orderId: imeiOrder.code || imeiOrder.id,
-            retailerId,
-            notify_delivery_boys: true,
-          });
-
-          toast.success("Video saved successfully! Notifying delivery boy");
-
-          if (videoRef.current?.srcObject) {
-            videoRef.current.srcObject
-              .getTracks()
-              .forEach((track) => track.stop());
-            videoRef.current.srcObject = null;
-          }
-
-          setRecording(false);
-
-          setVideoRecorded(false);
-
-          setShowImeiDialog(false);
-          setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
-          setImeiOrder(null);
-          setImeiValue("");
-          setImeiStep("imei");
-          setAwaitingPaymentConfirmation(false);
-          setPaymentConfirmedOrder(null);
-          onAccept();
-        } else {
-          toast.error(res.message || "Failed to save video");
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Something went wrong while saving video");
+      if (!res.success) {
+        toast.error(res.message || "Failed to save video");
+        return;
       }
+
+      toast.success("Video saved! Notifying delivery boy...");
+
+      // Clean up video stream
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+        videoRef.current.srcObject = null;
+      }
+
+      // Reset all state and close dialog
+      recordedChunksRef.current = [];
+      setRecording(false);
+      setVideoRecorded(false);
+      setShowImeiDialog(false);
+      setImeiAddedOrders((prev) => [...prev, imeiOrder.id]);
+      setImeiOrder(null);
+      setImeiValue("");
+      setImeiStep("imei");
+      setAwaitingPaymentConfirmation(false);
+      setPaymentConfirmedOrder(null);
+      if (onVideoSaved) onVideoSaved();
+      else onAccept();
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong while saving video");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -236,7 +234,7 @@ export default function AvailableOrders({
     [onScan],
   );
 
-  const handleImageSelected = async (dataUrl) => {
+   const handleImageSelected = async (dataUrl) => {
     setIsActive(false);
     try {
       const img = new Image();
@@ -1565,7 +1563,7 @@ export default function AvailableOrders({
         </DialogContent>
       </Dialog>
       {/* IMEI Dialog */}
-      <Dialog open={showImeiDialog} onOpenChange={setShowImeiDialog}>
+       <Dialog open={showImeiDialog} onOpenChange={(open) => { if (!showScanner) setShowImeiDialog(open); }}>
         <DialogContent
           className="max-w-md"
           onInteractOutside={(e) => e.preventDefault()}
@@ -1619,9 +1617,7 @@ export default function AvailableOrders({
                   autoPlay
                   muted
                   playsInline
-                  onWheel={handleWheel}
                   className="absolute inset-0 w-full h-full object-cover"
-                   style={{ cursor: "zoom-in" }}
                 />
               </div>
 
@@ -1670,10 +1666,10 @@ export default function AvailableOrders({
             ) : (
               <Button
                 className="flex-1 bg-emerald-600"
-                disabled={!videoRecorded}
+                disabled={!videoRecorded || submitting}
                 onClick={handleConfirmVideo}
               >
-                Confirm & Continue
+                {submitting ? "Saving..." : "Confirm & Continue"}
               </Button>
             )}
           </DialogFooter>
@@ -1681,27 +1677,16 @@ export default function AvailableOrders({
       </Dialog>
 
       {showScanner && (
-        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-          <div className="relative w-full h-full">
-            <ScannerView
-                isActive={showScanner}
-                onScan={(result) => {
-                  const cleaned = result.value.replace(/\D/g, "").slice(0, 15);
-                  setImeiValue(cleaned);
-                  setShowScanner(false);
-                }}
-              />
-
-            <button
-              onClick={() => {
-                setIsActive(false);
-                setShowScanner(false);
-              }}
-              className="absolute top-6 right-6 bg-red-600 text-white px-4 py-2 rounded-lg"
-            >
-              Close
-            </button>
-          </div>
+        <div className="fixed inset-0 bg-black z-[100]">
+          <ScannerView
+            isActive={showScanner}
+            onScan={(result) => {
+              const cleaned = result.value.replace(/\D/g, "").slice(0, 15);
+              setImeiValue(cleaned);
+              setShowScanner(false);
+            }}
+            onClose={() => setShowScanner(false)}
+          />
         </div>
       )}
     </>
