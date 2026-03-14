@@ -179,9 +179,11 @@ export default function AvailableOrders({
 
       // Clean up video stream
       if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop());
-        videoRef.current.srcObject = null;
-      }
+            videoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+            videoRef.current.srcObject = null;
+          }
 
       // Reset all state and close dialog
       recordedChunksRef.current = [];
@@ -194,8 +196,7 @@ export default function AvailableOrders({
       setImeiStep("imei");
       setAwaitingPaymentConfirmation(false);
       setPaymentConfirmedOrder(null);
-      if (onVideoSaved) onVideoSaved();
-      else onAccept();
+      onAccept()
     } catch (err) {
       console.error(err);
       toast.error("Something went wrong while saving video");
