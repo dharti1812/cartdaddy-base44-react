@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ScannerView from "@/components/retailer/ScannerView";
+import ScannerView from "@/components/Scanner/ScannerView";
 import ImageUpload from "@/components/retailer/ImageUpload";
 
 import {
