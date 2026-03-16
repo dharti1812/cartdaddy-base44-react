@@ -104,6 +104,12 @@ const adminNavigationItems = [
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
 
+    const handleLogout = () => {
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
+    window.location.href = createPageUrl("PortalSelector");
+  };
+
   // Check if current page is seller portal or delivery boy portal - if so, don't show admin layout
   const isRetailerPage = currentPageName === "RetailerPortal" ||
                          currentPageName === "RetailerOnboarding" ||
@@ -212,6 +218,14 @@ export default function Layout({ children, currentPageName }) {
           </SidebarContent>
 
           <SidebarFooter className="p-3 border-t border-gray-200">
+          <Button
+              variant="outline"
+              className="w-full border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
             <Button
               variant="outline"
               className="w-full border-2 border-[#075E66] text-[#075E66] hover:bg-[#075E66] hover:text-white text-base"
