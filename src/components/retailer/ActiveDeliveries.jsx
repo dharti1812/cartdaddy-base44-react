@@ -290,44 +290,37 @@ export default function ActiveDeliveries({
   ];
 
   const resolveCurrentDeliveryStep = (order) => {
-    if (!order?.status_history) return "accepted_db";
+    const history = order?.status_history || [];
 
-    const completedSteps = Object.entries(order.status_history)
-      .filter(([_, time]) => time)
-      .sort((a, b) => new Date(a[1]) - new Date(b[1]));
+    if (!history.length) return "accepted_db";
 
-    return completedSteps.length
-      ? completedSteps[completedSteps.length - 1][0]
-      : "accepted_db";
+    return history[history.length - 1]?.status;
   };
 
   const shouldShowDeliveryTracking = (order) => {
     return (
       order?.delivery_status &&
       order?.status_history &&
-      Object.keys(order.status_history).length > 0
+      order?.status_history?.length > 0
     );
   };
 
   const getDeliveryStepState = (order, stepKey) => {
-  const steps = DELIVERY_TRACKING_STEPS_ORDERED;
-  const history = order?.status_history || {};
+    const steps = DELIVERY_TRACKING_STEPS_ORDERED;
+    const history = order?.status_history || [];
 
-  // Get index of current step (last completed step)
-  const completedIndexes = steps
-    .map((step, index) => (history[step] ? index : -1))
-    .filter((i) => i !== -1);
+    if (!history.length) return "pending";
 
-  if (completedIndexes.length === 0) return "pending";
+    // get current step
+    const lastStatus = history[history.length - 1]?.status;
+    const currentIndex = steps.indexOf(lastStatus);
+    const stepIndex = steps.indexOf(stepKey);
 
-  const currentIndex = Math.max(...completedIndexes);
-  const stepIndex = steps.indexOf(stepKey);
+    if (stepIndex < currentIndex) return "done";
+    if (stepIndex === currentIndex) return "current";
 
-  if (stepIndex < currentIndex) return "done";
-  if (stepIndex === currentIndex) return "current";
-
-  return "pending";
-};
+    return "pending";
+  };
 
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
@@ -1274,7 +1267,9 @@ export default function ActiveDeliveries({
                                     );
 
                                     const timestamp =
-                                      order.status_history?.[stepKey];
+                                      order.status_history?.find(
+                                        (s) => s.status === stepKey,
+                                      )?.created_at;
 
                                     return (
                                       <div
