@@ -283,6 +283,7 @@ export default function ActiveDeliveries({
     "reached_to_seller",
     "authenticity_check",
     "verification_completed",
+    "verification_review",
     "picked_up",
     "out_for_delivery",
     "reached_to_customer",
@@ -311,10 +312,12 @@ export default function ActiveDeliveries({
 
     if (!history.length) return "pending";
 
-    // get current step
     const lastStatus = history[history.length - 1]?.status;
     const currentIndex = steps.indexOf(lastStatus);
     const stepIndex = steps.indexOf(stepKey);
+
+ 
+    if (currentIndex === -1) return "pending";
 
     if (stepIndex < currentIndex) return "done";
     if (stepIndex === currentIndex) return "current";
