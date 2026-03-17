@@ -227,7 +227,7 @@ export default function ActiveDeliveries({
               .forEach((track) => track.stop());
             videoRef.current.srcObject = null;
           }
-          setVideoUploaded(true); 
+          setVideoUploaded(true);
           setRecording(false);
 
           setVideoRecorded(false);
@@ -244,14 +244,24 @@ export default function ActiveDeliveries({
 
   const DELIVERY_TRACKING_LABELS = {
     accepted_db: "👤 Delivery Partner Onboarded",
+
+    heading_to_seller: "🚗 Heading to Seller",
+
     reached_to_seller: "📍 Reached Seller",
+
     authenticity_check: "🔍 Authenticity Check in Progress",
+
     verification_completed:
       "🛡️ Product Authenticity Verified at Seller Location",
 
+    verification_review: "🧾 Verification Under Review",
+
     picked_up: "📦 Order Picked Up",
+
     out_for_delivery: "🛵 Out for Delivery",
+
     reached_to_customer: "📌 Reached Your Location",
+
     delivered: "✅ Delivered Successfully",
   };
 
@@ -269,6 +279,7 @@ export default function ActiveDeliveries({
 
   const DELIVERY_TRACKING_STEPS_ORDERED = [
     "accepted_db",
+    "heading_to_seller",
     "reached_to_seller",
     "authenticity_check",
     "verification_completed",
@@ -299,55 +310,27 @@ export default function ActiveDeliveries({
   };
 
   const getDeliveryStepState = (order, stepKey) => {
-    const h = order?.status_history || {};
+    const steps = DELIVERY_TRACKING_STEPS_ORDERED;
 
-    if (h[stepKey]) return "done";
+    const history = order?.status_history || {};
 
-    if (
-      stepKey === "reached_to_seller" &&
-      h.accepted_db &&
-      !h.reached_to_seller
-    ) {
+    // Get completed steps
+    const completedSteps = steps.filter((step) => history[step]);
+
+    if (completedSteps.length === 0) return "pending";
+
+    // Last completed step
+    const lastCompletedStep = completedSteps[completedSteps.length - 1];
+
+    if (stepKey === lastCompletedStep) {
       return "current";
     }
 
-    if (
-      stepKey === "authenticity_check" &&
-      h.reached_to_seller &&
-      !h.authenticity_check
-    ) {
-      return "current";
+    if (history[stepKey]) {
+      return "done";
     }
 
-    if (
-      stepKey === "verification_completed" &&
-      h.authenticity_check &&
-      !h.verification_completed
-    ) {
-      return "current";
-    }
-
-    if (stepKey === "picked_up" && h.verification_completed && !h.picked_up) {
-      return "current";
-    }
-
-    if (stepKey === "out_for_delivery" && h.picked_up && !h.out_for_delivery) {
-      return "current";
-    }
-
-    if (
-      stepKey === "reached_to_customer" &&
-      h.out_for_delivery &&
-      !h.reached_to_customer
-    ) {
-      return "current";
-    }
-
-    if (stepKey === "delivered" && h.reached_to_customer && !h.delivered) {
-      return "current";
-    }
-
-    return "upcoming";
+    return "pending";
   };
 
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
@@ -896,7 +879,8 @@ export default function ActiveDeliveries({
                                               Appeal filed. Waiting for admin
                                               approval...
                                             </span>
-                                          ) : item.imei_reject_count > 0 && item.imei_verified !== 1? (
+                                          ) : item.imei_reject_count > 0 &&
+                                            item.imei_verified !== 1 ? (
                                             <span
                                               onClick={() =>
                                                 openImeiReuploadDialog(item)
@@ -907,9 +891,7 @@ export default function ActiveDeliveries({
                                               Re-upload IMEI
                                             </span>
                                           ) : (
-                                            <span className="text-sm text-green-600 font-medium">
-                                              
-                                            </span>
+                                            <span className="text-sm text-green-600 font-medium"></span>
                                           )}
                                         </div>
                                       )}
@@ -962,7 +944,8 @@ export default function ActiveDeliveries({
                                             <span className="text-sm text-orange-600 font-medium">
                                               Appeal filed. Waiting...
                                             </span>
-                                          ) : item.video_reject_count > 0 && item.video_verified !== 1 ? (
+                                          ) : item.video_reject_count > 0 &&
+                                            item.video_verified !== 1 ? (
                                             <span
                                               onClick={() =>
                                                 openVideoReuploadDialog(item)
@@ -972,9 +955,7 @@ export default function ActiveDeliveries({
                                               Re-upload video
                                             </span>
                                           ) : (
-                                            <span className="text-sm text-green-600 font-medium">
-                                              
-                                            </span>
+                                            <span className="text-sm text-green-600 font-medium"></span>
                                           )}
                                         </div>
                                       )}
@@ -984,16 +965,19 @@ export default function ActiveDeliveries({
                                     {(item.imei_reject_count === 1 ||
                                       item.video_reject_count === 1) &&
                                       item.file_appeal_count !== 1 &&
-                                      !isAppealPending && !item.imei_verified === 1 && !item.video_verified === 1  (
-                                        <div className="pt-3 border-t text-right">
-                                          <button
-                                            onClick={() => fileAppeal(item)}
-                                            className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
-                                          >
-                                            File Appeal
-                                          </button>
-                                        </div>
-                                      )}
+                                      !isAppealPending &&
+                                      !item.imei_verified === 1 &&
+                                      !item.video_verified ===
+                                        1(
+                                          <div className="pt-3 border-t text-right">
+                                            <button
+                                              onClick={() => fileAppeal(item)}
+                                              className="px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600"
+                                            >
+                                              File Appeal
+                                            </button>
+                                          </div>,
+                                        )}
                                   </div>
                                 </div>
                               );
