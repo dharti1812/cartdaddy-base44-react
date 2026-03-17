@@ -310,28 +310,24 @@ export default function ActiveDeliveries({
   };
 
   const getDeliveryStepState = (order, stepKey) => {
-    const steps = DELIVERY_TRACKING_STEPS_ORDERED;
+  const steps = DELIVERY_TRACKING_STEPS_ORDERED;
+  const history = order?.status_history || {};
 
-    const history = order?.status_history || {};
+  // Get index of current step (last completed step)
+  const completedIndexes = steps
+    .map((step, index) => (history[step] ? index : -1))
+    .filter((i) => i !== -1);
 
-    // Get completed steps
-    const completedSteps = steps.filter((step) => history[step]);
+  if (completedIndexes.length === 0) return "pending";
 
-    if (completedSteps.length === 0) return "pending";
+  const currentIndex = Math.max(...completedIndexes);
+  const stepIndex = steps.indexOf(stepKey);
 
-    // Last completed step
-    const lastCompletedStep = completedSteps[completedSteps.length - 1];
+  if (stepIndex < currentIndex) return "done";
+  if (stepIndex === currentIndex) return "current";
 
-    if (stepKey === lastCompletedStep) {
-      return "current";
-    }
-
-    if (history[stepKey]) {
-      return "done";
-    }
-
-    return "pending";
-  };
+  return "pending";
+};
 
   const currentDeviceId = localStorage.getItem("cart_daddy_device_id");
   const currentDeliveryBoy = retailerProfile?.delivery_boys?.find(
@@ -1292,7 +1288,7 @@ export default function ActiveDeliveries({
                     stepState === "done"
                       ? "bg-green-600 border-green-600"
                       : stepState === "current"
-                        ? "bg-white border-blue-600 animate-delivery-blue"
+                        ? "bg-blue-600 border-blue-600 animate-pulse"
                         : "bg-white border-gray-300"
                   }`}
                                         >
