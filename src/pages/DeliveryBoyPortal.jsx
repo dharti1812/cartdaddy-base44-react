@@ -1187,8 +1187,7 @@ export default function DeliveryBoyPortal() {
                                     {order.pickup_address?.street},{" "}
                                     {order.pickup_address?.city}
                                   </p>
-                                  {order.distances
-                                    ?.delivery_boy_to_pickup_km && (
+                                  {order.distances?.delivery_boy_to_pickup_km != null && (
                                     <p>
                                       🚴{" "}
                                       <span className="font-semibold">
