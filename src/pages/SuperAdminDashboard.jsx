@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { retailerApi } from "@/components/utils/retailerApi";
 import { UserApi } from "@/components/utils/userApi";
 import { OrderApi } from "@/components/utils/orderApi";
+import { createEcho } from "@/utils/echo";
 import {
   Users,
   Package,
@@ -51,8 +52,25 @@ export default function SuperAdminDashboard() {
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
-    loadData();
-    // No cleanupDuplicates call as it's not typically part of mock API usage
+    const echo = createEcho();
+
+    echo.private("channel-name").listen(".user.status", (e) => {
+      console.log("User Status:", e);
+
+      if (e.status === "online") {
+        console.log("🟢 Online:", e.user);
+        loadData(); 
+      }
+
+      if (e.status === "offline") {
+        console.log("🔴 Offline:", e.user);
+        loadData();
+      }
+    });
+
+    return () => {
+      echo.leave("channel-name"); 
+    };
   }, []);
 
   useEffect(() => {
@@ -76,23 +94,23 @@ export default function SuperAdminDashboard() {
           OrderApi.list().then((data) =>
             data
               .sort(
-                (a, b) => new Date(b.created_date) - new Date(a.created_date)
+                (a, b) => new Date(b.created_date) - new Date(a.created_date),
               )
-              .slice(0, 200)
+              .slice(0, 200),
           ),
           retailerApi
             .list()
             .then((data) =>
               data.sort(
-                (a, b) => new Date(b.created_date) - new Date(a.created_date)
-              )
+                (a, b) => new Date(b.created_date) - new Date(a.created_date),
+              ),
             ),
           deliveryPartnerApi
             .list()
             .then((data) =>
               data.sort(
-                (a, b) => new Date(b.created_date) - new Date(a.created_date)
-              )
+                (a, b) => new Date(b.created_date) - new Date(a.created_date),
+              ),
             ),
           UserApi.list(),
         ]);
@@ -135,20 +153,20 @@ export default function SuperAdminDashboard() {
   const stats = {
     totalOrders: orders.length,
     activeOrders: orders.filter((o) =>
-      ["assigned", "en_route", "arrived"].includes(o.status)
+      ["assigned", "en_route", "arrived"].includes(o.status),
     ).length,
     totalRetailers: retailers.length,
     activeRetailers: retailers.filter((r) => r.availability_status === "online")
       .length,
     pendingRetailerVerifications: retailers.filter(
-      (r) => r.onboarding_status === "admin_approval_pending"
+      (r) => r.onboarding_status === "admin_approval_pending",
     ).length,
     totalDeliveryPartners: deliveryPartners.length,
     activeDeliveryPartners: deliveryPartners.filter(
-      (dp) => dp?.availability_status === "online"
+      (dp) => dp?.availability_status === "online",
     ).length,
     pendingDPVerifications: deliveryPartners.filter(
-      (dp) => dp.onboarding_status === "retailers_pending"
+      (dp) => dp.onboarding_status === "retailers_pending",
     ).length,
     totalCustomers: customers.length,
     totalAdmins: admins.length,
@@ -179,16 +197,16 @@ export default function SuperAdminDashboard() {
   };
 
   const resolveImageUrl = (url) => {
-      if (!url) return "";
-  
-      try {
-        const parsed = new URL(url);
-  
-        return `${ASSET_BASE_URL}${parsed.pathname}`;
-      } catch {
-        return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
-      }
-    };
+    if (!url) return "";
+
+    try {
+      const parsed = new URL(url);
+
+      return `${ASSET_BASE_URL}${parsed.pathname}`;
+    } catch {
+      return `${ASSET_BASE_URL}/${url.replace(/^\/+/, "")}`;
+    }
+  };
 
   const handleBanSeller = async (seller) => {
     const reason = prompt(`Enter ban reason`);
@@ -316,7 +334,7 @@ export default function SuperAdminDashboard() {
       r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.business_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.phone?.includes(searchTerm) ||
-      r.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      r.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const filteredDeliveryPartners = deliveryPartners.filter(
@@ -324,7 +342,7 @@ export default function SuperAdminDashboard() {
       !searchTerm ||
       dp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       dp.phone?.includes(searchTerm) ||
-      dp.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      dp.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const downloadReport = async (type) => {
@@ -378,7 +396,7 @@ export default function SuperAdminDashboard() {
     (c) =>
       !searchTerm ||
       c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone?.includes(searchTerm)
+      c.phone?.includes(searchTerm),
   );
 
   if (loading) {
@@ -612,8 +630,8 @@ export default function SuperAdminDashboard() {
                             order.status === "delivered"
                               ? "bg-[#075E66] text-white"
                               : order.status === "en_route"
-                              ? "bg-[#FFEB3B] text-black"
-                              : "bg-gray-400 text-white"
+                                ? "bg-[#FFEB3B] text-black"
+                                : "bg-gray-400 text-white"
                           }
                         >
                           {order.status}
@@ -1011,7 +1029,6 @@ export default function SuperAdminDashboard() {
         {/* Detail Dialog */}
         {selectedDetail && (
           <Dialog open onOpenChange={() => setSelectedDetail(null)}>
-          
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold">
@@ -1029,7 +1046,9 @@ export default function SuperAdminDashboard() {
                     <div className="flex items-center gap-4">
                       {selectedDetail.data.shop_photos?.[0]?.url ? (
                         <img
-                          src={resolveImageUrl(selectedDetail.data.shop_photos[0].url)}
+                          src={resolveImageUrl(
+                            selectedDetail.data.shop_photos[0].url,
+                          )}
                           alt={selectedDetail.data.business_name}
                           className="w-24 h-24 rounded-lg object-cover border-4 border-[#FFEB3B]"
                         />
@@ -1080,7 +1099,7 @@ export default function SuperAdminDashboard() {
                                 <Phone className="w-3 h-3" /> {phone.number} (
                                 {phone.label})
                               </p>
-                            )
+                            ),
                           )}
                         </div>
                       )}
@@ -1309,7 +1328,7 @@ export default function SuperAdminDashboard() {
                                   </p>
                                   <p className="text-xs text-gray-600">
                                     {new Date(
-                                      order.created_date
+                                      order.created_date,
                                     ).toLocaleDateString()}
                                   </p>
                                 </div>
