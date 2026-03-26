@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Order, DeliveryPartner, User } from "@/components/utils/mockApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,26 +50,30 @@ export default function SuperAdminDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const echoRef = useRef(null);
 
   useEffect(() => {
-    const echo = createEcho();
+    if (!echoRef.current) {
+      echoRef.current = createEcho();
+    }
+
+    const echo = echoRef.current;
 
     echo.private("channel-name").listen(".user.status", (e) => {
       console.log("User Status:", e);
 
       if (e.status === "online") {
-        console.log("🟢 Online:", e.user);
-        loadData(); 
+        loadData();
       }
 
       if (e.status === "offline") {
-        console.log("🔴 Offline:", e.user);
         loadData();
       }
     });
 
     return () => {
-      echo.leave("channel-name"); 
+      echo.leave("channel-name");
+      echo.disconnect();
     };
   }, []);
 
